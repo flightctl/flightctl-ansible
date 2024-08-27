@@ -2596,7 +2596,7 @@ components:
         name:
           type: string
         description:
-          type: string 
+          type: string
         actions:
           type: array
           items:
@@ -2617,7 +2617,7 @@ components:
         name:
           type: string
         description:
-          type: string 
+          type: string
         actions:
           type: array
           items:
@@ -2656,8 +2656,8 @@ components:
              type: string
              pattern: '^[1-9]\d*[smhd]$'
              description: |
-              The maximum duration allowed for the action to complete. 
-              The duration should be specified as a positive integer 
+              The maximum duration allowed for the action to complete.
+              The duration should be specified as a positive integer
               followed by a time unit. Supported time units are:
               - 's' for seconds
               - 'm' for minutes
@@ -2704,7 +2704,7 @@ components:
             description: 'The directory in which the executable will be run from if it is left empty it will run from the users home directory.'
       required:
         - name
-        - operations 
+        - operations
     HookActionExecutableSpec:
       allOf:
         - $ref: '#/components/schemas/HookActionSpec'
@@ -2715,7 +2715,7 @@ components:
             run:
               type: string
               description: 'The command to be executed, including any arguments using standard shell syntax. This field supports multiple commands piped together, as if they were executed under a bash -c context.'
-            envVars: 
+            envVars:
               type: array
               items:
                 type: string
@@ -3095,7 +3095,7 @@ components:
         labels:
           type: object
           additionalProperties:
-            type: string 
+            type: string
           description: 'A set of labels that the service will apply to this device when its enrollment is approved'
       description: EnrollmentRequestSpec is a description of a EnrollmentRequest's target state.
     EnrollmentRequestStatus:
@@ -3342,7 +3342,7 @@ components:
             discriminator:
               propertyName: configType
         hooks:
-          $ref: '#/components/schemas/DeviceHooksSpec' 
+          $ref: '#/components/schemas/DeviceHooksSpec'
         containers:
           type: object
           properties:

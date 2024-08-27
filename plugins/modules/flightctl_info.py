@@ -115,5 +115,5 @@ def main():
     module.exit_json(result=result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

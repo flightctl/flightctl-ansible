@@ -5,8 +5,9 @@
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 
+from typing import Any, Dict, Iterable, List, Optional, Union, cast
+
 import yaml
-from typing import Optional, Dict, List, Union, cast, Iterable, Any
 from ansible.module_utils.six import string_types
 
 

@@ -127,5 +127,5 @@ def main():
         module.fail_json(msg=f"Failed to run module: {e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

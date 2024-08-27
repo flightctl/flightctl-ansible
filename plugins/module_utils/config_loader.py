@@ -4,9 +4,8 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-import yaml
 import jsonschema
-
+import yaml
 from ansible.module_utils.parsing.convert_bool import boolean as strtobool
 
 
@@ -32,23 +31,28 @@ class ConfigLoader:
                     "properties": {
                         "token": {"type": "string"}  # token must be a string
                     },
-                    "required": ["token"]  # token field is required
+                    "required": ["token"],  # token field is required
                 },
                 "service": {
                     "type": "object",
                     "properties": {
                         "server": {"type": "string"},  # server must be a string
-                        "insecureSkipVerify": {"type": ["boolean", "string"]}  # insecureSkipVerify can be bool or string
+                        "insecureSkipVerify": {
+                            "type": ["boolean", "string"]
+                        },  # insecureSkipVerify can be bool or string
                     },
-                    "required": ["server"]  # server field is required
-                }
+                    "required": ["server"],  # server field is required
+                },
             },
-            "required": ["authentication", "service"]  # authentication and service fields are required
+            "required": [
+                "authentication",
+                "service",
+            ],  # authentication and service fields are required
         }
 
         try:
             # Load the YAML file
-            with open(config_file, 'r') as file:
+            with open(config_file, "r") as file:
                 config_data = yaml.load(file, Loader=yaml.SafeLoader)
 
             # Validate the config file against the schema
@@ -57,11 +61,15 @@ class ConfigLoader:
         except FileNotFoundError as e:
             raise Exception(f"The file '{config_file}' was not found: {e}") from e
         except yaml.YAMLError as e:
-            raise Exception(f"Failed to parse YAML file due to a syntax issue: {e}") from e
+            raise Exception(
+                f"Failed to parse YAML file due to a syntax issue: {e}"
+            ) from e
         except jsonschema.ValidationError as e:
             raise Exception(f"Schema validation error: {e}") from e
         except Exception as e:
-            raise Exception(f"An unknown exception occurred while loading config file: {e}") from e
+            raise Exception(
+                f"An unknown exception occurred while loading config file: {e}"
+            ) from e
 
         return config_data
 

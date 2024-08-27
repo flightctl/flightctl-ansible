@@ -5,13 +5,15 @@
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 
-from typing import Dict, List, Optional, Tuple, Any
 from collections import OrderedDict
+from typing import Any, Dict, List, Optional, Tuple
 
 from .exceptions import ValidationException
 
 
-def recursive_diff(dict1: Dict[str, Any], dict2: Dict[str, Any], position: Optional[Any] = None):
+def recursive_diff(
+    dict1: Dict[str, Any], dict2: Dict[str, Any], position: Optional[Any] = None
+):
     if not position:
         if "kind" in dict1 and dict1.get("kind") == dict2.get("kind"):
             position = dict1["kind"]
@@ -78,8 +80,7 @@ def recursive_list_diff(list1: List, list2: List, position: Optional[Any] = None
     return None
 
 
-def diff_objects(
-    existing: Dict[str, Any], new: Dict[str, Any]) -> Tuple[bool, Dict]:
+def diff_objects(existing: Dict[str, Any], new: Dict[str, Any]) -> Tuple[bool, Dict]:
     result = {}
 
     diff = recursive_diff(existing, new)

@@ -5,17 +5,17 @@
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 
-import yaml
-from typing import Dict, Any
+from typing import Any, Dict
 
+import yaml
 from openapi_schema_validator import OAS30Validator
 
-from .exceptions import ValidationException, FlightctlException
+from .exceptions import FlightctlException, ValidationException
 from .resource import create_definitions
 
 
 def load_schema(file_path):
-    with open(file_path, 'r') as file:
+    with open(file_path, "r") as file:
         schema = yaml.safe_load(file)
     return schema
 
