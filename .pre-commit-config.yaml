@@ -1,0 +1,125 @@
+ci:
+  autoupdate_commit_msg: "chore: pre-commit autoupdate"
+  autoupdate_schedule: monthly
+  autofix_commit_msg: |
+    chore: auto fixes from pre-commit.com hooks
+
+    for more information, see https://pre-commit.ci
+  skip:
+    # These will not run on pre-commit.ci
+    - ansible-test-sanity # requires network access
+    - shellcheck  # no docker
+    - tox # requires network access
+exclude: >
+  (?x)^(
+    docs/rst/.*.rst$
+  )$
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+        language_version: python3
+      - id: file-contents-sorter
+        args: [--unique]
+        # always_run: true
+        files: ^(\.config/dictionary\.txt)$
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.10.0
+    hooks:
+      - id: shellcheck
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+  - repo: https://github.com/psf/black
+    rev: 24.8.0
+    hooks:
+      - id: black
+        language_version: python3
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.1
+    hooks:
+      - id: mypy
+        # empty args needed in order to match mypy cli behavior
+        args: []
+        language_version: python3.9 # minimal supported version, keeps results consistent
+        additional_dependencies:
+          - aiohttp
+          - aiokafka
+          - ansible-core>=2.15
+          - asyncmock
+          - azure-servicebus
+          - dpath
+          - kafka-python-ng;  python_version >= "3.12"
+          - kafka-python; python_version < "3.12"
+          - psycopg[binary,pool]  # extras needed to avoid install failure on macos-aarch64
+          - pytest
+          - types-PyYAML
+          - types-aiobotocore[cloudtrail,sqs]
+          - types-botocore
+          - types-mock
+          - types-requests
+          - watchdog
+          - xxhash
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: "v0.6.0"
+    hooks:
+      - id: ruff
+        args: [
+          --fix,
+          --exit-non-zero-on-fix,
+        ]
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.1.1
+    hooks:
+      - id: flake8
+        args: [
+          --max-line-length, "120",
+          --extend-ignore, E203 E402,
+        ]
+
+  - repo: https://github.com/pycqa/pylint
+    rev: v3.2.6
+    hooks:
+      - id: pylint
+        args:
+          - --output-format=colorized
+        additional_dependencies:
+          - aiobotocore
+          - aiohttp
+          - aiokafka
+          - ansible-core
+          - asyncmock
+          - azure-servicebus
+          - botocore
+          - dpath
+          - kafka-python
+          - psycopg
+          - pytest
+          - pyyaml
+          - requests
+          - types-aiobotocore
+          - watchdog
+          - xxhash
+  - repo: local
+    hooks:
+      - id: ansible-test-sanity
+        name: Run ansible-test sanity
+        entry: ansible-test sanity
+        require_serial: true
+        stages: [manual]
+        language: python
+        additional_dependencies:
+          - ansible
+        pass_filenames: false
+
+      - id: tox
+        name: Run tox
+        entry: tox
+        language: python
+        require_serial: true
+        stages: [manual]
+        pass_filenames: false

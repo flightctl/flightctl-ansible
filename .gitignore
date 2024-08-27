@@ -1,0 +1,35 @@
+# python
+*.pyc
+
+# venv
+venv
+
+# tests
+tests/output
+.pytest_cache/
+.tox
+.ruff*
+tests/integration/integration_config.yml
+
+# Ide's
+.vscode
+.idea
+
+# Builds
+*.tar.gz
+
+# Coverage
+.coverage*
+*coverage.combined
+
+# Generated with antsibull-docs
+docs/.gitignore
+docs/antsibull-docs.cfg
+docs/build.sh
+docs/build/
+docs/conf.py
+docs/requirements.txt
+docs/rst/*.rst
+docs/temp-rst
+# Other
+tests/integration/inventory

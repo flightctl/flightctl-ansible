@@ -1,0 +1,95 @@
+- name: Test Flight Control Collection
+  hosts: localhost
+  tasks:
+    - name: Set default credentials
+      set_fact:
+        credential_defaults: &credential_defaults
+          flightctl_config_file: "~/Library/Application\ Support/flightctl/client.yaml"
+
+    - name: Get all devices
+      flightctl.edge.flightctl_info:
+        <<: *credential_defaults
+        kind: Device
+
+    - name: Get all fleets
+      flightctl.edge.flightctl_info:
+        <<: *credential_defaults
+        kind: Fleet
+
+    - name: Get information about a specific device
+      flightctl.edge.flightctl_info:
+        <<: *credential_defaults
+        kind: Device
+        name: "2bd0rgpir74c5jtrhfb1idvb2cvvvinem24t727qdudfcqr60sog"
+      register: result
+
+    - name: Get information about a specific device
+      flightctl.edge.flightctl_info:
+        <<: *credential_defaults
+        kind: Device
+        label_selector: "owner=mparra"
+
+    - name: Create a test device in check_mode
+      flightctl.edge.flightctl:
+        <<: *credential_defaults
+        kind: Device
+        name: "test-ansible-device"
+        api_version: v1alpha1
+        resource_definition:
+          apiVersion: v1alpha1
+          kind: Device
+          metadata:
+            name: "test-ansible-device"
+            labels:
+              fleet: default
+              novalue: ""
+      check_mode: true
+
+    - name: Create a test device
+      flightctl.edge.flightctl:
+        <<: *credential_defaults
+        kind: Device
+        name: "test-ansible-device"
+        api_version: v1alpha1
+        resource_definition:
+          apiVersion: v1alpha1
+          kind: Device
+          metadata:
+            name: "test-ansible-device"
+            labels:
+              fleet: default
+              novalue: ""
+
+    - name: Create a new test device
+      flightctl.edge.flightctl:
+        <<: *credential_defaults
+        kind: Device
+        name: "test-ansible-device-2"
+        api_version: v1alpha1
+
+    - name: Get information about a specific device
+      flightctl.edge.flightctl_info:
+        <<: *credential_defaults
+        kind: Device
+        name: "test-ansible-device"
+
+    - name: Delete a test device in check_mode
+      flightctl.edge.flightctl:
+        <<: *credential_defaults
+        kind: Device
+        name: "test-ansible-device"
+        state: absent
+      check_mode: true
+
+    - name: Delete a test device in check_mode
+      flightctl.edge.flightctl:
+        <<: *credential_defaults
+        kind: Device
+        name: "test-ansible-device"
+        state: absent
+
+    - name: Get information about a specific device
+      flightctl.edge.flightctl_info:
+        <<: *credential_defaults
+        kind: Device
+        name: "test-ansible-device"
