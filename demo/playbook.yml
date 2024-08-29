@@ -178,6 +178,21 @@
           <<: *credential_defaults
           kind: Device
           name: "test-ansible-device"
+
+      - name: Create a new device
+        flightctl.edge.flightctl:
+          <<: *credential_defaults
+          kind: Device
+          name: "test-ansible-device-2"
+          resource_definition: "{{ lookup('file', 'device.yml') | from_yaml }}"
+        register: _result
+
+      - name: Assert that Device was created
+        assert:
+          that:
+            - _result.changed
+            - _result is success
+
       always:
         - name: Delete a devices
           flightctl.edge.flightctl:
@@ -188,4 +203,5 @@
           loop:
             - "test-ansible-device"
             - "test-ansible-device-2"
+            - "device-ansible-b"
           ignore_errors: true
