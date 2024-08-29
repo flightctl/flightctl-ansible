@@ -1,95 +1,191 @@
 - name: Test Flight Control Collection
   hosts: localhost
+
   tasks:
-    - name: Set default credentials
-      set_fact:
-        credential_defaults: &credential_defaults
-          flightctl_config_file: "~/Library/Application\ Support/flightctl/client.yaml"
+    - block:
+      - name: Set default credentials
+        set_fact:
+          credential_defaults: &credential_defaults
+            flightctl_config_file: "~/Library/Application\ Support/flightctl/client.yaml"
 
-    - name: Get all devices
-      flightctl.edge.flightctl_info:
-        <<: *credential_defaults
-        kind: Device
-
-    - name: Get all fleets
-      flightctl.edge.flightctl_info:
-        <<: *credential_defaults
-        kind: Fleet
-
-    - name: Get information about a specific device
-      flightctl.edge.flightctl_info:
-        <<: *credential_defaults
-        kind: Device
-        name: "2bd0rgpir74c5jtrhfb1idvb2cvvvinem24t727qdudfcqr60sog"
-      register: result
-
-    - name: Get information about a specific device
-      flightctl.edge.flightctl_info:
-        <<: *credential_defaults
-        kind: Device
-        label_selector: "owner=mparra"
-
-    - name: Create a test device in check_mode
-      flightctl.edge.flightctl:
-        <<: *credential_defaults
-        kind: Device
-        name: "test-ansible-device"
-        api_version: v1alpha1
-        resource_definition:
-          apiVersion: v1alpha1
+      - name: Get all devices
+        flightctl.edge.flightctl_info:
+          <<: *credential_defaults
           kind: Device
-          metadata:
-            name: "test-ansible-device"
-            labels:
-              fleet: default
-              novalue: ""
-      check_mode: true
 
-    - name: Create a test device
-      flightctl.edge.flightctl:
-        <<: *credential_defaults
-        kind: Device
-        name: "test-ansible-device"
-        api_version: v1alpha1
-        resource_definition:
-          apiVersion: v1alpha1
+      - name: Get all fleets
+        flightctl.edge.flightctl_info:
+          <<: *credential_defaults
+          kind: Fleet
+
+      - name: Get information about a specific device
+        flightctl.edge.flightctl_info:
+          <<: *credential_defaults
           kind: Device
-          metadata:
-            name: "test-ansible-device"
-            labels:
-              fleet: default
-              novalue: ""
+          name: "2bd0rgpir74c5jtrhfb1idvb2cvvvinem24t727qdudfcqr60sog"
+        register: result
 
-    - name: Create a new test device
-      flightctl.edge.flightctl:
-        <<: *credential_defaults
-        kind: Device
-        name: "test-ansible-device-2"
-        api_version: v1alpha1
+      - name: Get information about a specific device
+        flightctl.edge.flightctl_info:
+          <<: *credential_defaults
+          kind: Device
+          label_selector: "owner=mparra"
 
-    - name: Get information about a specific device
-      flightctl.edge.flightctl_info:
-        <<: *credential_defaults
-        kind: Device
-        name: "test-ansible-device"
+      - name: Create a test device in check_mode
+        flightctl.edge.flightctl:
+          <<: *credential_defaults
+          kind: Device
+          name: "test-ansible-device"
+          api_version: v1alpha1
+          resource_definition:
+            apiVersion: v1alpha1
+            kind: Device
+            metadata:
+              name: "test-ansible-device"
+              labels:
+                fleet: default
+                novalue: ""
+        check_mode: true
 
-    - name: Delete a test device in check_mode
-      flightctl.edge.flightctl:
-        <<: *credential_defaults
-        kind: Device
-        name: "test-ansible-device"
-        state: absent
-      check_mode: true
+      - name: Create a test device
+        flightctl.edge.flightctl:
+          <<: *credential_defaults
+          kind: Device
+          name: "test-ansible-device"
+          api_version: v1alpha1
+          resource_definition:
+            apiVersion: v1alpha1
+            kind: Device
+            metadata:
+              name: "test-ansible-device"
+              labels:
+                fleet: default
+                novalue: ""
+        register: _result
 
-    - name: Delete a test device in check_mode
-      flightctl.edge.flightctl:
-        <<: *credential_defaults
-        kind: Device
-        name: "test-ansible-device"
-        state: absent
+      - name: Assert that Device was created
+        assert:
+          that:
+            - _result.changed
+            - _result is success
 
-    - name: Get information about a specific device
-      flightctl.edge.flightctl_info:
-        <<: *credential_defaults
-        kind: Device
-        name: "test-ansible-device"
+      - name: Create a test device again
+        flightctl.edge.flightctl:
+          <<: *credential_defaults
+          kind: Device
+          name: "test-ansible-device"
+          api_version: v1alpha1
+          resource_definition:
+            apiVersion: v1alpha1
+            kind: Device
+            metadata:
+              name: "test-ansible-device"
+              labels:
+                fleet: default
+                novalue: ""
+        register: _result
+
+      - name: Assert that Device was not created
+        assert:
+          that:
+            - not _result.changed
+            - _result is success
+
+      - name: Update a test device
+        flightctl.edge.flightctl:
+          <<: *credential_defaults
+          kind: Device
+          name: "test-ansible-device"
+          api_version: v1alpha1
+          resource_definition:
+            apiVersion: v1alpha1
+            kind: Device
+            metadata:
+              name: "test-ansible-device"
+        register: _result
+
+      - name: Assert that Device was not updated
+        assert:
+          that:
+            - not _result.changed
+            - _result is success
+
+      - name: Create a new test device
+        flightctl.edge.flightctl:
+          <<: *credential_defaults
+          kind: Device
+          name: "test-ansible-device-2"
+          api_version: v1alpha1
+        register: _result
+
+      - name: Assert that Device was created
+        assert:
+          that:
+            - _result.changed
+            - _result is success
+
+      - name: Update new test device
+        flightctl.edge.flightctl:
+          <<: *credential_defaults
+          kind: Device
+          name: "test-ansible-device-2"
+          api_version: v1alpha1
+          resource_definition:
+            apiVersion: v1alpha1
+            kind: Device
+            metadata:
+              labels:
+                fleet: default
+                novalue: ""
+        register: _result
+
+      - name: Assert that Device was updated
+        assert:
+          that:
+            - _result.changed
+            - _result is success
+
+      - name: Get information about a specific device
+        flightctl.edge.flightctl_info:
+          <<: *credential_defaults
+          kind: Device
+          name: "test-ansible-device"
+
+      - name: Delete a test device in check_mode
+        flightctl.edge.flightctl:
+          <<: *credential_defaults
+          kind: Device
+          name: "test-ansible-device"
+          state: absent
+        check_mode: true
+
+      - name: Delete a test device
+        flightctl.edge.flightctl:
+          <<: *credential_defaults
+          kind: Device
+          name: "test-ansible-device"
+          state: absent
+        register: _result
+
+      - name: Assert that Device was deleted
+        assert:
+          that:
+            - _result.changed
+            - _result is success
+
+      - name: Get information about a specific device
+        flightctl.edge.flightctl_info:
+          <<: *credential_defaults
+          kind: Device
+          name: "test-ansible-device"
+      always:
+        - name: Delete a devices
+          flightctl.edge.flightctl:
+            <<: *credential_defaults
+            kind: Device
+            name: "{{ item }}"
+            state: absent
+          loop:
+            - "test-ansible-device"
+            - "test-ansible-device-2"
+          ignore_errors: true

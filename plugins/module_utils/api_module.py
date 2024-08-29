@@ -5,19 +5,39 @@
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import json
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import ParseResult
 
 from ansible.module_utils.six.moves.http_cookiejar import CookieJar
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.six.moves.urllib.parse import urlencode
-from ansible.module_utils.urls import ConnectionError, Request, SSLValidationError
+from ansible.module_utils.urls import (ConnectionError, Request,
+                                       SSLValidationError)
 
 from .core import FlightctlModule
 from .exceptions import FlightctlException, FlightctlHTTPException
+from .utils import diff_dicts, get_patch, json_patch
 
 
 class Response:
+    """
+    Represents an HTTP response.
+
+    Attributes:
+        status (int): The HTTP status code of the response.
+        data (Any): The response data (raw content).
+        headers (Optional[Any]): The response headers, converted to lowercase keys.
+    """
+
     def __init__(self, status: int, data: Any, headers: Optional[Any] = None) -> None:
+        """
+        Initializes the Response object.
+
+        Args:
+            status (int): The HTTP status code.
+            data (Any): The response data.
+            headers (Optional[Any], optional): The response headers.
+        """
         self.status = status
         self.data = data
         # [('h1', 'v1'), ('H2', 'V2')] -> {'h1': 'v1', 'h2': 'V2'}
@@ -29,6 +49,15 @@ class Response:
 
     @property
     def json(self) -> Any:
+        """
+        Returns the response data as JSON, if possible.
+
+        Returns:
+            Any: The parsed JSON data.
+
+        Raises:
+            FlightctlHTTPException: If the data is not valid JSON.
+        """
         if self._json is None:
             try:
                 self._json = json.loads(self.data)
@@ -40,9 +69,17 @@ class Response:
 
 
 class FlightctlAPIModule(FlightctlModule):
-    IDENTITY_FIELDS = {"users": "username"}
-    ENCRYPTED_STRING = "$encrypted$"
-    API_ENDPOINTS = {
+    """
+    API module for interacting with the Flightctl API.
+
+    Inherits from FlightctlModule and provides methods to perform API requests
+    like GET, POST, PATCH, and DELETE.
+
+    Attributes:
+        API_ENDPOINTS (dict): Mapping of resource types to API endpoints.
+    """
+
+    API_ENDPOINTS: Dict[str, str] = {
         "fleet": "/api/v1/fleets",
         "resourcesync": "/api/v1/resourcesyncs",
         "device": "/api/v1/devices",
@@ -56,13 +93,24 @@ class FlightctlAPIModule(FlightctlModule):
         warn_callback: Optional[Any] = None,
         **kwargs: Any,
     ) -> None:
+        """
+        Initializes the FlightctlAPIModule.
+
+        Args:
+            argument_spec (Dict[str, Any]): The argument specification for the module.
+            error_callback (Optional[Any], optional): A callback function for errors.
+            warn_callback (Optional[Any], optional): A callback function for warnings.
+            **kwargs (Any): Additional keyword arguments.
+        """
         kwargs["supports_check_mode"] = True
+
         super().__init__(
             argument_spec=argument_spec,
             error_callback=error_callback,
             warn_callback=warn_callback,
             **kwargs,
         )
+
         self.session = Request(
             cookies=CookieJar(),
             timeout=self.request_timeout,
@@ -70,27 +118,95 @@ class FlightctlAPIModule(FlightctlModule):
         )
 
     @staticmethod
-    def normalize_endpoint(endpoint: str) -> Union[str, None]:
+    def normalize_endpoint(endpoint: str) -> Optional[str]:
+        """
+        Normalizes the endpoint by converting it to lowercase.
+
+        Args:
+            endpoint (str): The API endpoint.
+
+        Returns:
+            Union[str, None]: The normalized endpoint or None if the input is invalid.
+        """
         return endpoint.lower() if endpoint else None
 
-    def get_endpoint(self, endpoint: str, name: Optional[str] = None, **kwargs: Any):
+    def get_endpoint(
+        self, endpoint: str, name: Optional[str] = None, **kwargs: Any
+    ) -> Response:
+        """
+        Sends a GET request to the specified API endpoint.
+
+        Args:
+            endpoint (str): The API endpoint (resource type).
+            name (Optional[str], optional): The resource name (optional).
+
+        Returns:
+            Response: The response object.
+        """
         return self.request("GET", endpoint, name, **kwargs)
 
-    def patch_endpoint(self, endpoint: str, name: str, **kwargs: Any):
-        return self.request("PATCH", endpoint, name, **kwargs)
+    def patch_endpoint(
+        self, endpoint: str, name: str, patch: List[Dict[str, Any]]
+    ) -> Response:
+        """
+        Sends a PATCH request to the specified endpoint with a JSON patch.
 
-    def post_endpoint(self, endpoint: str, **kwargs: Any):
+        Args:
+            endpoint (str): The API endpoint (resource type) to patch.
+            name (str): The resource name to patch.
+            patch (List[Dict[str, Any]]): The patch data (list of patch operations).
+
+        Returns:
+            Response: The response object.
+        """
+        return self.request("PATCH", endpoint, name=name, patch=patch)
+
+    def post_endpoint(self, endpoint: str, **kwargs: Any) -> Response:
+        """
+        Sends a POST request to the specified API endpoint.
+
+        Args:
+            endpoint (str): The API endpoint (resource type).
+            **kwargs (Any): Additional parameters for the request.
+
+        Returns:
+            Response: The response object.
+        """
         return self.request("POST", endpoint, **kwargs)
 
-    def delete_endpoint(self, endpoint: str, name: str, **kwargs: Any):
-        return self.request("DELETE", endpoint, name, **kwargs)
+    def delete_endpoint(self, endpoint: str, name: str, **kwargs: Any) -> Response:
+        """
+        Sends a DELETE request to the specified API endpoint.
+
+        Args:
+            endpoint (str): The API endpoint (resource type).
+            name (str): The resource name.
+
+        Returns:
+            Response: The response object.
+        """
+        return self.request("DELETE", endpoint, name=name, **kwargs)
 
     def build_url(
         self,
         endpoint: str,
         name: Optional[str] = None,
-        query_params: Optional[Any] = None,
+        query_params: Optional[Dict[str, Any]] = None,
     ):
+        """
+        Constructs the full URL for an API request.
+
+        Args:
+            endpoint (str): The API endpoint (resource type).
+            name (Optional[str], optional): The resource name.
+            query_params (Optional[Dict[str, Any]], optional): Query parameters for the URL.
+
+        Returns:
+            ParseResult: The complete URL with the path and query parameters.
+
+        Raises:
+            FlightctlException: If the endpoint is invalid.
+        """
         normalized_endpoint = self.normalize_endpoint(endpoint)
         if not normalized_endpoint or normalized_endpoint not in self.API_ENDPOINTS:
             raise FlightctlException(f"Invalid 'kind' specified: {endpoint}")
@@ -115,9 +231,29 @@ class FlightctlAPIModule(FlightctlModule):
         return url
 
     def request(
-        self, method: str, endpoint: str, name: Optional[str] = None, **kwargs: Any
-    ):
-        # In case someone is calling us directly; make sure we were given a method, let's not just assume a GET
+        self,
+        method: str,
+        endpoint: str,
+        name: Optional[str] = None,
+        patch: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> Response:
+        """
+        Builds and sends an HTTP request.
+
+        Args:
+            method (str): The HTTP method (GET, POST, PATCH, DELETE, etc.).
+            endpoint (str): The API endpoint (resource type).
+            name (Optional[str], optional): The resource name (optional for some methods).
+            patch (Optional[Any], optional): The patch data for PATCH requests.
+            kwargs (Any): Additional parameters for the request.
+
+        Returns:
+            Response: The response object.
+
+        Raises:
+            FlightctlHTTPException: If the method is not defined or there are request errors.
+        """
         if not method:
             raise FlightctlHTTPException("The HTTP method must be defined")
 
@@ -136,33 +272,43 @@ class FlightctlAPIModule(FlightctlModule):
 
         if self.token:
             # If we have a token, we just use a bearer header
-            headers["Authorization"] = "Bearer {0}".format(self.token)
+            headers["Authorization"] = f"Bearer {self.token}"
 
-        if method == ["PATCH"]:
+        if method == "PATCH":
             headers.setdefault("Content-Type", "application/json-patch+json")
             kwargs["headers"] = headers
-
-        if method in ["POST", "PUT"]:
+            data = json.dumps(patch)
+        elif method in ["POST", "PUT"]:
             headers.setdefault("Content-Type", "application/json")
             kwargs["headers"] = headers
-
-        data = (
-            None  # Important, if content type is not JSON, this should not be dict type
-        )
-
-        if headers.get("Content-Type", "") == "application/json":
             data = json.dumps(kwargs)
+        else:
+            data = None  # Important, if content type is not JSON, this should not be dict type
 
         return self._request(method, url, data=data, headers=headers)
 
     def _request(
         self,
         method: str,
-        url,
+        url: ParseResult,
         data: Optional[str] = None,
         headers: Optional[str] = None,
-    ):
+    ) -> Response:
+        """
+        Sends a raw HTTP request using the session object.
 
+        Args:
+            method (str): The HTTP method (GET, POST, etc.).
+            url (ParseResult): The URL for the request.
+            data (Optional[str], optional): The request body data.
+            headers (Optional[str], optional): The request headers.
+
+        Returns:
+            Response: The response object.
+
+        Raises:
+            FlightctlHTTPException: If there are SSL, connection, or HTTP errors.
+        """
         try:
             raw_resp = self.session.open(
                 method,
@@ -184,7 +330,7 @@ class FlightctlAPIModule(FlightctlModule):
         except HTTPError as http_err:
             if http_err.code >= 500:
                 raise FlightctlHTTPException(
-                    f"The host sent back a server error ({http_err}): {url.path}. Please check the logs and try again later."
+                    f"The host sent back a server error ({http_err}): {url.path}. Please check the logs and try again."
                 ) from http_err
             elif http_err.code == 401:
                 raise FlightctlHTTPException(
@@ -222,6 +368,20 @@ class FlightctlAPIModule(FlightctlModule):
     def get_one_or_many(
         self, endpoint: str, name: Optional[str] = None, **kwargs: Any
     ) -> List:
+        """
+        Retrieves one or many resources from the API.
+
+        Args:
+            endpoint (str): The API endpoint (resource type).
+            name (Optional[str], optional): The resource name.
+            kwargs (Any): Additional query parameters for the request.
+
+        Returns:
+            List: The list of resources or an empty list if not found.
+
+        Raises:
+            FlightctlException: If the response status is not 200 or 404.
+        """
         response = self.get_endpoint(endpoint, name, **kwargs)
         if response.status not in [200, 404]:
             fail_msg = f"Got a {response.status} when trying to get {endpoint}"
@@ -238,21 +398,98 @@ class FlightctlAPIModule(FlightctlModule):
 
         return [response.json]
 
-    def create(self, params: Dict[str, Any], definition: Dict[str, Any]):
-        response = self.post_endpoint(params.get("kind"), **definition)
+    def create(
+        self, params: Dict[str, Any], definition: Dict[str, Any]
+    ) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Creates a new resource in the API.
+
+        Args:
+            params (Dict[str, Any]): The resource parameters (kind, name, etc.).
+            definition (Dict[str, Any]): The resource definition.
+
+        Returns:
+            Returns:
+            Tuple[bool, Dict[str, Any]]:
+                A tuple containing:
+                    - A boolean indicating whether the resource was deleted (changed).
+                    - The created resource as a dictionary.
+        Raises:
+            FlightctlException: If the creation fails.
+        """
+        changed: bool = False
+        response = self.post_endpoint(params["kind"], **definition)
         if response.status == 201:
-            return response.json
+            changed |= True
         else:
-            msg = f"Unable to create {params.get('kind')} {params.get('name')}: {response.status}"
+            msg = (
+                f"Unable to create {params['kind']} {params['name']}: {response.status}"
+            )
             raise FlightctlException(msg)
 
-    def update(self):
-        pass
+        return changed, response.json
 
-    def delete(self, endpoint: str, name: str):
+    def update(
+        self, existing: Dict[str, Any], definition: Dict[str, Any]
+    ) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Updates an existing resource in the API.
+
+        Args:
+            existing (Dict[str, Any]): The current state of the resource.
+            definition (Dict[str, Any]): The desired state of the resource.
+
+        Returns:
+            Tuple[bool, Dict[str, Any]]:
+                - A boolean indicating whether the resource was updated (changed).
+                - The updated resource as a dictionary if changes were made, otherwise the unchanged existing resource.
+
+        Raises:
+            FlightctlException: If the update fails or there are errors with the patch.
+        """
+        changed: bool = False
+        endpoint = existing["kind"]
+        name = existing["metadata"]["name"]
+
+        patch = get_patch(existing, definition)
+        obj, error = json_patch(existing, patch)
+        if error:
+            raise FlightctlException(f"There was an error with json_patch: {error}")
+
+        match, diffs = diff_dicts(existing, obj)
+        if diffs:
+            response = self.patch_endpoint(endpoint, name, patch)
+            if response.status == 200:
+                changed |= True
+            else:
+                msg = f"Unable to update {endpoint} {name}: {response.status}"
+                raise FlightctlException(msg)
+
+        return changed, (response.json if diffs else existing)
+
+    def delete(self, endpoint: str, name: str) -> Tuple[bool, Dict[str, Any]]:
+        """
+        Deletes a resource from the API.
+
+        Args:
+            endpoint (str): The API endpoint (resource type).
+            name (str): The resource name.
+
+        Returns:
+            Tuple[bool, Dict[str, Any]]:
+                A tuple containing:
+                - A boolean indicating whether the resource was deleted (changed).
+                - The result as a dictionary of the delete operation.
+
+        Raises:
+            FlightctlException: If the deletion fails.
+        """
+        changed: bool = False
         response = self.delete_endpoint(endpoint, name)
         if response.status == 200:
-            return response.json
+            changed |= True
         else:
             msg = f"Unable to delete {endpoint} {name}: {response.status}"
             raise FlightctlException(msg)
+
+        return changed, response.json

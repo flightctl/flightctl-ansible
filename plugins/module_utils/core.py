@@ -6,7 +6,7 @@
 
 
 import re
-from typing import Any, Optional
+from typing import Any, Callable, Dict, Optional
 
 from ansible.module_utils.basic import AnsibleModule, env_fallback
 from ansible.module_utils.six.moves.urllib.parse import urlparse
@@ -16,7 +16,7 @@ from .exceptions import FlightctlException
 
 
 class FlightctlModule(AnsibleModule):
-    AUTH_ARGSPEC = dict(
+    AUTH_ARGSPEC: Dict[str, Any] = dict(
         flightctl_host=dict(
             required=False, fallback=(env_fallback, ["FLIGHTCTL_HOST"])
         ),
@@ -47,7 +47,7 @@ class FlightctlModule(AnsibleModule):
             required=False, type="path", aliases=["config_file"]
         ),
     )
-    short_params = {
+    short_params: Dict[str, str] = {
         "host": "flightctl_host",
         "username": "flightctl_username",
         "password": "flightctl_password",
@@ -56,23 +56,32 @@ class FlightctlModule(AnsibleModule):
         "token": "flightctl_token",
     }
     # Default attribute values
-    host = None
-    url = None
-    username = None
-    password = None
-    verify_ssl = True
-    request_timeout = 10
-    token = None
+    host: Optional[str] = None
+    url: Optional[Any] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    verify_ssl: bool = True
+    request_timeout: float = 10
+    token: Optional[str] = None
     # authenticated = False
 
     def __init__(
         self,
-        argument_spec: Optional[Any] = None,
-        error_callback: Optional[Any] = None,
-        warn_callback: Optional[Any] = None,
+        argument_spec: Dict[str, Any],
+        error_callback: Optional[Callable[..., None]] = None,
+        warn_callback: Optional[Callable[[str], None]] = None,
         **kwargs: Any,
-    ):
-        full_argspec = {}
+    ) -> None:
+        """
+        Initialize the FlightctlModule.
+
+        Args:
+            argument_spec (Optional[Dict[str, Any]]): The arguments for module specification.
+            error_callback (Optional[Callable[..., None]]): Callback for handling errors.
+            warn_callback (Optional[Callable[[str], None]]): Callback for handling warnings.
+            **kwargs (Any): Additional keyword arguments.
+        """
+        full_argspec: dict[str, Any] = {}
         full_argspec.update(FlightctlModule.AUTH_ARGSPEC)
         full_argspec.update(argument_spec)
         kwargs["supports_check_mode"] = True
@@ -96,9 +105,11 @@ class FlightctlModule(AnsibleModule):
         self.ensure_host_url()
 
     def ensure_host_url(self) -> None:
-        """Ensure the host URL is valid and resolves properly."""
+        """
+        Ensure the host URL is valid and resolves properly.
+        """
         # Perform some basic validation
-        if not re.match("^https{0,1}://", self.host):
+        if self.host and not re.match("^https{0,1}://", self.host):
             self.host = "https://{0}".format(self.host)
 
         # Try to parse the hostname as a URL
@@ -111,7 +122,9 @@ class FlightctlModule(AnsibleModule):
             ) from e
 
     def load_config_files(self) -> None:
-        """Load configuration files using ConfigLoader."""
+        """
+        Load configuration files using ConfigLoader.
+        """
         config_file = self.params.get("flightctl_config_file", None)
 
         try:
@@ -124,18 +137,29 @@ class FlightctlModule(AnsibleModule):
         except Exception as e:
             raise FlightctlException(f"Failed to load the config file: {e}") from e
 
-    def map_loaded_config(self, config_loader) -> None:
-        """Map values from the ConfigLoader to this module's attributes."""
+    def map_loaded_config(self, config_loader: ConfigLoader) -> None:
+        """
+        Map values from the ConfigLoader to this module's attributes.
+
+        Args:
+            config_loader (ConfigLoader): The ConfigLoader instance used to load configuration.
+        """
         for module_attr, config_attr in self.short_params.items():
             # Check if the ConfigLoader has the attribute and update module attribute if present
             if hasattr(config_loader, module_attr):
                 setattr(self, module_attr, getattr(config_loader, module_attr))
 
-    def logout(self):
+    def logout(self) -> None:
         # This method is intended to be overridden
         pass
 
-    def fail_json(self, **kwargs):
+    def fail_json(self, **kwargs: Any) -> None:
+        """
+        Handle failure by logging out if necessary and then reporting the failure.
+
+        Args:
+            **kwargs (Any): Additional arguments for error reporting.
+        """
         # Try to log out if we are authenticated
         # self.logout()
         if self.error_callback:
@@ -143,12 +167,24 @@ class FlightctlModule(AnsibleModule):
         else:
             super().fail_json(**kwargs)
 
-    def exit_json(self, **kwargs):
+    def exit_json(self, **kwargs: Any) -> None:
+        """
+        Handle success by logging out if necessary and then reporting success.
+
+        Args:
+            **kwargs (Any): Additional arguments for success reporting.
+        """
         # Try to log out if we are authenticated
         # self.logout()
         super().exit_json(**kwargs)
 
-    def warn(self, warning):
+    def warn(self, warning: str) -> None:
+        """
+        Handle warnings by invoking the warning callback if available.
+
+        Args:
+            warning (str): Warning message to be handled.
+        """
         if self.warn_callback is not None:
             self.warn_callback(warning)
         else:
