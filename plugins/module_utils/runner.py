@@ -11,7 +11,7 @@ import yaml
 from openapi_schema_validator import OAS30Validator
 
 from .exceptions import FlightctlException, ValidationException
-from .resource import create_definitions
+from .resources import create_definitions
 
 
 def load_schema(file_path: str) -> Dict[str, Any]:
@@ -121,8 +121,14 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
     Raises:
         FlightctlException: If performing the action fails.
     """
-    name = definition["metadata"].get("name")
-    kind = definition.get("kind")
+    if definition["metadata"].get("name") is None:
+        raise ValidationException(f"A name must be specified. Validation error: {e}")
+
+    if definition.get("kind") is None:
+        raise ValidationException(f"A kind value must be specified. Validation error: {e}")
+
+    name = definition["metadata"]["name"]
+    kind = definition["kind"]
     state = module.params.get("state")
     params = {}
     result: Dict[str, Any] = {}
