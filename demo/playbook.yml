@@ -31,17 +31,30 @@
           kind: Device
           label_selector: "owner=mparra"
 
+      - name: Create a new fleet
+        flightctl.edge.flightctl:
+          <<: *credential_defaults
+          kind: Fleet
+          name: "fleet-ansible-example"
+          resource_definition: "{{ lookup('file', 'fleet.yml') | from_yaml }}"
+        register: _result
+
+      - name: Assert that Fleet was created
+        assert:
+          that:
+            - _result.changed
+            - _result is success
+
       - name: Create a test device in check_mode
         flightctl.edge.flightctl:
           <<: *credential_defaults
           kind: Device
-          name: "test-ansible-device"
-          api_version: v1alpha1
+          name: "device-ansible-example"
           resource_definition:
             apiVersion: v1alpha1
             kind: Device
             metadata:
-              name: "test-ansible-device"
+              name: "device-ansible-example"
               labels:
                 fleet: default
                 novalue: ""
@@ -51,13 +64,12 @@
         flightctl.edge.flightctl:
           <<: *credential_defaults
           kind: Device
-          name: "test-ansible-device"
-          api_version: v1alpha1
+          name: "device-ansible-example"
           resource_definition:
             apiVersion: v1alpha1
             kind: Device
             metadata:
-              name: "test-ansible-device"
+              name: "device-ansible-example"
               labels:
                 fleet: default
                 novalue: ""
@@ -73,13 +85,12 @@
         flightctl.edge.flightctl:
           <<: *credential_defaults
           kind: Device
-          name: "test-ansible-device"
-          api_version: v1alpha1
+          name: "device-ansible-example"
           resource_definition:
             apiVersion: v1alpha1
             kind: Device
             metadata:
-              name: "test-ansible-device"
+              name: "device-ansible-example"
               labels:
                 fleet: default
                 novalue: ""
@@ -95,13 +106,12 @@
         flightctl.edge.flightctl:
           <<: *credential_defaults
           kind: Device
-          name: "test-ansible-device"
-          api_version: v1alpha1
+          name: "device-ansible-example"
           resource_definition:
             apiVersion: v1alpha1
             kind: Device
             metadata:
-              name: "test-ansible-device"
+              name: "device-ansible-example"
         register: _result
 
       - name: Assert that Device was not updated
@@ -114,7 +124,7 @@
         flightctl.edge.flightctl:
           <<: *credential_defaults
           kind: Device
-          name: "test-ansible-device-2"
+          name: "device-ansible-example-2"
           api_version: v1alpha1
         register: _result
 
@@ -128,7 +138,7 @@
         flightctl.edge.flightctl:
           <<: *credential_defaults
           kind: Device
-          name: "test-ansible-device-2"
+          name: "device-ansible-example-2"
           api_version: v1alpha1
           resource_definition:
             apiVersion: v1alpha1
@@ -149,13 +159,13 @@
         flightctl.edge.flightctl_info:
           <<: *credential_defaults
           kind: Device
-          name: "test-ansible-device"
+          name: "device-ansible-example"
 
       - name: Delete a test device in check_mode
         flightctl.edge.flightctl:
           <<: *credential_defaults
           kind: Device
-          name: "test-ansible-device"
+          name: "device-ansible-example"
           state: absent
         check_mode: true
 
@@ -163,7 +173,7 @@
         flightctl.edge.flightctl:
           <<: *credential_defaults
           kind: Device
-          name: "test-ansible-device"
+          name: "device-ansible-example"
           state: absent
         register: _result
 
@@ -177,13 +187,13 @@
         flightctl.edge.flightctl_info:
           <<: *credential_defaults
           kind: Device
-          name: "test-ansible-device"
+          name: "device-ansible-example"
 
       - name: Create a new device
         flightctl.edge.flightctl:
           <<: *credential_defaults
           kind: Device
-          name: "test-ansible-device-2"
+          name: "device-ansible-example-3"
           resource_definition: "{{ lookup('file', 'device.yml') | from_yaml }}"
         register: _result
 
@@ -193,15 +203,52 @@
             - _result.changed
             - _result is success
 
+      - name: Create a new repository
+        flightctl.edge.flightctl:
+          <<: *credential_defaults
+          kind: Repository
+          name: "repository-ansible-example"
+          resource_definition:
+            apiVersion: v1alpha1
+            kind: Repository
+            metadata:
+              name: repository-ansible-example
+            spec:
+              url: https://github.com/flightctl/flightctl.git
+              type: git
+        register: _result
+
+      - name: Assert that Repository was created
+        assert:
+          that:
+            - _result.changed
+            - _result is success
+
       always:
-        - name: Delete a devices
+        - name: Delete devices
           flightctl.edge.flightctl:
             <<: *credential_defaults
             kind: Device
             name: "{{ item }}"
             state: absent
           loop:
-            - "test-ansible-device"
-            - "test-ansible-device-2"
-            - "device-ansible-b"
+            - "device-ansible-example"
+            - "device-ansible-example-2"
+            - "device-ansible-example-3"
+          ignore_errors: true
+
+        - name: Delete fleet
+          flightctl.edge.flightctl:
+            <<: *credential_defaults
+            kind: Fleet
+            name: "fleet-ansible-example"
+            state: absent
+          ignore_errors: true
+
+        - name: Delete repository
+          flightctl.edge.flightctl:
+            <<: *credential_defaults
+            kind: Repository
+            name: "repository-ansible-example"
+            state: absent
           ignore_errors: true

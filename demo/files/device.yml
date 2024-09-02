@@ -1,0 +1,7 @@
+---
+apiVersion: v1alpha1
+kind: Device
+metadata:
+  name: "device-ansible-example-3"
+  labels:
+    fleet: "fleet-ansible-example"
