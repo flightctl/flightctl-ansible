@@ -1,0 +1,33 @@
+- name: Test Flight Control Collection to delete resources
+  hosts: localhost
+
+  tasks:
+    - name: Set default credentials
+      ansible.builtin.set_fact:
+        credential_defaults: &credential_defaults
+          flightctl_config_file: "~/Library/Application\ Support/flightctl/client.yaml"
+
+    - name: Delete devices
+      flightctl.edge.flightctl:
+        <<: *credential_defaults
+        kind: Device
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - "device-ansible-example"
+        - "device-ansible-example-2"
+        - "device-ansible-example-3"
+
+    - name: Delete fleet
+      flightctl.edge.flightctl:
+        <<: *credential_defaults
+        kind: Fleet
+        name: "fleet-ansible-example"
+        state: absent
+
+    - name: Delete repository
+      flightctl.edge.flightctl:
+        <<: *credential_defaults
+        kind: Repository
+        name: "repository-ansible-example"
+        state: absent
