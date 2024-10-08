@@ -31,7 +31,6 @@ class ConfigLoader:
                     "properties": {
                         "token": {"type": "string"}  # token must be a string
                     },
-                    "required": ["token"],  # token field is required
                 },
                 "service": {
                     "type": "object",

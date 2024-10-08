@@ -1,11 +1,13 @@
 - name: Test Flight Control Collection to create resources
   hosts: localhost
+  vars: 
+    flightctl_config_file: "~/Library/Application\ Support/flightctl/client.yaml"
 
   tasks:
     - name: Set default credentials
       ansible.builtin.set_fact:
         credential_defaults: &credential_defaults
-          flightctl_config_file: "~/Library/Application\ Support/flightctl/client.yaml"
+          flightctl_config_file: "{{ flightctl_config_file }}"
 
     - name: Get all devices
       flightctl.edge.flightctl_info:
