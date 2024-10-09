@@ -44,7 +44,10 @@ class FlightctlModule(AnsibleModule):
             fallback=(env_fallback, ["FLIGHTCTL_TOKEN"]),
         ),
         flightctl_config_file=dict(
-            required=False, type="path", aliases=["config_file"]
+            required=False,
+            type="path",
+            aliases=["config_file"],
+            fallback=(env_fallback, ["FLIGHTCTL_CONFIG_FILE"]),
         ),
     )
     short_params: Dict[str, str] = {
