@@ -23,6 +23,9 @@ ansible-galaxy collection install . --force
 ansible-playbook demo/create.yml --extra-vars "flightctl_config_file='~/.flightctl/client.yaml'"
 ```
 
-The `--extra-vars` allows us to pass variables into the playbooks.  In this case the create playbook is dependent on the flightctl_config_file variable pointing towards the generated client.yaml used when deploying the local flightctl services.
+The `--extra-vars` allows us to pass variables into the playbooks.  In this case the create playbook is dependent on the flightctl_config_file variable pointing towards the generated client.yaml used when deploying the local flightctl services.  Default values for this are:
+
+- OSX: "~/Library/Application\ Support/flightctl/client.yaml"
+- Linux: "~/.flightctl/client.yaml"
 
 Note that the `create.yml` playbook makes assertations around when certain entities are being created - this results in situations where running the create playbook twice in a row will result in a failure.  Right now the `delete.yml` playbook should be run to clean up entities generated during the `create.yml` playbook and create can then be sucessfully run once more.

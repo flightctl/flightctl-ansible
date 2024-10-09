@@ -1,7 +1,5 @@
 - name: Test Flight Control Collection to create resources
   hosts: localhost
-  vars: 
-    flightctl_config_file: "~/Library/Application\ Support/flightctl/client.yaml"
 
   tasks:
     - name: Set default credentials
