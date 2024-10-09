@@ -47,6 +47,7 @@ options:
   flightctl_config_file:
     description:
     - Path to the config file.
+    - If value not set, will try environment variable C(FLIGHTCTL_CONFIG_FILE).
     type: path
     aliases: [ config_file ]
 """
