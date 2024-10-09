@@ -62,6 +62,11 @@ paths:
           schema:
             type: integer
             format: int32
+        - name: repository
+          in: query
+          description: The name of the repository to filter results by.
+          schema:
+            type: string
       responses:
         "200":
           description: OK
@@ -603,6 +608,12 @@ paths:
           required: false
           schema:
             type: string
+        - name: summaryOnly
+          in: query
+          description: A boolean flag to include only a summary of the devices. When set to true, the response will contain only the summary information. Only the 'owner' and 'labelSelector' parameters are supported when 'summaryOnly' is true.
+          required: false
+          schema:
+            type: boolean
       responses:
         "200":
           description: OK
@@ -1008,6 +1019,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/v1/enrollmentconfig/{name}:
+    get:
+      tags:
+        - enrollmentconfig
+      description: Get config for enrolling devices
+      operationId: enrollmentConfig
+      parameters:
+        - name: name
+          in: path
+          description: the name of approved CSR
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentConfig'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/enrollmentrequests:
     get:
       tags:
@@ -1349,6 +1398,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        "500":
+          description: InternalServerError
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/certificatesigningrequests:
     get:
       tags:
@@ -1650,6 +1705,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CertificateSigningRequest'
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         "401":
           description: Unauthorized
           content:
@@ -1664,6 +1725,12 @@ paths:
                 $ref: '#/components/schemas/Error'
         "409":
           description: StatusConflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "500":
+          description: InternalServerError
           content:
             application/json:
               schema:
@@ -1735,6 +1802,12 @@ paths:
           required: false
           schema:
             type: string
+        - name: addDevicesCount
+          in: query
+          description: include the number of devices in each fleet
+          required: false
+          schema:
+            type: boolean
       responses:
         "200":
           description: OK
@@ -2442,6 +2515,10 @@ components:
                   type: string
                 path:
                   type: string
+                mountPath:
+                  description: Path to config in device
+                  type: string
+                  default: "/"
               required:
                 - repository
                 - targetRevision
@@ -2474,10 +2551,41 @@ components:
         - type: object
           properties:
             inline:
-              type: object
-              additionalProperties: true
+              type: array
+              items:
+                $ref: '#/components/schemas/FileSpec'
           required:
           - inline
+    FileSpec:
+      type: object
+      properties:
+        path:
+          type: string
+          description: The absolute path to the file on the device. Note that any existing file will be overwritten.
+        content:
+          type: string
+          description: The plain text (UTF-8) or base64-encoded content of the file.
+        contentEncoding:
+          type: string
+          description: How the contents are encoded. Must be either "plain" or "base64". Defaults to "plain".
+          enum:
+          - plain
+          - base64
+        mode:
+          type: integer
+          description: |
+            The file’s permission mode. You may specify the more familiar octal with a leading zero (e.g., 0644) or as
+            a decimal without a leading zero (e.g., 420). Setuid/setgid/sticky bits are supported. If not specified,
+            the permission mode for files defaults to 0644.
+        user:
+          type: string
+          description: The file's owner, specified either as a name or numeric ID. Defaults to "root".
+        group:
+          type: string
+          description: The file's group, specified either as a name or numeric ID. Defaults to "root".
+      required:
+      - path
+      - content
     HttpConfigProviderSpec:
       allOf:
         - $ref: '#/components/schemas/GenericConfigSpec'
@@ -2504,6 +2612,44 @@ components:
               - filePath
           required:
           - httpRef
+    ApplicationSpec:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ApplicationEnvVars'
+        - type: object
+          properties:
+            name:
+              type: string
+              description: "The name of the application"
+        - oneOf:
+            - $ref: '#/components/schemas/ImageApplicationProvider'
+            # extend application providers
+    ImageApplicationProvider:
+      type: object
+      properties:
+        image:
+          type: string
+          description: "Reference to the container image for the application package"
+      required:
+        - image
+    ApplicationEnvVars:
+      type: object
+      properties:
+        envVars:
+          type: object
+          description: "Environment variable key-value pairs, injected during runtime"
+          additionalProperties:
+            type: string
+    RenderedApplicationSpec:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ApplicationEnvVars'
+        - type: object
+          properties:
+            name:
+              type: string
+        - oneOf:
+            - $ref: '#/components/schemas/ImageApplicationProvider'
     ResourceMonitor:
       oneOf:
         - $ref: '#/components/schemas/CPUResourceMonitorSpec'
@@ -2527,8 +2673,8 @@ components:
           description: "Array of alert rules. Only one alert per severity is allowed."
         samplingInterval:
           type: string
-          pattern: '^[1-9]\d*[smhd]$'
-          description: "Duration between monitor samples. Format: number followed by 's' for seconds, 'm' for minutes, 'h' for hours, 'd' for days. Must be a positive integer."
+          pattern: '^[1-9]\d*[smh]$'
+          description: "Duration between monitor samples. Format: positive integer followed by 's' for seconds, 'm' for minutes, 'h' for hours."
       required:
         - monitorType
         - alertRules
@@ -2567,8 +2713,8 @@ components:
           description: "Severity of the alert."
         duration:
           type: string
-          pattern: '^\d+[smhd]$'
-          description: "Duration is the time over which the average usage is observed before alerting. Format: number followed by 's' for seconds, 'm' for minutes, 'h' for hours, 'd' for days."
+          pattern: '^\d+[smh]$'
+          description: "Duration is the time over which the average usage is observed before alerting. Format: positive integer followed by 's' for seconds, 'm' for minutes, 'h' for hours."
         percentage:
           type: number
           description: 'The percentage of usage that triggers the alert.'
@@ -2596,7 +2742,7 @@ components:
         name:
           type: string
         description:
-          type: string
+          type: string 
         actions:
           type: array
           items:
@@ -2617,7 +2763,7 @@ components:
         name:
           type: string
         description:
-          type: string
+          type: string 
         actions:
           type: array
           items:
@@ -2632,10 +2778,12 @@ components:
         - "Create"
         - "Remove"
         - "Update"
+        - "Reboot"
       x-enum-varnames:
         - "FileOperationCreate"
         - "FileOperationRemove" # by convention remove is fired before the file is removed.
         - "FileOperationUpdate"
+        - "FileOperationReboot"
     HookAction:
       type: object
       oneOf:
@@ -2656,8 +2804,8 @@ components:
              type: string
              pattern: '^[1-9]\d*[smhd]$'
              description: |
-              The maximum duration allowed for the action to complete.
-              The duration should be specified as a positive integer
+              The maximum duration allowed for the action to complete. 
+              The duration should be specified as a positive integer 
               followed by a time unit. Supported time units are:
               - 's' for seconds
               - 'm' for minutes
@@ -2704,7 +2852,7 @@ components:
             description: 'The directory in which the executable will be run from if it is left empty it will run from the users home directory.'
       required:
         - name
-        - operations
+        - operations 
     HookActionExecutableSpec:
       allOf:
         - $ref: '#/components/schemas/HookActionSpec'
@@ -2715,7 +2863,7 @@ components:
             run:
               type: string
               description: 'The command to be executed, including any arguments using standard shell syntax. This field supports multiple commands piped together, as if they were executed under a bash -c context.'
-            envVars:
+            envVars: 
               type: array
               items:
                 type: string
@@ -2741,6 +2889,8 @@ components:
           description: 'List of Devices.'
           items:
             $ref: '#/components/schemas/Device'
+        summary:
+          $ref: '#/components/schemas/DevicesSummary'
       description: DeviceList is a list of Devices.
       required:
         - apiVersion
@@ -2895,10 +3045,14 @@ components:
       type: object
       required:
         - image
+        - imageDigest
       properties:
         image:
           type: string
           description: "Version of the OS image."
+        imageDigest:
+          type: string
+          description: "The digest of the OS image (e.g. sha256:a0...)"
     DeviceConfigStatus:
       type: object
       required:
@@ -3039,6 +3193,49 @@ components:
           description: 'approvedAt is the time at which the request was approved.'
       required:
         - approved
+    EnrollmentServiceAuth:
+      type: object
+      properties:
+        client-certificate-data:
+          type: string
+        client-key-data:
+          type: string
+      required:
+        - client-certificate-data
+        - client-key-data
+    EnrollmentServiceService:
+      type: object
+      properties:
+        certificate-authority-data:
+          type: string
+        server:
+          type: string
+      required:
+        - certificate-authority-data
+        - server
+    EnrollmentService:
+      type: object
+      properties:
+        authentication:
+          $ref: '#/components/schemas/EnrollmentServiceAuth'
+        service:
+          $ref: '#/components/schemas/EnrollmentServiceService'
+        enrollment-ui-endpoint:
+          type: string
+      required:
+        - authentication
+        - service
+        - enrollment-ui-endpoint
+    EnrollmentConfig:
+      type: object
+      properties:
+        enrollment-service:
+          $ref: '#/components/schemas/EnrollmentService'
+        grpc-management-endpoint:
+          type: string
+      required:
+        - enrollment-service
+        - grpc-management-endpoint
     EnrollmentRequest:
       type: object
       properties:
@@ -3095,7 +3292,7 @@ components:
         labels:
           type: object
           additionalProperties:
-            type: string
+            type: string 
           description: 'A set of labels that the service will apply to this device when its enrollment is approved'
       description: EnrollmentRequestSpec is a description of a EnrollmentRequest's target state.
     EnrollmentRequestStatus:
@@ -3274,6 +3471,10 @@ components:
                 type: string
         config:
           type: string
+        applications:
+          type: array
+          items:
+            $ref: '#/components/schemas/RenderedApplicationSpec'
         hooks:
           $ref: '#/components/schemas/DeviceHooksSpec'
         systemd:
@@ -3343,6 +3544,11 @@ components:
               propertyName: configType
         hooks:
           $ref: '#/components/schemas/DeviceHooksSpec'
+        applications:
+          type: array
+          description: List of applications.
+          items:
+            $ref: '#/components/schemas/ApplicationSpec'
         containers:
           type: object
           properties:
@@ -3383,21 +3589,34 @@ components:
       description: A summary of the devices in the fleet returned when fetching a single Fleet.
       required:
       - total
+      - applicationStatus
       - summaryStatus
       - updateStatus
       properties:
         total:
           type: integer
+          format: int64
           description: The total number of devices in the fleet.
-        summaryStatus:
+        applicationStatus:
           type: object
+          default: {}
           additionalProperties:
             type: integer
+            format: int64
+          description: A breakdown of the devices in the fleet by "application" status.
+        summaryStatus:
+          type: object
+          default: {}
+          additionalProperties:
+            type: integer
+            format: int64
           description: A breakdown of the devices in the fleet by "summary" status.
         updateStatus:
           type: object
+          default: {}
           additionalProperties:
             type: integer
+            format: int64
           description: A breakdown of the devices in the fleet by "updated" status.
     TemplateVersion:
       type: object
@@ -3733,3 +3952,4 @@ components:
       required:
         - conditions
       type: object
+      
