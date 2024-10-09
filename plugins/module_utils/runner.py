@@ -170,7 +170,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 module.exit_json(**{"changed": True})
 
             try:
-                changed, result = module.create(module.params, definition)
+                changed, result = module.create(definition)
             except Exception as e:
                 raise FlightctlException(f"Failed to create resource: {e}") from e
 

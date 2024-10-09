@@ -399,13 +399,12 @@ class FlightctlAPIModule(FlightctlModule):
         return [response.json]
 
     def create(
-        self, params: Dict[str, Any], definition: Dict[str, Any]
+        self, definition: Dict[str, Any]
     ) -> Tuple[bool, Dict[str, Any]]:
         """
         Creates a new resource in the API.
 
         Args:
-            params (Dict[str, Any]): The resource parameters (kind, name, etc.).
             definition (Dict[str, Any]): The resource definition.
 
         Returns:
@@ -418,12 +417,12 @@ class FlightctlAPIModule(FlightctlModule):
             FlightctlException: If the creation fails.
         """
         changed: bool = False
-        response = self.post_endpoint(params["kind"], **definition)
+        response = self.post_endpoint(definition.get("kind"), **definition)
         if response.status == 201:
             changed |= True
         else:
             msg = (
-                f"Unable to create {params['kind']} {params['name']}: {response.status}"
+                f"Unable to create {definition.get('kind')} {definition.get('metadata', None).get('name', None)}: {response.status}"
             )
             raise FlightctlException(msg)
 
