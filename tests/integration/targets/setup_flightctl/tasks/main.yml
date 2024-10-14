@@ -1,0 +1,4 @@
+- name: Setup flightctl service
+  ansible.builtin.debug:
+    msg: TODO run setup to spin up flightctl service
+    

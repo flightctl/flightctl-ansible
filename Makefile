@@ -6,3 +6,6 @@ test-sanity:
 
 test-unit:
 	ansible-test units --docker -v --color --python $(PYTHON_VERSION) $(?TEST_ARGS)
+
+test-integration:
+	ansible-test integration --docker --color --python $(PYTHON_VERSION) -v $(?TEST_ARGS)

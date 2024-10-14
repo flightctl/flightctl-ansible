@@ -1,0 +1,17 @@
+- name: Set default credentials
+  ansible.builtin.set_fact:
+    credential_defaults: &credential_defaults
+      flightctl_config_file: "{{ flightctl_config_file }}"
+
+- name: Get information about a specific device
+  flightctl.edge.flightctl_info:
+    <<: *credential_defaults
+    kind: Device
+    name: "2h9db43r8jfldjg71cbt0s431m6v28eed8u7s4ufnqihibiaanbg"
+  register: result
+
+- name: Test the output
+  assert:
+    that:
+      - result.name == "2h9db43r8jfldjg71cbt0s431m6v28eed8u7s4ufnqihibiaanbg"
+          
