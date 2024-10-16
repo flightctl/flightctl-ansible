@@ -84,6 +84,7 @@ class FlightctlAPIModule(FlightctlModule):
         "resourcesync": "/api/v1/resourcesyncs",
         "device": "/api/v1/devices",
         "repository": "/api/v1/repositories",
+        "enrollmentrequest": "api/v1/enrollmentrequests"
     }
 
     def __init__(
