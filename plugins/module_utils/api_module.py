@@ -6,7 +6,7 @@
 
 import json
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import ParseResult
+from urllib.parse import ParseResult, urlparse
 
 from ansible.module_utils.six.moves.http_cookiejar import CookieJar
 from ansible.module_utils.six.moves.urllib.error import HTTPError
@@ -263,6 +263,13 @@ class FlightctlAPIModule(FlightctlModule):
         else:
             url = self.build_url(endpoint, name, query_params=kwargs)
 
+        # TODO not this
+        if kwargs.get('approve_req', None):
+            name = kwargs['approve_req']
+            del kwargs['approve_req']
+            new_url = f"{url.geturl()}/{name}/approval"
+            url = urlparse(new_url)
+
         # Extract the headers, this will be used in a couple of places
         headers = kwargs.get("headers", {})
 
@@ -412,7 +419,7 @@ class FlightctlAPIModule(FlightctlModule):
             Returns:
             Tuple[bool, Dict[str, Any]]:
                 A tuple containing:
-                    - A boolean indicating whether the resource was deleted (changed).
+                    - A boolean indicating whether the resource was created (changed).
                     - The created resource as a dictionary.
         Raises:
             FlightctlException: If the creation fails.
@@ -493,3 +500,31 @@ class FlightctlAPIModule(FlightctlModule):
             raise FlightctlException(msg)
 
         return changed, response.json
+
+    def approve(
+        self, endpoint: str, name: str, **kwargs: Any
+    ) -> Dict:
+        """
+        Approves a resource via the API.
+
+        Args:
+            endpoint (str): The API endpoint (resource type).
+            name (str): The resource name.
+            kwargs (Any): Additional query parameters for the request.
+
+        Returns:
+            Dict: Response containing information about the result of the approval action.
+
+        Raises:
+            FlightctlException: If the response status is not 200 or 404.
+        """
+        # TODO not this, url building inside requests may need to be inverted from it is now
+        kwargs['approve_req'] = name
+        response = self.post_endpoint(endpoint, **kwargs)
+        if response.status != 200:
+            fail_msg = f"Unable to approve {endpoint} for {name}"
+            if "message" in response.json:
+                fail_msg += f", message: {response.json['message']}"
+            raise FlightctlException(fail_msg)
+
+        return response.json

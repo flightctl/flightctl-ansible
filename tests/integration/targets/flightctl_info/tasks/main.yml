@@ -17,9 +17,6 @@
       name: "{{ deivce_name }}"
     register: device_result
 
-  - name: Debug Result
-    debug: "msg=`{{ device_result }}`"
-
   - name: Assert that Device info was fetched
     ansible.builtin.assert:
       that:

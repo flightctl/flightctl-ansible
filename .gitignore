@@ -34,6 +34,5 @@ docs/temp-rst
 # Other
 tests/integration/inventory
 
-
 # ansible-test generated files
 tests/integration/inventory
