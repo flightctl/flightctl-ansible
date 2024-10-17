@@ -19,16 +19,16 @@ options:
     type: str
   approved:
     description:
-      - TODO
+      - Indicates if the request should be approved (if True) or denied (if False)
     type: bool
     required: True
   approvedBy:
     description:
-      - TODO
+      - Name of the approver
     type: str
   labels:
     description:
-      - TODO
+      - Labels that will be applied to the device on approval
     type: dict
 extends_documentation_fragment:
   - flightctl.edge.auth
@@ -55,26 +55,8 @@ EXAMPLES = r"""
 RETURN = r"""
 result:
   description:
-    - The result of the approval action
+    - The result of the approval request
   returned: success
-  type: dict
-  contains:
-    approved:
-      description: The approval status of the enrollment request
-      returned: success
-      type: bool
-    approvedBy:
-      description: The user who aproved or denied the enrollment request
-      returned: success
-      type: str
-    approvedAt:
-      description: The time at which the enrollment request was approved or denied
-      returned: success
-      type: str
-    labels:
-      description: Labels associated with the enrollment request
-      returned: success
-      type: dict
 """
 
 
@@ -83,7 +65,7 @@ from ..module_utils.exceptions import FlightctlException
 
 
 def main():
-    # TODO move this to a const, or find one if it already exists
+    # TODO: Generalize this module to also allow for apprving csr requests
     kind = "EnrollmentRequest"
     
     # Any additional arguments that are not fields of the item can be added here

@@ -144,7 +144,8 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        return self.request("GET", endpoint, name, **kwargs)
+        url = self.build_url(endpoint, name, query_params=kwargs)
+        return self.request("GET", url, **kwargs)
 
     def patch_endpoint(
         self, endpoint: str, name: str, patch: List[Dict[str, Any]]
@@ -160,7 +161,8 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        return self.request("PATCH", endpoint, name=name, patch=patch)
+        url = self.build_url(endpoint, name)
+        return self.request("PATCH", url, patch=patch)
 
     def post_endpoint(self, endpoint: str, **kwargs: Any) -> Response:
         """
@@ -173,7 +175,8 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        return self.request("POST", endpoint, **kwargs)
+        url = self.build_url(endpoint, None)
+        return self.request("POST", url, **kwargs)
 
     def delete_endpoint(self, endpoint: str, name: str, **kwargs: Any) -> Response:
         """
@@ -186,7 +189,8 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        return self.request("DELETE", endpoint, name=name, **kwargs)
+        url = self.build_url(endpoint, name)
+        return self.request("DELETE", url, **kwargs)
 
     def build_url(
         self,
@@ -234,8 +238,7 @@ class FlightctlAPIModule(FlightctlModule):
     def request(
         self,
         method: str,
-        endpoint: str,
-        name: Optional[str] = None,
+        url: ParseResult,
         patch: Optional[Any] = None,
         **kwargs: Any,
     ) -> Response:
@@ -244,8 +247,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         Args:
             method (str): The HTTP method (GET, POST, PATCH, DELETE, etc.).
-            endpoint (str): The API endpoint (resource type).
-            name (Optional[str], optional): The resource name (optional for some methods).
+            url (ParseResult): The URL for the request.
             patch (Optional[Any], optional): The patch data for PATCH requests.
             kwargs (Any): Additional parameters for the request.
 
@@ -257,18 +259,6 @@ class FlightctlAPIModule(FlightctlModule):
         """
         if not method:
             raise FlightctlHTTPException("The HTTP method must be defined")
-
-        if method in ["POST", "PUT", "PATCH"]:
-            url = self.build_url(endpoint, name)
-        else:
-            url = self.build_url(endpoint, name, query_params=kwargs)
-
-        # TODO not this
-        if kwargs.get('approve_req', None):
-            name = kwargs['approve_req']
-            del kwargs['approve_req']
-            new_url = f"{url.geturl()}/{name}/approval"
-            url = urlparse(new_url)
 
         # Extract the headers, this will be used in a couple of places
         headers = kwargs.get("headers", {})
@@ -518,9 +508,10 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the response status is not 200 or 404.
         """
-        # TODO not this, url building inside requests may need to be inverted from it is now
-        kwargs['approve_req'] = name
-        response = self.post_endpoint(endpoint, **kwargs)
+        url = self.build_url(endpoint, name)
+        approval_path = url.path + "/approval"
+        url = url._replace(path=approval_path)
+        response = self.request("POST", url, **kwargs)
         if response.status != 200:
             fail_msg = f"Unable to approve {endpoint} for {name}"
             if "message" in response.json:
