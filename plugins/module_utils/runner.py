@@ -2,6 +2,9 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from __future__ import (absolute_import, division, print_function)
+
+__metaclass__ = type
 
 from typing import Any, Dict, List, Tuple
 
@@ -120,10 +123,10 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
         FlightctlException: If performing the action fails.
     """
     if definition["metadata"].get("name") is None:
-        raise ValidationException(f"A name must be specified")
+        raise ValidationException("A name must be specified")
 
     if definition.get("kind") is None:
-        raise ValidationException(f"A kind value must be specified")
+        raise ValidationException("A kind value must be specified")
 
     name = definition["metadata"]["name"]
     kind = definition["kind"]
