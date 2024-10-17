@@ -1,6 +1,4 @@
-#!/usr/bin/python
 # coding: utf-8 -*-
-
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
@@ -122,10 +120,10 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
         FlightctlException: If performing the action fails.
     """
     if definition["metadata"].get("name") is None:
-        raise ValidationException(f"A name must be specified. Validation error: {e}")
+        raise ValidationException(f"A name must be specified")
 
     if definition.get("kind") is None:
-        raise ValidationException(f"A kind value must be specified. Validation error: {e}")
+        raise ValidationException(f"A kind value must be specified")
 
     name = definition["metadata"]["name"]
     kind = definition["kind"]

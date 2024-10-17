@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # coding: utf-8 -*-
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
@@ -18,16 +17,16 @@ class ResourceDefinition(Dict[str, Any]):
     @property
     def kind(self) -> Optional[str]:
         return self.get("kind")
-    
+
     @property
     def api_version(self) -> Optional[str]:
         return self.get("apiVersion")
-    
+
     @property
     def name(self) -> Optional[str]:
         metadata = self.get("metadata", {})
         return metadata.get("name")
-    
+
 
 def from_yaml(definition: Union[str, List, Dict]) -> Iterable[Dict]:
     """Load resource definitions from a yaml definition."""
@@ -92,7 +91,7 @@ def create_definitions(params: Dict) -> List[ResourceDefinition]:
         # We'll create an empty definition and let merge_params set values
         # from the module parameters.
         definitions = [{}]
-        
+
     resource_definitions: List[Dict] = []
     for definition in definitions:
         merge_params(definition, params)
