@@ -70,7 +70,6 @@ def main():
     
     # Any additional arguments that are not fields of the item can be added here
     argument_spec = dict(
-        kind=dict(type="str"),
         name=dict(type="str"),
         approved=dict(type="bool", required=True),
         approvedBy=dict(type="str"),
