@@ -76,13 +76,11 @@ def main():
         approvedBy=dict(type="str"),
         labels=dict(type="dict"),
     )
-
     module = FlightctlAPIModule(
         argument_spec=argument_spec,
     )
 
     name = module.params.get("name")
-
     params = {}
     if module.params.get("approved"):
         params["approved"] = module.params["approved"]

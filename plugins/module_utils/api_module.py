@@ -500,13 +500,13 @@ class FlightctlAPIModule(FlightctlModule):
         Args:
             endpoint (str): The API endpoint (resource type).
             name (str): The resource name.
-            kwargs (Any): Additional query parameters for the request.
+            kwargs (Any): Additional parameters for the request.
 
         Returns:
             Dict: Response containing information about the result of the approval action.
 
         Raises:
-            FlightctlException: If the response status is not 200 or 404.
+            FlightctlException: If the approval request fails.
         """
         url = self.build_url(endpoint, name)
         approval_path = url.path + "/approval"
