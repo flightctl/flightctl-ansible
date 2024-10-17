@@ -6,7 +6,7 @@
 
 import json
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import ParseResult, urlparse
+from urllib.parse import ParseResult
 
 from ansible.module_utils.six.moves.http_cookiejar import CookieJar
 from ansible.module_utils.six.moves.urllib.error import HTTPError
