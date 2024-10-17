@@ -84,6 +84,7 @@ class FlightctlAPIModule(FlightctlModule):
         "resourcesync": "/api/v1/resourcesyncs",
         "device": "/api/v1/devices",
         "repository": "/api/v1/repositories",
+        "enrollmentrequest": "api/v1/enrollmentrequests"
     }
 
     def __init__(
@@ -143,7 +144,8 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        return self.request("GET", endpoint, name, **kwargs)
+        url = self.build_url(endpoint, name, query_params=kwargs)
+        return self.request("GET", url.geturl(), **kwargs)
 
     def patch_endpoint(
         self, endpoint: str, name: str, patch: List[Dict[str, Any]]
@@ -159,7 +161,8 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        return self.request("PATCH", endpoint, name=name, patch=patch)
+        url = self.build_url(endpoint, name)
+        return self.request("PATCH", url.geturl(), patch=patch)
 
     def post_endpoint(self, endpoint: str, **kwargs: Any) -> Response:
         """
@@ -172,7 +175,8 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        return self.request("POST", endpoint, **kwargs)
+        url = self.build_url(endpoint, None)
+        return self.request("POST", url.geturl(), **kwargs)
 
     def delete_endpoint(self, endpoint: str, name: str, **kwargs: Any) -> Response:
         """
@@ -185,7 +189,8 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        return self.request("DELETE", endpoint, name=name, **kwargs)
+        url = self.build_url(endpoint, name)
+        return self.request("DELETE", url.geturl(), **kwargs)
 
     def build_url(
         self,
@@ -233,8 +238,7 @@ class FlightctlAPIModule(FlightctlModule):
     def request(
         self,
         method: str,
-        endpoint: str,
-        name: Optional[str] = None,
+        url: str,
         patch: Optional[Any] = None,
         **kwargs: Any,
     ) -> Response:
@@ -243,8 +247,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         Args:
             method (str): The HTTP method (GET, POST, PATCH, DELETE, etc.).
-            endpoint (str): The API endpoint (resource type).
-            name (Optional[str], optional): The resource name (optional for some methods).
+            url (str): The URL for the request.
             patch (Optional[Any], optional): The patch data for PATCH requests.
             kwargs (Any): Additional parameters for the request.
 
@@ -256,11 +259,6 @@ class FlightctlAPIModule(FlightctlModule):
         """
         if not method:
             raise FlightctlHTTPException("The HTTP method must be defined")
-
-        if method in ["POST", "PUT", "PATCH"]:
-            url = self.build_url(endpoint, name)
-        else:
-            url = self.build_url(endpoint, name, query_params=kwargs)
 
         # Extract the headers, this will be used in a couple of places
         headers = kwargs.get("headers", {})
@@ -299,7 +297,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         Args:
             method (str): The HTTP method (GET, POST, etc.).
-            url (ParseResult): The URL for the request.
+            url (str): The URL for the request.
             data (Optional[str], optional): The request body data.
             headers (Optional[str], optional): The request headers.
 
@@ -312,7 +310,7 @@ class FlightctlAPIModule(FlightctlModule):
         try:
             raw_resp = self.session.open(
                 method,
-                url.geturl(),
+                url,
                 headers=headers,
                 timeout=self.request_timeout,
                 validate_certs=self.verify_ssl,
@@ -411,7 +409,7 @@ class FlightctlAPIModule(FlightctlModule):
             Returns:
             Tuple[bool, Dict[str, Any]]:
                 A tuple containing:
-                    - A boolean indicating whether the resource was deleted (changed).
+                    - A boolean indicating whether the resource was created (changed).
                     - The created resource as a dictionary.
         Raises:
             FlightctlException: If the creation fails.
@@ -492,3 +490,32 @@ class FlightctlAPIModule(FlightctlModule):
             raise FlightctlException(msg)
 
         return changed, response.json
+
+    def approve(
+        self, endpoint: str, name: str, **kwargs: Any
+    ) -> Dict:
+        """
+        Approves a resource via the API.
+
+        Args:
+            endpoint (str): The API endpoint (resource type).
+            name (str): The resource name.
+            kwargs (Any): Additional parameters for the request.
+
+        Returns:
+            Dict: Response containing information about the result of the approval action.
+
+        Raises:
+            FlightctlException: If the approval request fails.
+        """
+        url = self.build_url(endpoint, name)
+        approval_path = url.path + "/approval"
+        url = url._replace(path=approval_path)
+        response = self.request("POST", url.geturl(), **kwargs)
+        if response.status != 200:
+            fail_msg = f"Unable to approve {endpoint} for {name}"
+            if "message" in response.json:
+                fail_msg += f", message: {response.json['message']}"
+            raise FlightctlException(fail_msg)
+
+        return response.json
