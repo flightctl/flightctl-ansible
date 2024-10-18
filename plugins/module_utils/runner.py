@@ -8,8 +8,19 @@ __metaclass__ = type
 
 from typing import Any, Dict, List, Tuple
 
-import yaml
-from openapi_schema_validator import OAS30Validator
+try:
+    import yaml
+except ImportError as imp_exc:
+    PYYAML_IMPORT_ERROR = imp_exc
+else:
+    PYYAML_IMPORT_ERROR = None
+
+try:
+    from openapi_schema_validator import OAS30Validator
+except ImportError as imp_exc:
+    OPENAPI_SCHEMA_IMPORT_ERROR = imp_exc
+else:
+    OPENAPI_SCHEMA_IMPORT_ERROR = None
 
 from .exceptions import FlightctlException, ValidationException
 from .resources import create_definitions
@@ -25,6 +36,8 @@ def load_schema(file_path: str) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: The loaded schema as a dictionary.
     """
+    if PYYAML_IMPORT_ERROR:
+        raise PYYAML_IMPORT_ERROR
     with open(file_path, "r") as file:
         schema = yaml.safe_load(file)
     return schema
@@ -41,6 +54,9 @@ def validate(definition: Dict[str, Any]) -> None:
         ValueError: If the resource kind is not found in the schema.
         ValidationException: If the validation fails.
     """
+    if OPENAPI_SCHEMA_IMPORT_ERROR:
+        raise OPENAPI_SCHEMA_IMPORT_ERROR
+
     kind = definition["kind"]
     openapi_schema = load_schema("../../api/v1alpha1/openapi.yml")
     components = openapi_schema.get("components", {}).get("schemas", {})

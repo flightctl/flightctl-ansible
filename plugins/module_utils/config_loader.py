@@ -6,13 +6,30 @@ from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
 
-import jsonschema
-import yaml
+try:
+    import jsonschema
+except ImportError as imp_exc:
+    JSONSCHEMA_IMPORT_ERROR = imp_exc
+else:
+    JSONSCHEMA_IMPORT_ERROR = None
+
+try:
+    import yaml
+except ImportError as imp_exc:
+    PYYAML_IMPORT_ERROR = imp_exc
+else:
+    PYYAML_IMPORT_ERROR = None
+
 from ansible.module_utils.parsing.convert_bool import boolean as strtobool
 
 
 class ConfigLoader:
     def __init__(self, config_file=None):
+        if JSONSCHEMA_IMPORT_ERROR:
+            raise JSONSCHEMA_IMPORT_ERROR
+        if PYYAML_IMPORT_ERROR:
+            raise PYYAML_IMPORT_ERROR
+
         # Assign token from config if it exists
         # Load from config file if provided
         if config_file:
