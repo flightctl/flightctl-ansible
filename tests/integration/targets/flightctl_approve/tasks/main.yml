@@ -28,7 +28,7 @@
       approved: true
       approvedBy: "ansible-integration-testing"
       labels:
-        testing_label: is_set_during_testing 
+        testing_label: is_set_during_testing
     register: approve_result
 
   - name: Assert that approval request succeeded
@@ -42,9 +42,6 @@
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
     register: enrollment_result
-
-  - name: Debug Result
-    debug: "msg=`{{ enrollment_result }}`"
 
   - name: Assert that enrollment request is now approved
     ansible.builtin.assert:
