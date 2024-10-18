@@ -46,9 +46,12 @@ options:
 extends_documentation_fragment:
   - flightctl.edge.auth
   - flightctl.edge.state
-note:
+notes:
   - For resources other than O(kind=Device), O(resource_definition) must be specified when creating or
     updating a resource.
+requirements:
+  - jsonschema
+  - PyYAML
 """
 
 EXAMPLES = r"""
@@ -107,6 +110,7 @@ result:
 
 
 from ..module_utils.api_module import FlightctlAPIModule
+from ..module_utils.args_common import AUTH_ARG_SPEC, STATE_ARG_SPEC
 from ..module_utils.exceptions import FlightctlException
 from ..module_utils.runner import run_module
 
@@ -117,7 +121,8 @@ def main():
         name=dict(type="str"),
         api_version=dict(type="str", default="v1alpha1"),
         resource_definition=dict(type="raw"),
-        state=dict(type="str", default="present"),
+        **AUTH_ARG_SPEC,
+        **STATE_ARG_SPEC
     )
 
     module = FlightctlAPIModule(
