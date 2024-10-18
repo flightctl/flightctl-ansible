@@ -97,15 +97,15 @@ result:
     metadata:
       description: Object metadata.
       returned: success
-      type: complex
+      type: dict
     spec:
       description: Specific attributes of the object.
       returned: success
-      type: complex
+      type: dict
     status:
       description: Current status details for the object.
       returned: success
-      type: complex
+      type: dict
 """
 
 

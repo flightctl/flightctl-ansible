@@ -31,6 +31,9 @@ options:
     type: str
 extends_documentation_fragment:
   - flightctl.edge.auth
+requirements:
+  - jsonschema
+  - PyYAML
 """
 
 
@@ -74,19 +77,20 @@ result:
     metadata:
       description: Object metadata.
       returned: success
-      type: complex
+      type: dict
     spec:
       description: Specific attributes of the object.
       returned: success
-      type: complex
+      type: dict
     status:
       description: Current status details for the object.
       returned: success
-      type: complex
+      type: dict
 """
 
 
 from ..module_utils.api_module import FlightctlAPIModule
+from ..module_utils.args_common import AUTH_ARG_SPEC
 from ..module_utils.exceptions import FlightctlException
 
 
@@ -96,6 +100,7 @@ def main():
         kind=dict(required=True),
         name=dict(type="str"),
         label_selector=dict(type="str"),
+        **AUTH_ARG_SPEC
     )
 
     module = FlightctlAPIModule(
