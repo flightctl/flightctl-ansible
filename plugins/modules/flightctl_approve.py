@@ -7,12 +7,17 @@
 
 DOCUMENTATION = r"""
 module: flightctl_approve
-short_description: Approve or deny enrollment requests
+short_description: Approve or deny requests
 author:
   - "Dakota Crowder (@dakcrowder)"
 description:
-  - Approve or deny enrollment requests
+  - Approve or deny enrollment or certificate signing requests
 options:
+  kind:
+    description:
+      - Use to specify an object model.
+    type: str
+    required: True
   name:
     description:
       - Use to specify a device name
@@ -38,6 +43,7 @@ extends_documentation_fragment:
 EXAMPLES = r"""
 - name: Approve an enrollment request
   flightctl.edge.flightctl_approve:
+    kind: EnrollmentRequest
     approved: True
     approvedBy: ExampleUser
     labels:
@@ -45,8 +51,16 @@ EXAMPLES = r"""
 
 - name: Deny an enrollment request
   flightctl.edge.flightctl_approve:
+    kind: EnrollmentRequest
     approved: False
     approvedBy: ExampleUser
+    labels:
+      some_label: label_value
+
+- name: Approve a certificate signing request
+  flightctl.edge.flightctl_approve:
+    kind: CertificateSigningRequest
+    approved: True
     labels:
       some_label: label_value
 """
@@ -65,11 +79,9 @@ from ..module_utils.exceptions import FlightctlException
 
 
 def main():
-    # TODO: Generalize this module to also allow for apprving csr requests
-    kind = "EnrollmentRequest"
-    
     # Any additional arguments that are not fields of the item can be added here
     argument_spec = dict(
+        kind=dict(required=True),
         name=dict(type="str"),
         approved=dict(type="bool", required=True),
         approvedBy=dict(type="str"),
@@ -79,6 +91,7 @@ def main():
         argument_spec=argument_spec,
     )
 
+    kind = module.params.get("kind")
     name = module.params.get("name")
     params = {}
     if module.params.get("approved"):
@@ -88,11 +101,11 @@ def main():
     if module.params.get("labels"):
         params["labels"] = module.params["labels"]
 
-    # Attempt to approve the enrollment request identified by name
+    # Attempt to approve the request identified by name
     try:
         result = module.approve(kind, name=name, **params)
     except FlightctlException as e:
-        module.fail_json(msg=f"Failed to approve enrollmentrequest: {e}")
+        module.fail_json(msg=f"Failed to approve request: {e}")
 
     module.exit_json(result=result)
 

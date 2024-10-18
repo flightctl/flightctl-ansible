@@ -84,7 +84,8 @@ class FlightctlAPIModule(FlightctlModule):
         "resourcesync": "/api/v1/resourcesyncs",
         "device": "/api/v1/devices",
         "repository": "/api/v1/repositories",
-        "enrollmentrequest": "api/v1/enrollmentrequests"
+        "enrollmentrequest": "api/v1/enrollmentrequests",
+        "certificatesigningrequest": "api/v1/certificatesigningrequests"
     }
 
     def __init__(
@@ -328,33 +329,33 @@ class FlightctlAPIModule(FlightctlModule):
         except HTTPError as http_err:
             if http_err.code >= 500:
                 raise FlightctlHTTPException(
-                    f"The host sent back a server error ({http_err}): {url.path}. Please check the logs and try again."
+                    f"The host sent back a server error ({http_err}): {url}. Please check the logs and try again."
                 ) from http_err
             elif http_err.code == 401:
                 raise FlightctlHTTPException(
-                    f"Invalid authentication credentials for {url.path} (HTTP 401)."
+                    f"Invalid authentication credentials for {url} (HTTP 401)."
                 ) from http_err
             elif http_err.code == 403:
                 raise FlightctlHTTPException(
-                    f"You don't have permission to {method} to {url.path} (HTTP 403)."
+                    f"You don't have permission to {method} to {url} (HTTP 403)."
                 ) from http_err
             elif http_err.code == 404:
                 # raise FlightctlHTTPException(f"The requested object could not be found at {url.path}.") from http_err
                 return Response(http_err.code, b"{}")
             elif http_err.code == 405:
                 raise FlightctlHTTPException(
-                    f"Cannot make a request with the {method} method to this endpoint {url.path}."
+                    f"Cannot make a request with the {method} method to this endpoint {url}."
                 ) from http_err
             elif http_err.code == 204 and method == "DELETE":
                 # A 204 is a normal response for a delete function
                 pass
             else:
                 raise FlightctlHTTPException(
-                    f"Unexpected return code when calling {url.geturl()}: {http_err}."
+                    f"Unexpected return code when calling {url}: {http_err}."
                 ) from http_err
         except Exception as e:
             raise FlightctlHTTPException(
-                f"There was an unknown error when trying to connect to {url.geturl()}: {type(e).__name__} {e}."
+                f"There was an unknown error when trying to connect to {url}: {type(e).__name__} {e}."
             ) from e
 
         return Response(raw_resp.status, raw_resp.read(), raw_resp.headers)
