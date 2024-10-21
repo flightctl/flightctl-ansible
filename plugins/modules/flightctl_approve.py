@@ -66,14 +66,6 @@ EXAMPLES = r"""
 """
 
 
-RETURN = r"""
-result:
-  description:
-    - The result of the approval request
-  returned: success
-"""
-
-
 from ..module_utils.api_module import FlightctlAPIModule
 from ..module_utils.exceptions import FlightctlException
 
@@ -103,11 +95,11 @@ def main():
 
     # Attempt to approve the request identified by name
     try:
-        result = module.approve(kind, name=name, **params)
+        changed = module.approve(kind, name=name, **params)
     except FlightctlException as e:
         module.fail_json(msg=f"Failed to approve request: {e}")
 
-    module.exit_json(result=result)
+    module.exit_json(changed=changed)
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ from ansible.module_utils.urls import (ConnectionError, Request,
                                        SSLValidationError)
 
 from .core import FlightctlModule
+from .constants import CSR_KIND, ENROLLMENT_KIND
 from .exceptions import FlightctlException, FlightctlHTTPException
 from .utils import diff_dicts, get_patch, json_patch
 
@@ -494,7 +495,7 @@ class FlightctlAPIModule(FlightctlModule):
 
     def approve(
         self, endpoint: str, name: str, **kwargs: Any
-    ) -> Dict:
+    ) -> bool:
         """
         Approves a resource via the API.
 
@@ -504,19 +505,35 @@ class FlightctlAPIModule(FlightctlModule):
             kwargs (Any): Additional parameters for the request.
 
         Returns:
-            Dict: Response containing information about the result of the approval action.
+            bool: A boolean indicating whether the resource was approved (changed).
 
         Raises:
             FlightctlException: If the approval request fails.
         """
-        url = self.build_url(endpoint, name)
-        approval_path = url.path + "/approval"
-        url = url._replace(path=approval_path)
-        response = self.request("POST", url.geturl(), **kwargs)
+        try:
+            existing = self.get_endpoint(endpoint, name)
+            approved = None
+            if endpoint == ENROLLMENT_KIND:
+                approved = existing.json.get('status', {}).get('approval', {}).get('approved')
+            elif endpoint == CSR_KIND:
+                conditions = existing.json.get('status', {}).get('conditions', [])
+                approval_condition = next((c for c in conditions if c.get('type') == "Approved"), None)
+                if approval_condition is not None:
+                    approved = bool(approval_condition['status'])
+            if approved is not None and approved == kwargs['approved']:
+                return False
+        except Exception as e:
+            raise FlightctlException(f"Failed to get resource: {e}") from e
+
+        base_url = self.build_url(endpoint, name)
+        approval_path = base_url.path + "/approval"
+        approval_url = base_url._replace(path=approval_path)
+        # TODO handle check_mode before actually making the POST
+        response = self.request("POST", approval_url.geturl(), **kwargs)
         if response.status != 200:
             fail_msg = f"Unable to approve {endpoint} for {name}"
             if "message" in response.json:
                 fail_msg += f", message: {response.json['message']}"
             raise FlightctlException(fail_msg)
 
-        return response.json
+        return True

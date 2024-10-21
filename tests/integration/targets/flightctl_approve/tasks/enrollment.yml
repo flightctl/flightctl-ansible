@@ -52,6 +52,23 @@
         - enrollment_result.result[0].status.approval.approvedBy == "ansible-integration-testing"
         - enrollment_result.result[0].status.approval.labels['testing_label'] == "is_set_during_testing"
 
+  - name: Try to approve the enrollment request again (idempotency)
+    flightctl.edge.flightctl_approve:
+      flightctl_host: "{{ flightctl_host }}"
+      kind: EnrollmentRequest
+      name: "{{ enrollment_name }}"
+      approved: true
+      approved_by: "ansible-integration-testing"
+      labels:
+        testing_label: is_set_during_testing
+    register: idempotency_result
+
+  - name: Assert that the result was not changed
+    ansible.builtin.assert:
+      that:
+        - idempotency_result is success
+        - idempotency_result.changed == False
+
   always:
     - name: Delete enrollment request
       flightctl.edge.flightctl:

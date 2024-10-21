@@ -119,6 +119,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
         was changed and the result of the action.
 
     Raises:
+        ValidationException: If necessary definition parameters do not exist.
         FlightctlException: If performing the action fails.
     """
     if definition["metadata"].get("name") is None:
