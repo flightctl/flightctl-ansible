@@ -6,6 +6,7 @@ from tests.unit.utils import set_module_args
 from plugins.module_utils.api_module import FlightctlAPIModule
 from plugins.module_utils.exceptions import FlightctlException
 
+
 @pytest.fixture
 def api_module():
     set_module_args(dict(
@@ -39,6 +40,7 @@ def test_approve_success(api_module):
 def test_approve_404(api_module):
     mock_response = Mock()
     mock_response.status = 404
+    mock_response.json = {}
     mock_request = Mock(return_value=mock_response)
     api_module.request = mock_request
 

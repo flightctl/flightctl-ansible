@@ -495,7 +495,7 @@ class FlightctlAPIModule(FlightctlModule):
 
     def approve(
         self, endpoint: str, name: str, **kwargs: Any
-    ) -> bool:
+    ) -> None:
         """
         Approves a resource via the API.
 
@@ -504,31 +504,12 @@ class FlightctlAPIModule(FlightctlModule):
             name (str): The resource name.
             kwargs (Any): Additional parameters for the request.
 
-        Returns:
-            bool: A boolean indicating whether the resource was approved (changed).
-
         Raises:
             FlightctlException: If the approval request fails.
         """
-        try:
-            existing = self.get_endpoint(endpoint, name)
-            approved = None
-            if endpoint == ENROLLMENT_KIND:
-                approved = existing.json.get('status', {}).get('approval', {}).get('approved')
-            elif endpoint == CSR_KIND:
-                conditions = existing.json.get('status', {}).get('conditions', [])
-                approval_condition = next((c for c in conditions if c.get('type') == "Approved"), None)
-                if approval_condition is not None:
-                    approved = bool(approval_condition['status'])
-            if approved is not None and approved == kwargs['approved']:
-                return False
-        except Exception as e:
-            raise FlightctlException(f"Failed to get resource: {e}") from e
-
         base_url = self.build_url(endpoint, name)
         approval_path = base_url.path + "/approval"
         approval_url = base_url._replace(path=approval_path)
-        # TODO handle check_mode before actually making the POST
         response = self.request("POST", approval_url.geturl(), **kwargs)
         if response.status != 200:
             fail_msg = f"Unable to approve {endpoint} for {name}"
@@ -536,4 +517,4 @@ class FlightctlAPIModule(FlightctlModule):
                 fail_msg += f", message: {response.json['message']}"
             raise FlightctlException(fail_msg)
 
-        return True
+        return

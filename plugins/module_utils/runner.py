@@ -10,6 +10,8 @@ from typing import Any, Dict, List, Tuple
 import yaml
 from openapi_schema_validator import OAS30Validator
 
+from .api_module import FlightctlAPIModule
+from .constants import CSR_KIND, ENROLLMENT_KIND
 from .exceptions import FlightctlException, ValidationException
 from .resources import create_definitions
 
@@ -176,3 +178,52 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 raise FlightctlException(f"Failed to create resource: {e}") from e
 
     return changed, result
+
+
+def perform_approval(module: FlightctlAPIModule, kind: str, name: str, payload: Dict[str, Any]) -> None:
+    """
+    Performs the approval action on a specific resource.
+
+    Args:
+        module (FlightctlAPIModule): The FlightctlAPIModule instance to act upon.
+        kind: Resource kind.
+        name: Resource name identifier.
+        payload: Data that will be passed to the approval request.
+
+    Raises:
+        ValidationException: If necessary definition parameters do not exist.
+        FlightctlException: If performing the action fails.
+    """
+    if kind is None or kind == "":
+        raise ValidationException(f"A kind must be specified.")
+    elif kind not in [CSR_KIND, ENROLLMENT_KIND]:
+        raise ValidationException(f"Kind of {kind} does not support approval.")
+
+    if name is None or name == "":
+        raise ValidationException(f"A name must be specified.")
+
+    if payload.get('approved') is None or payload.get('approved') == "":
+        raise ValidationException(f"Approval value must be specified.")
+
+    try:
+        existing = module.get_endpoint(kind, name)
+        approved = None
+        if kind == ENROLLMENT_KIND:
+            approved = existing.json.get('status', {}).get('approval', {}).get('approved', None)
+        elif kind == CSR_KIND:
+            conditions = existing.json.get('status', {}).get('conditions', [])
+            approval_condition = next((c for c in conditions if c.get('type') == "Approved"), None)
+            if approval_condition is not None:
+                approved = bool(approval_condition['status'])
+        if approved is not None and approved == payload['approved']:
+            module.exit_json(**{"changed": False})
+            return
+    except Exception as e:
+        raise FlightctlException(f"Failed to get resource: {e}") from e
+
+    if module.check_mode:
+        module.exit_json(**{"changed": True})
+        return
+
+    module.approve(kind, name, **payload)
+    module.exit_json(**{"changed": True})
