@@ -27,7 +27,7 @@
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
       approved: true
-      approvedBy: "ansible-integration-testing"
+      approved_by: "ansible-integration-testing"
       labels:
         testing_label: is_set_during_testing
     register: approve_result
