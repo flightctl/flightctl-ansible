@@ -46,4 +46,4 @@ def test_approve_404(api_module):
 
     params = {"approved": True}
     with pytest.raises(FlightctlException, match="Unable to approve EnrollmentRequest for test-device"):
-            api_module.approve("EnrollmentRequest", "test-device", **params)
+        api_module.approve("EnrollmentRequest", "test-device", **params)
