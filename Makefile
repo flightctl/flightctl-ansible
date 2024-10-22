@@ -6,3 +6,6 @@ test-unit:
 
 test-integration:
 	ansible-test integration --diff --no-temp-workdir --color --python $(PYTHON_VERSION) -v $(?TEST_ARGS)
+
+test-sanity:
+	ansible-test sanity --docker -v --color --python $(PYTHON_VERSION) $(?TEST_ARGS)

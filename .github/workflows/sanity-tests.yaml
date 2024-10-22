@@ -1,0 +1,29 @@
+---
+name: Sanity tests
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-sanity:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        versions:
+          - ansible: stable-2.16
+            python: "3.10"
+    steps:
+      - name: Perform sanity testing
+        uses: ansible-community/ansible-test-gh-action@release/v1
+        with:
+          ansible-core-version: ${{ matrix.versions.ansible }}
+          origin-python-version: ${{ matrix.versions.python }}
+          target-python-version: ${{ matrix.versions.python }}
+          testing-type: sanity
