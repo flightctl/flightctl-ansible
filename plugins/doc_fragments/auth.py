@@ -1,6 +1,4 @@
-#!/usr/bin/python
 # coding: utf-8 -*-
-
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
@@ -37,6 +35,7 @@ options:
     - If value not set, will try environment variable C(FLIGHTCTL_VERIFY_SSL)
     type: bool
     aliases: [ verify_ssl ]
+    default: True
   flightctl_request_timeout:
     description:
     - Specify the timeout Ansible should use in requests to the controller host.

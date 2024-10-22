@@ -4,6 +4,9 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from __future__ import (absolute_import, division, print_function)
+
+__metaclass__ = type
 
 DOCUMENTATION = r"""
 module: flightctl
@@ -41,11 +44,14 @@ options:
       - Value can be provided as string or dictionary.
     type: raw
 extends_documentation_fragment:
-  - flightctl.edge.auth_options
+  - flightctl.edge.auth
   - flightctl.edge.state
-note:
+notes:
   - For resources other than O(kind=Device), O(resource_definition) must be specified when creating or
     updating a resource.
+requirements:
+  - jsonschema
+  - PyYAML
 """
 
 EXAMPLES = r"""
@@ -91,19 +97,20 @@ result:
     metadata:
       description: Object metadata.
       returned: success
-      type: complex
+      type: dict
     spec:
       description: Specific attributes of the object.
       returned: success
-      type: complex
+      type: dict
     status:
       description: Current status details for the object.
       returned: success
-      type: complex
+      type: dict
 """
 
 
 from ..module_utils.api_module import FlightctlAPIModule
+from ..module_utils.args_common import STATE_ARG_SPEC
 from ..module_utils.exceptions import FlightctlException
 from ..module_utils.runner import run_module
 
@@ -114,7 +121,7 @@ def main():
         name=dict(type="str"),
         api_version=dict(type="str", default="v1alpha1"),
         resource_definition=dict(type="raw"),
-        state=dict(type="str", default="present"),
+        **STATE_ARG_SPEC
     )
 
     module = FlightctlAPIModule(

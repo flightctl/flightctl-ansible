@@ -1,9 +1,10 @@
-#!/usr/bin/python
 # coding: utf-8 -*-
-
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from __future__ import (absolute_import, division, print_function)
+
+__metaclass__ = type
 
 import re
 from typing import Any, Callable, Dict, Optional
@@ -29,13 +30,14 @@ class FlightctlModule(AnsibleModule):
         flightctl_validate_certs=dict(
             type="bool",
             aliases=["verify_ssl"],
-            default=False,
+            default=True,
             fallback=(env_fallback, ["FLIGHTCTL_VERIFY_SSL"]),
         ),
         flightctl_request_timeout=dict(
             type="float",
             required=False,
             fallback=(env_fallback, ["FLIGHTCTL_REQUEST_TIMEOUT"]),
+            aliases=['request_timeout']
         ),
         flightctl_token=dict(
             type="str",
