@@ -219,7 +219,7 @@ def perform_approval(module: FlightctlAPIModule, kind: str, name: str, payload: 
     if not name:
         raise ValidationException("A name must be specified.")
 
-    if payload.get('approved', None) == None:
+    if payload.get('approved', None) is None:
         raise ValidationException("Approval value must be specified.")
 
     try:

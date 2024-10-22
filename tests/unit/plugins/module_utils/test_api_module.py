@@ -1,3 +1,7 @@
+from __future__ import (absolute_import, division, print_function)
+
+__metaclass__ = type
+
 import pytest
 from unittest.mock import Mock
 
@@ -15,17 +19,21 @@ def api_module():
     ))
     return FlightctlAPIModule(argument_spec={})
 
+
 def test_build_url_with_valid_endpoint(api_module):
     url = api_module.build_url('device')
     assert url.geturl() == 'https://test-flightctl-url.com/api/v1/devices'
+
 
 def test_build_url_with_valid_endpoint_and_name(api_module):
     url = api_module.build_url('device', 'awesome-device-1')
     assert url.geturl() == 'https://test-flightctl-url.com/api/v1/devices/awesome-device-1'
 
+
 def test_build_url_with_invalid_endpoint(api_module):
     with pytest.raises(FlightctlException, match="Invalid 'kind' specified: widget"):
         api_module.build_url('widget')
+
 
 def test_approve_success(api_module):
     mock_response = Mock()
@@ -36,6 +44,7 @@ def test_approve_success(api_module):
     params = {"approved": True}
     api_module.approve("EnrollmentRequest", "test-device", **params)
     mock_request.assert_called_with("POST", "https://test-flightctl-url.com/api/v1/enrollmentrequests/test-device/approval", **params)
+
 
 def test_approve_404(api_module):
     mock_response = Mock()

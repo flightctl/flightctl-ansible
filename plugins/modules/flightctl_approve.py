@@ -4,6 +4,9 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from __future__ import (absolute_import, division, print_function)
+
+__metaclass__ = type
 
 DOCUMENTATION = r"""
 module: flightctl_approve
@@ -96,9 +99,10 @@ def main():
 
     # Attempt to approve the request identified by name
     try:
-      changed = perform_approval(module, kind, name, params)
+        perform_approval(module, kind, name, params)
     except FlightctlException as e:
         module.fail_json(msg=f"Failed to approve request: {e}")
+
 
 if __name__ == "__main__":
     main()
