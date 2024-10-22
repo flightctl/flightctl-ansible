@@ -90,7 +90,6 @@ result:
 
 
 from ..module_utils.api_module import FlightctlAPIModule
-from ..module_utils.args_common import AUTH_ARG_SPEC
 from ..module_utils.exceptions import FlightctlException
 
 
@@ -100,7 +99,6 @@ def main():
         kind=dict(required=True),
         name=dict(type="str"),
         label_selector=dict(type="str"),
-        **AUTH_ARG_SPEC
     )
 
     module = FlightctlAPIModule(

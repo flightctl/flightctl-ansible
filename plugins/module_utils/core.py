@@ -30,13 +30,14 @@ class FlightctlModule(AnsibleModule):
         flightctl_validate_certs=dict(
             type="bool",
             aliases=["verify_ssl"],
-            default=False,
+            default=True,
             fallback=(env_fallback, ["FLIGHTCTL_VERIFY_SSL"]),
         ),
         flightctl_request_timeout=dict(
             type="float",
             required=False,
             fallback=(env_fallback, ["FLIGHTCTL_REQUEST_TIMEOUT"]),
+            aliases=['request_timeout']
         ),
         flightctl_token=dict(
             type="str",
