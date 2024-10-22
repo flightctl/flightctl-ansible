@@ -18,7 +18,7 @@ jobs:
       matrix:
         versions:
           - ansible: stable-2.16
-            python: "3.12"
+            python: "3.10"
     steps:
       - name: Perform sanity testing
         uses: ansible-community/ansible-test-gh-action@release/v1
