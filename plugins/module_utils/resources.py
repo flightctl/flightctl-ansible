@@ -2,7 +2,7 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
@@ -10,10 +10,8 @@ from typing import Any, Dict, Iterable, List, Optional, Union, cast
 
 try:
     import yaml
-except ImportError as imp_exc:
-    PYYAML_IMPORT_ERROR = imp_exc
-else:
-    PYYAML_IMPORT_ERROR = None
+except ImportError:
+    pass  # Handled by FlightctlModule
 
 from ansible.module_utils.six import string_types
 
@@ -39,9 +37,6 @@ class ResourceDefinition(Dict[str, Any]):
 
 def from_yaml(definition: Union[str, List, Dict]) -> Iterable[Dict]:
     """Load resource definitions from a yaml definition."""
-    if PYYAML_IMPORT_ERROR:
-        raise PYYAML_IMPORT_ERROR
-
     definitions: List[Dict] = []
     if isinstance(definition, string_types):
         definitions += yaml.safe_load_all(definition)

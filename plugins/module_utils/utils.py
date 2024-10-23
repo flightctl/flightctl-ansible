@@ -2,27 +2,24 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
 import json
-import traceback
 from typing import Any, Dict, List, Optional, Tuple
 
-from ansible.module_utils.basic import missing_required_lib
 from ansible.module_utils.common.dict_transformations import recursive_diff
 
-JSON_PATCH_IMPORT_ERR: Optional[str] = None
 try:
     import jsonpatch
-    HAS_JSON_PATCH = True
 except ImportError:
-    HAS_JSON_PATCH = False
-    JSON_PATCH_IMPORT_ERR = traceback.format_exc()
+    pass  # Handled by FlightctlModule
 
 
-def diff_dicts(existing: Dict[str, Any], new: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
+def diff_dicts(
+    existing: Dict[str, Any], new: Dict[str, Any]
+) -> Tuple[bool, Dict[str, Any]]:
     """
     Computes the difference between two dictionaries.
 
@@ -47,7 +44,9 @@ def diff_dicts(existing: Dict[str, Any], new: Dict[str, Any]) -> Tuple[bool, Dic
     return False, result
 
 
-def json_patch(existing: Dict[str, Any], patch: List[Dict[str, Any]]) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+def json_patch(
+    existing: Dict[str, Any], patch: List[Dict[str, Any]]
+) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
     """
     Applies a JSON patch to an existing dictionary.
 
@@ -63,12 +62,6 @@ def json_patch(existing: Dict[str, Any], patch: List[Dict[str, Any]]) -> Tuple[O
     Raises:
         ValueError: If there is an error applying the patch or the patch is invalid.
     """
-    if not HAS_JSON_PATCH:
-        error = {
-            "msg": missing_required_lib("jsonpatch"),
-            "exception": JSON_PATCH_IMPORT_ERR,
-        }
-        return None, error
     try:
         _patch = jsonpatch.JsonPatch(patch)
         patched = _patch.apply(existing)
@@ -95,7 +88,7 @@ class JsonPatch(list):
 def get_patch(old: Dict[str, Any], new: Dict[str, Any]) -> List[Dict[str, Any]]:
     patch = []
 
-    def recursive_diff(old: Dict[str, Any], new: Dict[str, Any], path: str):
+    def recursive_diff_dicts(old: Dict[str, Any], new: Dict[str, Any], path: str):
         """
         Recursive function to find differences between old and new dictionaries.
         """
@@ -109,10 +102,12 @@ def get_patch(old: Dict[str, Any], new: Dict[str, Any]) -> List[Dict[str, Any]]:
             old_value = old[key]
             new_value = new[key]
             if isinstance(old_value, dict) and isinstance(new_value, dict):
-                recursive_diff(old_value, new_value, f"{path}/{key}")
+                recursive_diff_dicts(old_value, new_value, f"{path}/{key}")
             elif old_value != new_value:
-                patch.append({"op": "replace", "path": f"{path}/{key}", "value": new_value})
+                patch.append(
+                    {"op": "replace", "path": f"{path}/{key}", "value": new_value}
+                )
 
-    recursive_diff(old, new, '')
+    recursive_diff_dicts(old, new, "")
 
     return patch

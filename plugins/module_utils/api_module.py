@@ -2,7 +2,7 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
@@ -13,12 +13,10 @@ from urllib.parse import ParseResult
 from ansible.module_utils.six.moves.http_cookiejar import CookieJar
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.six.moves.urllib.parse import urlencode
-from ansible.module_utils.urls import (ConnectionError, Request,
-                                       SSLValidationError)
-
-from .core import FlightctlModule
-from .exceptions import FlightctlException, FlightctlHTTPException
-from .utils import diff_dicts, get_patch, json_patch
+from ansible.module_utils.urls import ConnectionError, Request, SSLValidationError
+from core import FlightctlModule
+from exceptions import FlightctlException, FlightctlHTTPException
+from utils import diff_dicts, get_patch, json_patch
 
 
 class Response:
@@ -400,9 +398,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         return [response.json]
 
-    def create(
-        self, definition: Dict[str, Any]
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def create(self, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
         """
         Creates a new resource in the API.
 
@@ -419,12 +415,14 @@ class FlightctlAPIModule(FlightctlModule):
             FlightctlException: If the creation fails.
         """
         changed: bool = False
-        response = self.post_endpoint(definition.get("kind"), **definition)
+        response = self.post_endpoint(definition["kind"], **definition)
         if response.status == 201:
             changed |= True
         else:
             msg = (
-                f"Unable to create {definition.get('kind')} {definition.get('metadata', None).get('name', None)}: {response.status}"
+                f"Unable to create {definition['kind']} "
+                f"{definition.get('metadata', None).get('name', None)}: "
+                f"{response.status}"
             )
             raise FlightctlException(msg)
 
@@ -457,7 +455,7 @@ class FlightctlAPIModule(FlightctlModule):
         if error:
             raise FlightctlException(f"There was an error with json_patch: {error}")
 
-        match, diffs = diff_dicts(existing, obj)
+        _, diffs = diff_dicts(existing, obj)
         if diffs:
             response = self.patch_endpoint(endpoint, name, patch)
             if response.status == 200:
