@@ -85,7 +85,5 @@ disable = [
   "W0246",  # Useless parent or super() delegation in method 'exit_json' (useless-parent-delegation)
 ]
 
-max-line-length = 160
-
 [tool.ruff.lint]
 ignore = [ "E402" ]

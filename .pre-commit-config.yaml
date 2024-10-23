@@ -1,3 +1,4 @@
+# cspell: disable autoupdate
 ci:
   autoupdate_commit_msg: "chore: pre-commit autoupdate"
   autoupdate_schedule: monthly
@@ -10,10 +11,7 @@ ci:
     - ansible-test-sanity # requires network access
     - shellcheck  # no docker
     - tox # requires network access
-exclude: >
-  (?x)^(
-    docs/rst/.*.rst$
-  )$
+exclude: "^.*\\.md$"
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
@@ -21,14 +19,14 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
         language_version: python3
-      - id: file-contents-sorter
-        args: [--unique]
-        # always_run: true
-        files: ^(\.config/dictionary\.txt)$
   - repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.10.0
     hooks:
       - id: shellcheck
+  - repo: https://github.com/streetsidesoftware/cspell-cli
+    rev: v8.13.3
+    hooks:
+      - id: cspell
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
@@ -44,25 +42,12 @@ repos:
       - id: mypy
         # empty args needed in order to match mypy cli behavior
         args: []
-        language_version: python3.9 # minimal supported version, keeps results consistent
         additional_dependencies:
-          - aiohttp
-          - aiokafka
           - ansible-core>=2.15
-          - asyncmock
-          - azure-servicebus
-          - dpath
-          - kafka-python-ng;  python_version >= "3.12"
-          - kafka-python; python_version < "3.12"
-          - psycopg[binary,pool]  # extras needed to avoid install failure on macos-aarch64
           - pytest
           - types-PyYAML
-          - types-aiobotocore[cloudtrail,sqs]
-          - types-botocore
           - types-mock
           - types-requests
-          - watchdog
-          - xxhash
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: "v0.6.0"
@@ -72,6 +57,7 @@ repos:
           --fix,
           --exit-non-zero-on-fix,
         ]
+
   - repo: https://github.com/PyCQA/flake8
     rev: 7.1.1
     hooks:
@@ -88,24 +74,20 @@ repos:
         args:
           - --output-format=colorized
         additional_dependencies:
-          - aiobotocore
-          - aiohttp
-          - aiokafka
           - ansible-core
-          - asyncmock
-          - azure-servicebus
-          - botocore
-          - dpath
-          - kafka-python
-          - psycopg
           - pytest
           - pyyaml
           - requests
-          - types-aiobotocore
-          - watchdog
-          - xxhash
+
   - repo: local
     hooks:
+      - id: build
+        name: Build collection and verify manifest
+        entry: ./tests/run-galaxy-importer
+        language: python
+        additional_dependencies:
+          - galaxy-importer
+
       - id: ansible-test-sanity
         name: Run ansible-test sanity
         entry: ansible-test sanity
@@ -123,3 +105,19 @@ repos:
         require_serial: true
         stages: [manual]
         pass_filenames: false
+
+  - repo: https://github.com/jazzband/pip-tools
+    rev: 7.4.1
+    hooks:
+      - id: pip-compile
+        name: pip-combile -> constraints.txt
+        alias: deps
+        always_run: true
+        entry: pip-compile --upgrade --no-annotate --strip-extras --unsafe-package=ansible-core --unsafe-package=setuptools --output-file=.config/constraints.txt .config/requirements.txt .config/requirements-test.txt .config/requirements-docs.txt
+        files: ^.config\/.*requirements.*$
+        language: python
+        language_version: "3.10"
+        pass_filenames: false
+        stages: [manual]
+        additional_dependencies:
+          - pip>=22.3.1
