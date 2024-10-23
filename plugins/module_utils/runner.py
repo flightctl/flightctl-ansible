@@ -22,6 +22,8 @@ except ImportError as imp_exc:
 else:
     OPENAPI_SCHEMA_IMPORT_ERROR = None
 
+from .api_module import FlightctlAPIModule
+from .constants import CSR_KIND, ENROLLMENT_KIND
 from .exceptions import FlightctlException, ValidationException
 from .resources import create_definitions
 
@@ -136,6 +138,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
         was changed and the result of the action.
 
     Raises:
+        ValidationException: If necessary definition parameters do not exist.
         FlightctlException: If performing the action fails.
     """
     if definition["metadata"].get("name") is None:
@@ -192,3 +195,57 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 raise FlightctlException(f"Failed to create resource: {e}") from e
 
     return changed, result
+
+
+def perform_approval(module: FlightctlAPIModule, kind: str, name: str, payload: Dict[str, Any]) -> None:
+    """
+    Performs the approval action on a specific resource.
+
+    Args:
+        module (FlightctlAPIModule): The FlightctlAPIModule instance to act upon.
+        kind: Resource kind.
+        name: Resource name identifier.
+        payload: Data that will be passed to the approval request.
+
+    Raises:
+        ValidationException: If necessary definition parameters do not exist.
+        FlightctlException: If performing the action fails.
+    """
+    if not kind:
+        raise ValidationException("A kind must be specified.")
+    elif kind not in [CSR_KIND, ENROLLMENT_KIND]:
+        raise ValidationException(f"Kind {kind} does not support approval.")
+
+    if not name:
+        raise ValidationException("A name must be specified.")
+
+    if payload.get('approved', None) is None:
+        raise ValidationException("Approval value must be specified.")
+
+    try:
+        existing = module.get_endpoint(kind, name)
+        approved = None
+        if kind == ENROLLMENT_KIND:
+            approved = existing.json.get('status', {}).get('approval', {}).get('approved', None)
+        elif kind == CSR_KIND:
+            conditions = existing.json.get('status', {}).get('conditions', [])
+            approval_condition = next((c for c in conditions if c.get('type') == "Approved"), None)
+            if approval_condition is not None:
+                approved = bool(approval_condition['status'])
+
+        if approved == payload.get('approved'):
+            module.exit_json(**{"changed": False})
+            return
+    except Exception as e:
+        raise FlightctlException(f"Failed to get resource: {e}") from e
+
+    if module.check_mode:
+        module.exit_json(**{"changed": True})
+        return
+
+    try:
+        module.approve(kind, name, **payload)
+    except Exception as e:
+        raise FlightctlException(f"Failed to approve resource: {e}") from e
+
+    module.exit_json(**{"changed": True})

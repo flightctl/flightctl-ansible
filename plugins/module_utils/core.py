@@ -131,6 +131,8 @@ class FlightctlModule(AnsibleModule):
         Load configuration files using ConfigLoader.
         """
         config_file = self.params.get("flightctl_config_file", None)
+        if not config_file:
+            return
 
         try:
             # Use ConfigLoader to load config from file or fallback to defaults

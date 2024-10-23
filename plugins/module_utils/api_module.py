@@ -86,6 +86,8 @@ class FlightctlAPIModule(FlightctlModule):
         "resourcesync": "/api/v1/resourcesyncs",
         "device": "/api/v1/devices",
         "repository": "/api/v1/repositories",
+        "enrollmentrequest": "api/v1/enrollmentrequests",
+        "certificatesigningrequest": "api/v1/certificatesigningrequests"
     }
 
     def __init__(
@@ -145,7 +147,8 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        return self.request("GET", endpoint, name, **kwargs)
+        url = self.build_url(endpoint, name, query_params=kwargs)
+        return self.request("GET", url.geturl(), **kwargs)
 
     def patch_endpoint(
         self, endpoint: str, name: str, patch: List[Dict[str, Any]]
@@ -161,7 +164,8 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        return self.request("PATCH", endpoint, name=name, patch=patch)
+        url = self.build_url(endpoint, name)
+        return self.request("PATCH", url.geturl(), patch=patch)
 
     def post_endpoint(self, endpoint: str, **kwargs: Any) -> Response:
         """
@@ -174,7 +178,8 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        return self.request("POST", endpoint, **kwargs)
+        url = self.build_url(endpoint, None)
+        return self.request("POST", url.geturl(), **kwargs)
 
     def delete_endpoint(self, endpoint: str, name: str, **kwargs: Any) -> Response:
         """
@@ -187,7 +192,8 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        return self.request("DELETE", endpoint, name=name, **kwargs)
+        url = self.build_url(endpoint, name)
+        return self.request("DELETE", url.geturl(), **kwargs)
 
     def build_url(
         self,
@@ -235,8 +241,7 @@ class FlightctlAPIModule(FlightctlModule):
     def request(
         self,
         method: str,
-        endpoint: str,
-        name: Optional[str] = None,
+        url: str,
         patch: Optional[Any] = None,
         **kwargs: Any,
     ) -> Response:
@@ -245,8 +250,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         Args:
             method (str): The HTTP method (GET, POST, PATCH, DELETE, etc.).
-            endpoint (str): The API endpoint (resource type).
-            name (Optional[str], optional): The resource name (optional for some methods).
+            url (str): The URL for the request.
             patch (Optional[Any], optional): The patch data for PATCH requests.
             kwargs (Any): Additional parameters for the request.
 
@@ -258,11 +262,6 @@ class FlightctlAPIModule(FlightctlModule):
         """
         if not method:
             raise FlightctlHTTPException("The HTTP method must be defined")
-
-        if method in ["POST", "PUT", "PATCH"]:
-            url = self.build_url(endpoint, name)
-        else:
-            url = self.build_url(endpoint, name, query_params=kwargs)
 
         # Extract the headers, this will be used in a couple of places
         headers = kwargs.get("headers", {})
@@ -301,7 +300,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         Args:
             method (str): The HTTP method (GET, POST, etc.).
-            url (ParseResult): The URL for the request.
+            url (str): The URL for the request.
             data (Optional[str], optional): The request body data.
             headers (Optional[str], optional): The request headers.
 
@@ -314,7 +313,7 @@ class FlightctlAPIModule(FlightctlModule):
         try:
             raw_resp = self.session.open(
                 method,
-                url.geturl(),
+                url,
                 headers=headers,
                 timeout=self.request_timeout,
                 validate_certs=self.verify_ssl,
@@ -332,33 +331,33 @@ class FlightctlAPIModule(FlightctlModule):
         except HTTPError as http_err:
             if http_err.code >= 500:
                 raise FlightctlHTTPException(
-                    f"The host sent back a server error ({http_err}): {url.path}. Please check the logs and try again."
+                    f"The host sent back a server error ({http_err}): {url}. Please check the logs and try again."
                 ) from http_err
             elif http_err.code == 401:
                 raise FlightctlHTTPException(
-                    f"Invalid authentication credentials for {url.path} (HTTP 401)."
+                    f"Invalid authentication credentials for {url} (HTTP 401)."
                 ) from http_err
             elif http_err.code == 403:
                 raise FlightctlHTTPException(
-                    f"You don't have permission to {method} to {url.path} (HTTP 403)."
+                    f"You don't have permission to {method} to {url} (HTTP 403)."
                 ) from http_err
             elif http_err.code == 404:
                 # raise FlightctlHTTPException(f"The requested object could not be found at {url.path}.") from http_err
                 return Response(http_err.code, b"{}")
             elif http_err.code == 405:
                 raise FlightctlHTTPException(
-                    f"Cannot make a request with the {method} method to this endpoint {url.path}."
+                    f"Cannot make a request with the {method} method to this endpoint {url}."
                 ) from http_err
             elif http_err.code == 204 and method == "DELETE":
                 # A 204 is a normal response for a delete function
                 pass
             else:
                 raise FlightctlHTTPException(
-                    f"Unexpected return code when calling {url.geturl()}: {http_err}."
+                    f"Unexpected return code when calling {url}: {http_err}."
                 ) from http_err
         except Exception as e:
             raise FlightctlHTTPException(
-                f"There was an unknown error when trying to connect to {url.geturl()}: {type(e).__name__} {e}."
+                f"There was an unknown error when trying to connect to {url}: {type(e).__name__} {e}."
             ) from e
 
         return Response(raw_resp.status, raw_resp.read(), raw_resp.headers)
@@ -413,7 +412,7 @@ class FlightctlAPIModule(FlightctlModule):
             Returns:
             Tuple[bool, Dict[str, Any]]:
                 A tuple containing:
-                    - A boolean indicating whether the resource was deleted (changed).
+                    - A boolean indicating whether the resource was created (changed).
                     - The created resource as a dictionary.
         Raises:
             FlightctlException: If the creation fails.
@@ -494,3 +493,29 @@ class FlightctlAPIModule(FlightctlModule):
             raise FlightctlException(msg)
 
         return changed, response.json
+
+    def approve(
+        self, endpoint: str, name: str, **kwargs: Any
+    ) -> None:
+        """
+        Approves a resource via the API.
+
+        Args:
+            endpoint (str): The API endpoint (resource type).
+            name (str): The resource name.
+            kwargs (Any): Additional parameters for the request.
+
+        Raises:
+            FlightctlException: If the approval request fails.
+        """
+        base_url = self.build_url(endpoint, name)
+        approval_path = base_url.path + "/approval"
+        approval_url = base_url._replace(path=approval_path)
+        response = self.request("POST", approval_url.geturl(), **kwargs)
+        if response.status != 200:
+            fail_msg = f"Unable to approve {endpoint} for {name}"
+            if "message" in response.json:
+                fail_msg += f", message: {response.json['message']}"
+            raise FlightctlException(fail_msg)
+
+        return
