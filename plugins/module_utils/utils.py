@@ -2,7 +2,7 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
@@ -16,13 +16,16 @@ from ansible.module_utils.common.dict_transformations import recursive_diff
 JSON_PATCH_IMPORT_ERR: Optional[str] = None
 try:
     import jsonpatch
+
     HAS_JSON_PATCH = True
 except ImportError:
     HAS_JSON_PATCH = False
     JSON_PATCH_IMPORT_ERR = traceback.format_exc()
 
 
-def diff_dicts(existing: Dict[str, Any], new: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
+def diff_dicts(
+    existing: Dict[str, Any], new: Dict[str, Any]
+) -> Tuple[bool, Dict[str, Any]]:
     """
     Computes the difference between two dictionaries.
 
@@ -47,7 +50,9 @@ def diff_dicts(existing: Dict[str, Any], new: Dict[str, Any]) -> Tuple[bool, Dic
     return False, result
 
 
-def json_patch(existing: Dict[str, Any], patch: List[Dict[str, Any]]) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+def json_patch(
+    existing: Dict[str, Any], patch: List[Dict[str, Any]]
+) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
     """
     Applies a JSON patch to an existing dictionary.
 
@@ -111,8 +116,10 @@ def get_patch(old: Dict[str, Any], new: Dict[str, Any]) -> List[Dict[str, Any]]:
             if isinstance(old_value, dict) and isinstance(new_value, dict):
                 recursive_diff(old_value, new_value, f"{path}/{key}")
             elif old_value != new_value:
-                patch.append({"op": "replace", "path": f"{path}/{key}", "value": new_value})
+                patch.append(
+                    {"op": "replace", "path": f"{path}/{key}", "value": new_value}
+                )
 
-    recursive_diff(old, new, '')
+    recursive_diff(old, new, "")
 
     return patch

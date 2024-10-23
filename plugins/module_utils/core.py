@@ -2,7 +2,7 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
@@ -37,7 +37,7 @@ class FlightctlModule(AnsibleModule):
             type="float",
             required=False,
             fallback=(env_fallback, ["FLIGHTCTL_REQUEST_TIMEOUT"]),
-            aliases=['request_timeout']
+            aliases=["request_timeout"],
         ),
         flightctl_token=dict(
             type="str",

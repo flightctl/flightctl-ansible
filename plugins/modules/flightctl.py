@@ -4,7 +4,7 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
@@ -121,7 +121,7 @@ def main():
         name=dict(type="str"),
         api_version=dict(type="str", default="v1alpha1"),
         resource_definition=dict(type="raw"),
-        **STATE_ARG_SPEC
+        **STATE_ARG_SPEC,
     )
 
     module = FlightctlAPIModule(
