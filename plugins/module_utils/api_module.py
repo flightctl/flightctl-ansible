@@ -14,10 +14,9 @@ from ansible.module_utils.six.moves.http_cookiejar import CookieJar
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.six.moves.urllib.parse import urlencode
 from ansible.module_utils.urls import ConnectionError, Request, SSLValidationError
-
-from .core import FlightctlModule
-from .exceptions import FlightctlException, FlightctlHTTPException
-from .utils import diff_dicts, get_patch, json_patch
+from core import FlightctlModule
+from exceptions import FlightctlException, FlightctlHTTPException
+from utils import diff_dicts, get_patch, json_patch
 
 
 class Response:
@@ -416,11 +415,15 @@ class FlightctlAPIModule(FlightctlModule):
             FlightctlException: If the creation fails.
         """
         changed: bool = False
-        response = self.post_endpoint(definition.get("kind"), **definition)
+        response = self.post_endpoint(definition["kind"], **definition)
         if response.status == 201:
             changed |= True
         else:
-            msg = f"Unable to create {definition.get('kind')} {definition.get('metadata', None).get('name', None)}: {response.status}"
+            msg = (
+                f"Unable to create {definition['kind']} "
+                f"{definition.get('metadata', None).get('name', None)}: "
+                f"{response.status}"
+            )
             raise FlightctlException(msg)
 
         return changed, response.json

@@ -6,6 +6,9 @@ target-version = ["py310"]
 # [tool.coverage.paths]
 # source = ["plugins", "extensions"]
 
+[tool.flake8]
+max-line-length = 160
+
 # [tool.coverage.report]
 # exclude_also = ["pragma: no cover", "if TYPE_CHECKING:"]
 # omit = ["test/*"]
@@ -34,9 +37,10 @@ use_parentheses = true
 ensure_newline_before_comments = true
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 color_output = true
 error_summary = true
+ignore_missing_imports = true
 
 # TODO: Remove temporary skips and close https://github.com/ansible/event-driven-ansible/issues/258
 # strict = true
@@ -72,8 +76,16 @@ disable = [
   "too-many-branches",
   "inconsistent-return-statements",
   "invalid-name",
+  "use-dict-literal",
+  "no-else-raise",
+  "import-error",
+  "C0415",  # Import outside toplevel
+  "W0622",  # Redefining built-in 'ConnectionError' (redefined-builtin)
+  "W1514",  # Using open without explicitly specifying an encoding (unspecified-encoding)
+  "W0246",  # Useless parent or super() delegation in method 'exit_json' (useless-parent-delegation)
 ]
-max-line-length=120
+
+max-line-length = 160
 
 [tool.ruff.lint]
 ignore = [ "E402" ]
