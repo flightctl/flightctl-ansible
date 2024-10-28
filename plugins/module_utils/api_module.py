@@ -16,6 +16,7 @@ from ansible.module_utils.six.moves.urllib.parse import urlencode
 from ansible.module_utils.urls import (ConnectionError, Request,
                                        SSLValidationError)
 
+from .constants import CSR_KIND, ENROLLMENT_KIND
 from .core import FlightctlModule
 from .exceptions import FlightctlException, FlightctlHTTPException
 from .utils import diff_dicts, get_patch, json_patch
@@ -498,7 +499,7 @@ class FlightctlAPIModule(FlightctlModule):
         self, endpoint: str, name: str, **kwargs: Any
     ) -> None:
         """
-        Approves a resource via the API.
+        Makes an approval request via the API.
 
         Args:
             endpoint (str): The API endpoint (resource type).
@@ -511,11 +512,15 @@ class FlightctlAPIModule(FlightctlModule):
         base_url = self.build_url(endpoint, name)
         approval_path = base_url.path + "/approval"
         approval_url = base_url._replace(path=approval_path)
-        response = self.request("POST", approval_url.geturl(), **kwargs)
+
+        # CSR requests are denied by making a DELETE request to the approval endpoint
+        if not kwargs.get('approved', None) and endpoint == CSR_KIND:
+            response = self.request("DELETE", approval_url.geturl())
+        else:
+            response = self.request("POST", approval_url.geturl(), **kwargs)
+
         if response.status != 200:
             fail_msg = f"Unable to approve {endpoint} for {name}"
             if "message" in response.json:
                 fail_msg += f", message: {response.json['message']}"
             raise FlightctlException(fail_msg)
-
-        return

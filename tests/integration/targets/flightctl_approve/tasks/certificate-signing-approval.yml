@@ -1,11 +1,12 @@
 ---
 - name: Test approve certificate signing request
   vars:
-    csr_name: ansible-integration-test-csr
+    csr_name: ansible-integration-test-approval-csr
   block:
   - name: Create a csr
     flightctl.edge.flightctl:
       flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
       api_version: v1alpha1
@@ -18,6 +19,7 @@
   - name: Approve the csr
     flightctl.edge.flightctl_approve:
       flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
       approved: true
@@ -33,6 +35,7 @@
   - name: Get the csr
     flightctl.edge.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
     register: csr_result
@@ -47,6 +50,7 @@
   - name: Try to approve the csr again (idempotency)
     flightctl.edge.flightctl_approve:
       flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
       approved: true
@@ -62,6 +66,7 @@
     - name: Delete csr
       flightctl.edge.flightctl:
         flightctl_host: "{{ flightctl_host }}"
+        flightctl_validate_certs: false
         kind: CertificateSigningRequest
         name: "{{ csr_name }}"
         state: absent

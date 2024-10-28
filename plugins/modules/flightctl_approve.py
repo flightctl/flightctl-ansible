@@ -90,7 +90,7 @@ def main():
     kind = module.params.get("kind")
     name = module.params.get("name")
     params = {}
-    if module.params.get("approved"):
+    if module.params.get("approved", None) is not None:
         params["approved"] = module.params["approved"]
     if module.params.get("approved_by"):
         params["approvedBy"] = module.params["approved_by"]

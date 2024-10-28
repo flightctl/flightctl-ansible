@@ -219,21 +219,26 @@ def perform_approval(module: FlightctlAPIModule, kind: str, name: str, payload: 
     if not name:
         raise ValidationException("A name must be specified.")
 
-    if payload.get('approved', None) is None:
+    approved = payload.get('approved', None)
+    if approved is None:
         raise ValidationException("Approval value must be specified.")
 
     try:
         existing = module.get_endpoint(kind, name)
-        approved = None
+        currently_approved = None
         if kind == ENROLLMENT_KIND:
-            approved = existing.json.get('status', {}).get('approval', {}).get('approved', None)
+            currently_approved = existing.json.get('status', {}).get('approval', {}).get('approved', None)
         elif kind == CSR_KIND:
             conditions = existing.json.get('status', {}).get('conditions', [])
             approval_condition = next((c for c in conditions if c.get('type') == "Approved"), None)
             if approval_condition is not None:
-                approved = bool(approval_condition['status'])
+                # The api returns string values for booleans in the ocnditions
+                if approval_condition['status'].lower() == 'true':
+                    currently_approved = True
+                elif approval_condition['status'].lower() == 'false':
+                    currently_approved = False
 
-        if approved == payload.get('approved'):
+        if approved == currently_approved:
             module.exit_json(**{"changed": False})
             return
     except Exception as e:
