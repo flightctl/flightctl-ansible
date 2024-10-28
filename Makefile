@@ -9,3 +9,11 @@ test-integration:
 
 test-sanity:
 	ansible-test sanity --docker -v --color --python $(PYTHON_VERSION) $(?TEST_ARGS)
+
+generate-api-client:
+	openapi-python-client generate \
+		--config client-gen-config.yaml \
+		--output-path plugins/module_utils/flightctl_api_client \
+		--meta none \
+		--path api/v1alpha1/openapi.yml \
+		--overwrite

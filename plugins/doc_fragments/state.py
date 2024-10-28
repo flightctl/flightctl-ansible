@@ -8,7 +8,10 @@ class ModuleDocFragment(object):
 options:
     state:
       description:
-        - Desired state of the resource.
+        - Determines if an object should be created, patched, or deleted. When set to C(present), an object will be
+          created, if it does not already exist. If set to C(absent), an existing object will be deleted. If set to
+          C(present), an existing object will be patched, if its attributes differ from those specified using
+          I(resource_definition) or I(src).
       choices: ["present", "absent"]
       default: "present"
       type: str
