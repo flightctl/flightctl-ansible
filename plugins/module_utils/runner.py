@@ -232,7 +232,7 @@ def perform_approval(module: FlightctlAPIModule, kind: str, name: str, payload: 
             conditions = existing.json.get('status', {}).get('conditions', [])
             approval_condition = next((c for c in conditions if c.get('type') == "Approved"), None)
             if approval_condition is not None:
-                # The api returns string values for booleans in the ocnditions
+                # The api returns string values for booleans in the conditions
                 if approval_condition['status'].lower() == 'true':
                     currently_approved = True
                 elif approval_condition['status'].lower() == 'false':

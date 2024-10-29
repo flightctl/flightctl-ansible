@@ -1,7 +1,7 @@
 ---
 - name: Test approve device enrollment
   vars:
-    enrollment_name: ansible-integration-test-enrollment
+    enrollment_name: ansible-integration-test-enrollment-approval
   block:
   - name: Create an enrollment request
     flightctl.edge.flightctl:

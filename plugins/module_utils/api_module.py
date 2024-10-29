@@ -16,7 +16,7 @@ from ansible.module_utils.six.moves.urllib.parse import urlencode
 from ansible.module_utils.urls import (ConnectionError, Request,
                                        SSLValidationError)
 
-from .constants import CSR_KIND, ENROLLMENT_KIND
+from .constants import CSR_KIND
 from .core import FlightctlModule
 from .exceptions import FlightctlException, FlightctlHTTPException
 from .utils import diff_dicts, get_patch, json_patch
