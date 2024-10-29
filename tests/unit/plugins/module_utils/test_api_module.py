@@ -8,8 +8,9 @@ from unittest.mock import Mock
 from tests.unit.utils import set_module_args
 
 from plugins.module_utils.api_module import FlightctlAPIModule
-from plugins.module_utils.constants import CSR_KIND, ENROLLMENT_KIND
+from plugins.module_utils.constants import Kind
 from plugins.module_utils.exceptions import FlightctlException
+from plugins.module_utils.inputs import ApprovalInput
 
 
 @pytest.fixture
@@ -42,9 +43,9 @@ def test_approve_success(api_module):
     mock_request = Mock(return_value=mock_response)
     api_module.request = mock_request
 
-    params = {"approved": True}
-    api_module.approve(ENROLLMENT_KIND, "test-enrollment", **params)
-    mock_request.assert_called_with("POST", "https://test-flightctl-url.com/api/v1/enrollmentrequests/test-enrollment/approval", **params)
+    input = ApprovalInput(Kind.ENROLLMENT, "test-enrollment", True)
+    api_module.approve(input)
+    mock_request.assert_called_with("POST", "https://test-flightctl-url.com/api/v1/enrollmentrequests/test-enrollment/approval", **input.to_request_params())
 
 
 def test_approve_404(api_module):
@@ -54,9 +55,9 @@ def test_approve_404(api_module):
     mock_request = Mock(return_value=mock_response)
     api_module.request = mock_request
 
-    params = {"approved": True}
+    input = ApprovalInput(Kind.ENROLLMENT, "test-enrollment", True)
     with pytest.raises(FlightctlException, match="Unable to approve EnrollmentRequest for test-enrollment"):
-        api_module.approve(ENROLLMENT_KIND, "test-enrollment", **params)
+        api_module.approve(input)
 
 
 def test_approve_csr(api_module):
@@ -65,9 +66,9 @@ def test_approve_csr(api_module):
     mock_request = Mock(return_value=mock_response)
     api_module.request = mock_request
 
-    params = {"approved": True}
-    api_module.approve(CSR_KIND, "test-csr", **params)
-    mock_request.assert_called_with("POST", "https://test-flightctl-url.com/api/v1/certificatesigningrequests/test-csr/approval", **params)
+    input = ApprovalInput(Kind.CSR, "test-csr", True)
+    api_module.approve(input)
+    mock_request.assert_called_with("POST", "https://test-flightctl-url.com/api/v1/certificatesigningrequests/test-csr/approval", **input.to_request_params())
 
 
 def test_deny_csr(api_module):
@@ -76,6 +77,6 @@ def test_deny_csr(api_module):
     mock_request = Mock(return_value=mock_response)
     api_module.request = mock_request
 
-    params = {"approved": False}
-    api_module.approve(CSR_KIND, "test-csr", **params)
+    input = ApprovalInput(Kind.CSR, "test-csr", False)
+    api_module.approve(input)
     mock_request.assert_called_with("DELETE", "https://test-flightctl-url.com/api/v1/certificatesigningrequests/test-csr/approval")

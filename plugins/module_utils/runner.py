@@ -209,8 +209,13 @@ def perform_approval(module: FlightctlAPIModule) -> None:
         ValidationException: If necessary definition parameters do not exist.
         FlightctlException: If performing the action fails.
     """
+    try:
+        kind = Kind(module.params.get("kind"))
+    except (TypeError, ValueError):
+        raise ValidationException(f"Invalid Kind {module.params.get("kind")}")
+
     input = ApprovalInput(
-        kind=Kind(module.params.get("kind")),
+        kind=kind,
         name=module.params.get("name"),
         approved=module.params.get("approved"),
         approved_by=module.params.get("approved_by"),

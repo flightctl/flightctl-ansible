@@ -511,13 +511,13 @@ class FlightctlAPIModule(FlightctlModule):
         approval_url = base_url._replace(path=approval_path)
 
         # CSR requests are denied by making a DELETE request to the approval endpoint
-        if input.kind is Kind.CSR and input.approved == False:
+        if input.kind is Kind.CSR and input.approved is False:
             response = self.request("DELETE", approval_url.geturl())
         else:
             response = self.request("POST", approval_url.geturl(), **input.to_request_params())
 
         if response.status != 200:
-            fail_msg = f"Unable to approve {input.kind} for {input.name}"
+            fail_msg = f"Unable to approve {input.kind.value} for {input.name}"
             if "message" in response.json:
                 fail_msg += f", message: {response.json['message']}"
             raise FlightctlException(fail_msg)

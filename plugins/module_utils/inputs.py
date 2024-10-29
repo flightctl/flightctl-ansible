@@ -2,6 +2,10 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from __future__ import (absolute_import, division, print_function)
+
+__metaclass__ = type
+
 from dataclasses import dataclass
 from typing import Optional
 
@@ -18,12 +22,12 @@ class ApprovalInput:
     labels: Optional[dict] = None
 
     def __post_init__(self):
-        if not self.kind:
-            raise ValidationException("Kind must be specified.")
+        if self.kind not in [Kind.CSR, Kind.ENROLLMENT]:
+            raise ValidationException(f"Kind {self.kind.value} does not support approval")
         if not self.name:
-            raise ValidationException("Name must be specified.")
-        if not self.name:
-            raise ValidationException("Approved must be specified.")
+            raise ValidationException("Name must be specified")
+        if self.approved is None:
+            raise ValidationException("Approved must be specified")
 
     def to_request_params(self):
         params = dict(
