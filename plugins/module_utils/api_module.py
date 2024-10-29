@@ -16,9 +16,10 @@ from ansible.module_utils.six.moves.urllib.parse import urlencode
 from ansible.module_utils.urls import (ConnectionError, Request,
                                        SSLValidationError)
 
-from .constants import CSR_KIND
+from .constants import Kind
 from .core import FlightctlModule
 from .exceptions import FlightctlException, FlightctlHTTPException
+from .inputs import ApprovalInput
 from .utils import diff_dicts, get_patch, json_patch
 
 
@@ -495,32 +496,28 @@ class FlightctlAPIModule(FlightctlModule):
 
         return changed, response.json
 
-    def approve(
-        self, endpoint: str, name: str, **kwargs: Any
-    ) -> None:
+    def approve(self, input: ApprovalInput) -> None:
         """
         Makes an approval request via the API.
 
         Args:
-            endpoint (str): The API endpoint (resource type).
-            name (str): The resource name.
-            kwargs (Any): Additional parameters for the request.
+            input (ApprovalInput): Input containing the necessary approval data
 
         Raises:
             FlightctlException: If the approval request fails.
         """
-        base_url = self.build_url(endpoint, name)
+        base_url = self.build_url(input.kind.value, input.name)
         approval_path = base_url.path + "/approval"
         approval_url = base_url._replace(path=approval_path)
 
         # CSR requests are denied by making a DELETE request to the approval endpoint
-        if not kwargs.get('approved', None) and endpoint == CSR_KIND:
+        if input.kind is Kind.CSR and input.approved == False:
             response = self.request("DELETE", approval_url.geturl())
         else:
-            response = self.request("POST", approval_url.geturl(), **kwargs)
+            response = self.request("POST", approval_url.geturl(), **input.to_request_params())
 
         if response.status != 200:
-            fail_msg = f"Unable to approve {endpoint} for {name}"
+            fail_msg = f"Unable to approve {input.kind} for {input.name}"
             if "message" in response.json:
                 fail_msg += f", message: {response.json['message']}"
             raise FlightctlException(fail_msg)

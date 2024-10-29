@@ -23,8 +23,9 @@ else:
     OPENAPI_SCHEMA_IMPORT_ERROR = None
 
 from .api_module import FlightctlAPIModule
-from .constants import CSR_KIND, ENROLLMENT_KIND
+from .constants import Kind
 from .exceptions import FlightctlException, ValidationException
+from .inputs import ApprovalInput
 from .resources import create_definitions
 
 
@@ -197,38 +198,31 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
     return changed, result
 
 
-def perform_approval(module: FlightctlAPIModule, kind: str, name: str, payload: Dict[str, Any]) -> None:
+def perform_approval(module: FlightctlAPIModule) -> None:
     """
     Performs the approval action on a specific resource.
 
     Args:
         module (FlightctlAPIModule): The FlightctlAPIModule instance to act upon.
-        kind: Resource kind.
-        name: Resource name identifier.
-        payload: Data that will be passed to the approval request.
 
     Raises:
         ValidationException: If necessary definition parameters do not exist.
         FlightctlException: If performing the action fails.
     """
-    if not kind:
-        raise ValidationException("A kind must be specified.")
-    elif kind not in [CSR_KIND, ENROLLMENT_KIND]:
-        raise ValidationException(f"Kind {kind} does not support approval.")
-
-    if not name:
-        raise ValidationException("A name must be specified.")
-
-    approved = payload.get('approved', None)
-    if approved is None:
-        raise ValidationException("Approval value must be specified.")
+    input = ApprovalInput(
+        kind=Kind(module.params.get("kind")),
+        name=module.params.get("name"),
+        approved=module.params.get("approved"),
+        approved_by=module.params.get("approved_by"),
+        labels=module.params.get("labels")
+    )
 
     try:
-        existing = module.get_endpoint(kind, name)
+        existing = module.get_endpoint(input.kind.value, input.name)
         currently_approved = None
-        if kind == ENROLLMENT_KIND:
+        if input.kind is Kind.ENROLLMENT:
             currently_approved = existing.json.get('status', {}).get('approval', {}).get('approved', None)
-        elif kind == CSR_KIND:
+        elif input.kind is Kind.CSR:
             conditions = existing.json.get('status', {}).get('conditions', [])
             approval_condition = next((c for c in conditions if c.get('type') == "Approved"), None)
             if approval_condition is not None:
@@ -238,7 +232,7 @@ def perform_approval(module: FlightctlAPIModule, kind: str, name: str, payload: 
                 elif approval_condition['status'].lower() == 'false':
                     currently_approved = False
 
-        if approved == currently_approved:
+        if input.approved == currently_approved:
             module.exit_json(**{"changed": False})
             return
     except Exception as e:
@@ -249,7 +243,7 @@ def perform_approval(module: FlightctlAPIModule, kind: str, name: str, payload: 
         return
 
     try:
-        module.approve(kind, name, **payload)
+        module.approve(input)
     except Exception as e:
         raise FlightctlException(f"Failed to approve resource: {e}") from e
 

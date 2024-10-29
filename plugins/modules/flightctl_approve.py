@@ -87,19 +87,9 @@ def main():
         argument_spec=argument_spec,
     )
 
-    kind = module.params.get("kind")
-    name = module.params.get("name")
-    params = {}
-    if module.params.get("approved", None) is not None:
-        params["approved"] = module.params["approved"]
-    if module.params.get("approved_by"):
-        params["approvedBy"] = module.params["approved_by"]
-    if module.params.get("labels"):
-        params["labels"] = module.params["labels"]
-
     # Attempt to approve the request identified by name
     try:
-        perform_approval(module, kind, name, params)
+        perform_approval(module)
     except FlightctlException as e:
         module.fail_json(msg=f"Failed to approve request: {e}")
 
