@@ -212,7 +212,7 @@ def perform_approval(module: FlightctlAPIModule) -> None:
     try:
         kind = Kind(module.params.get("kind"))
     except (TypeError, ValueError):
-        raise ValidationException(f"Invalid Kind {module.params.get("kind")}")
+        raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
 
     input = ApprovalInput(
         kind=kind,
