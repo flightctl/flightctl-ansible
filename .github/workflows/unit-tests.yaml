@@ -1,5 +1,5 @@
 ---
-name: Sanity tests
+name: Unit tests
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test-sanity:
+  test-unit:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     strategy:
@@ -20,10 +20,10 @@ jobs:
           - ansible: stable-2.16
             python: "3.10"
     steps:
-      - name: Perform sanity testing
+      - name: Perform unit testing
         uses: ansible-community/ansible-test-gh-action@release/v1
         with:
           ansible-core-version: ${{ matrix.versions.ansible }}
           origin-python-version: ${{ matrix.versions.python }}
           target-python-version: ${{ matrix.versions.python }}
-          testing-type: sanity
+          testing-type: units
