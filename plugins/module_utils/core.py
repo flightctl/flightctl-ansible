@@ -76,7 +76,6 @@ class FlightctlModule(AnsibleModule):
         "check_pyyaml": True,
         "check_openapi_schema_validator": True,
         "check_jsonpatch": True,
-        "module_class": AnsibleModule,
     }
 
     def __init__(
@@ -104,6 +103,14 @@ class FlightctlModule(AnsibleModule):
         self.warn_callback = warn_callback
         self.result = {"changed": False}
 
+        local_settings = {}
+        for key, value in FlightctlModule.default_settings.items():
+            try:
+                local_settings[key] = kwargs.pop(key)
+            except KeyError:
+                local_settings[key] = FlightctlModule.default_settings[key]
+        self.settings = local_settings
+
         super().__init__(argument_spec=full_argspec, **kwargs)
 
         # Load configuration files
@@ -117,16 +124,6 @@ class FlightctlModule(AnsibleModule):
 
         # Ensure the host URL is valid
         self.ensure_host_url()
-
-        local_settings = {}
-        for key, value in FlightctlModule.default_settings.items():
-            try:
-                local_settings[key] = kwargs.pop(key)
-            except KeyError:
-                local_settings[key] = FlightctlModule.default_settings[key]
-        self.settings = local_settings
-
-        self._module = self.settings["module_class"](**kwargs)
 
         if self.settings["check_jsonschema"]:
             self.requires("jsonschema")
