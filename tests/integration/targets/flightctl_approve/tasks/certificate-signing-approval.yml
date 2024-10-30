@@ -1,0 +1,72 @@
+---
+- name: Test approve certificate signing request
+  vars:
+    csr_name: ansible-integration-test-approval-csr
+  block:
+  - name: Create a csr
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: CertificateSigningRequest
+      name: "{{ csr_name }}"
+      api_version: v1alpha1
+      resource_definition:
+        spec:
+          request: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQkJqQ0JyUUlCQURCTE1Va3dSd1lEVlFRREUwQXhNMlEyTXpKa09EWXpOek5qWVdGbFpHRTJOR1JoTkRBMQpNbVk1TlRkbVlXRTNOREptWXpjd05UQXdNalkzTkRoaVl6YzVNRFkxWXpnNE1UbGtNV0l3TUZrd0V3WUhLb1pJCnpqMENBUVlJS29aSXpqMERBUWNEUWdBRUhCTUMzME5SSlRKM05XT2xlaTlZV2tCTS9Nem9OREd5TVJLdXpFMC8KY0treVhWSmV4SHEweEluMjJZQ05OM1pETnh4d1c2TGxRZzNpakdudlN0UU9iNkFBTUFvR0NDcUdTTTQ5QkFNQwpBMGdBTUVVQ0lRRFNyeGk2a3JkQ0tjTENoZE1CM3c3SXFtRGxaaFJFR2JITUNFU1ZuNnNzUEFJZ1pMK1FySnR3CjhSK3I0cGlhWXZaa3Ryc2szeUNJdXozaEk3bG9ZbVhQM2Q4PQotLS0tLUVORCBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0=
+          signerName: enrollment
+          usages: ["clientAuth", "CA:false"]
+
+  - name: Approve the csr
+    flightctl.edge.flightctl_certificate:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: CertificateSigningRequest
+      name: "{{ csr_name }}"
+      approved: true
+      labels:
+        testing_label: is_set_during_testing
+    register: approve_result
+
+  - name: Assert that approval request succeeded
+    ansible.builtin.assert:
+      that:
+        - approve_result is success
+
+  - name: Get the csr
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: CertificateSigningRequest
+      name: "{{ csr_name }}"
+    register: csr_result
+
+  - name: Assert that the csr is now approved
+    ansible.builtin.assert:
+      that:
+        - csr_result is success
+        - csr_result.result[0].status.conditions[0].type == "Approved"
+        - csr_result.result[0].status.conditions[0].status == "True"
+
+  - name: Try to approve the csr again (idempotency)
+    flightctl.edge.flightctl_certificate:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: CertificateSigningRequest
+      name: "{{ csr_name }}"
+      approved: true
+    register: idempotency_result
+
+  - name: Assert that the result was not changed
+    ansible.builtin.assert:
+      that:
+        - idempotency_result is success
+        - idempotency_result.changed == False
+
+  always:
+    - name: Delete csr
+      flightctl.edge.flightctl:
+        flightctl_host: "{{ flightctl_host }}"
+        flightctl_validate_certs: false
+        kind: CertificateSigningRequest
+        name: "{{ csr_name }}"
+        state: absent

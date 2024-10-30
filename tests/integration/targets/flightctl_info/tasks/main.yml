@@ -6,6 +6,7 @@
   - name: Create a test device
     flightctl.edge.flightctl:
       flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
       kind: Device
       name: "{{ deivce_name }}"
       api_version: v1alpha1
@@ -13,6 +14,7 @@
   - name: Get test device
     flightctl.edge.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
       kind: Device
       name: "{{ deivce_name }}"
     register: device_result
@@ -27,6 +29,7 @@
     - name: Delete test device
       flightctl.edge.flightctl:
         flightctl_host: "{{ flightctl_host }}"
+        flightctl_validate_certs: false
         kind: Device
         name: "{{ deivce_name }}"
         state: absent
