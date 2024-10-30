@@ -13,8 +13,9 @@ from ansible.module_utils.basic import AnsibleModule, env_fallback, missing_requ
 from ansible.module_utils.common.text.converters import to_text
 from ansible.module_utils.compat.version import LooseVersion
 from ansible.module_utils.six.moves.urllib.parse import urlparse
-from config_loader import ConfigLoader
-from exceptions import FlightctlException
+
+from .config_loader import ConfigLoader
+from .exceptions import FlightctlException
 
 
 class FlightctlModule(AnsibleModule):
@@ -63,7 +64,6 @@ class FlightctlModule(AnsibleModule):
     }
     # Default attribute values
     host: Optional[str] = None
-    url: Optional[Any] = None
     username: Optional[str] = None
     password: Optional[str] = None
     verify_ssl: bool = True
@@ -119,7 +119,7 @@ class FlightctlModule(AnsibleModule):
         self.ensure_host_url()
 
         local_settings = {}
-        for key, _ in FlightctlModule.default_settings.items():
+        for key, value in FlightctlModule.default_settings.items():
             try:
                 local_settings[key] = kwargs.pop(key)
             except KeyError:
@@ -182,7 +182,7 @@ class FlightctlModule(AnsibleModule):
         Args:
             config_loader (ConfigLoader): The ConfigLoader instance used to load configuration.
         """
-        for module_attr, _ in self.short_params.items():
+        for module_attr, module_value in self.short_params.items():
             # Check if the ConfigLoader has the attribute and update module attribute if present
             if hasattr(config_loader, module_attr):
                 setattr(self, module_attr, getattr(config_loader, module_attr))

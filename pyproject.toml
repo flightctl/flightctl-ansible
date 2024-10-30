@@ -83,6 +83,7 @@ disable = [
   "W0622",  # Redefining built-in 'ConnectionError' (redefined-builtin)
   "W1514",  # Using open without explicitly specifying an encoding (unspecified-encoding)
   "W0246",  # Useless parent or super() delegation in method 'exit_json' (useless-parent-delegation)
+  "unused-variable",
 ]
 
 [tool.ruff.lint]

@@ -89,7 +89,7 @@ class FlightctlAPIModule(FlightctlModule):
         "device": "/api/v1/devices",
         "repository": "/api/v1/repositories",
         "enrollmentrequest": "api/v1/enrollmentrequests",
-        "certificatesigningrequest": "api/v1/certificatesigningrequests"
+        "certificatesigningrequest": "api/v1/certificatesigningrequests",
     }
 
     def __init__(
@@ -243,7 +243,7 @@ class FlightctlAPIModule(FlightctlModule):
     def request(
         self,
         method: str,
-        url: str,
+        url: ParseResult,
         patch: Optional[Any] = None,
         **kwargs: Any,
     ) -> Response:
@@ -458,7 +458,10 @@ class FlightctlAPIModule(FlightctlModule):
         if error:
             raise FlightctlException(f"There was an error with json_patch: {error}")
 
-        _, diffs = diff_dicts(existing, obj)
+        if not obj:
+            return changed, existing
+
+        match, diffs = diff_dicts(existing, obj)
         if diffs:
             response = self.patch_endpoint(endpoint, name, patch)
             if response.status == 200:

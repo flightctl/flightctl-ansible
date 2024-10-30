@@ -18,7 +18,8 @@ except ImportError:
     pass  # Handled by FlightctlModule
 
 from ansible.module_utils.parsing.convert_bool import boolean as strtobool
-from exceptions import FlightctlException
+
+from .exceptions import FlightctlException
 
 
 class ConfigLoader:

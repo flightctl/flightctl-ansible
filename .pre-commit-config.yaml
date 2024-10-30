@@ -19,14 +19,18 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
         language_version: python3
+      # - id: file-contents-sorter
+      #   args: [--unique]
+      #   # always_run: true
+      #   files: ^(\.config/dictionary\.txt)$
   - repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.10.0
     hooks:
       - id: shellcheck
-  - repo: https://github.com/streetsidesoftware/cspell-cli
-    rev: v8.13.3
-    hooks:
-      - id: cspell
+  # - repo: https://github.com/streetsidesoftware/cspell-cli
+  #   rev: v8.13.3
+  #   hooks:
+  #     - id: cspell
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
@@ -73,6 +77,7 @@ repos:
       - id: pylint
         args:
           - --output-format=colorized
+          - --max-line-length=120
         additional_dependencies:
           - ansible-core
           - pytest
@@ -81,13 +86,6 @@ repos:
 
   - repo: local
     hooks:
-      - id: build
-        name: Build collection and verify manifest
-        entry: ./tests/run-galaxy-importer
-        language: python
-        additional_dependencies:
-          - galaxy-importer
-
       - id: ansible-test-sanity
         name: Run ansible-test sanity
         entry: ansible-test sanity

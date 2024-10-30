@@ -1,8 +1,7 @@
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
-import pytest
 from unittest.mock import MagicMock
 
 from plugins.module_utils.constants import Kind
@@ -44,9 +43,13 @@ def test_perform_approval__approval_failure(mock_module):
         mock_module.exit_json.assert_not_called()
 
 
-def test_perform_approval__approval_of_already_approved_enrollment_returns_early(mock_module):
+def test_perform_approval__approval_of_already_approved_enrollment_returns_early(
+    mock_module,
+):
     mock_approved_enrollment_response = MagicMock()
-    mock_approved_enrollment_response.json.get.return_value = {"approval": {"approved": True}}
+    mock_approved_enrollment_response.json.get.return_value = {
+        "approval": {"approved": True}
+    }
     mock_module.get_endpoint.return_value = mock_approved_enrollment_response
 
     perform_approval(mock_module)
@@ -57,7 +60,9 @@ def test_perform_approval__approval_of_already_approved_enrollment_returns_early
 
 def test_perform_approval__approval_of_already_approved_csr_returns_early(mock_module):
     mock_approved_csr_response = MagicMock()
-    mock_approved_csr_response.json.get.return_value = {"conditions": [{"type": "Approved", "status": "True"}]}
+    mock_approved_csr_response.json.get.return_value = {
+        "conditions": [{"type": "Approved", "status": "True"}]
+    }
     mock_module.get_endpoint.return_value = mock_approved_csr_response
     mock_module.params["kind"] = Kind.CSR.value
 
