@@ -17,7 +17,7 @@
           usages: ["clientAuth", "CA:false"]
 
   - name: Deny the csr
-    flightctl.edge.flightctl_approve:
+    flightctl.edge.flightctl_certificate:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: CertificateSigningRequest
@@ -49,7 +49,7 @@
         - csr_result.result[0].status.conditions[0].status == "False"
 
   - name: Try to approve the csr again (idempotency)
-    flightctl.edge.flightctl_approve:
+    flightctl.edge.flightctl_certificate:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: CertificateSigningRequest
