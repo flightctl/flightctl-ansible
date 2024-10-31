@@ -4,8 +4,14 @@ __metaclass__ = type
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from plugins.module_utils.constants import Kind
-from plugins.module_utils.exceptions import FlightctlException, FlightctlHTTPException, ValidationException
+from plugins.module_utils.exceptions import (
+    FlightctlException,
+    FlightctlHTTPException,
+    ValidationException,
+)
 from plugins.module_utils.runner import perform_approval
 
 

@@ -27,3 +27,7 @@ jobs:
           origin-python-version: ${{ matrix.versions.python }}
           target-python-version: ${{ matrix.versions.python }}
           testing-type: units
+          pre-test-cmd: >-
+            pip install -r test-requirements.txt
+
+

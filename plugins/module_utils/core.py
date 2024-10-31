@@ -76,6 +76,7 @@ class FlightctlModule(AnsibleModule):
         "check_pyyaml": True,
         "check_openapi_schema_validator": True,
         "check_jsonpatch": True,
+        "module_class": AnsibleModule,
     }
 
     def __init__(

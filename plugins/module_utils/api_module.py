@@ -13,8 +13,7 @@ from urllib.parse import ParseResult
 from ansible.module_utils.six.moves.http_cookiejar import CookieJar
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.six.moves.urllib.parse import urlencode
-from ansible.module_utils.urls import (ConnectionError, Request,
-                                       SSLValidationError)
+from ansible.module_utils.urls import ConnectionError, Request, SSLValidationError
 
 from .constants import Kind
 from .core import FlightctlModule
@@ -517,7 +516,9 @@ class FlightctlAPIModule(FlightctlModule):
         if input.kind is Kind.CSR and input.approved is False:
             response = self.request("DELETE", approval_url.geturl())
         else:
-            response = self.request("POST", approval_url.geturl(), **input.to_request_params())
+            response = self.request(
+                "POST", approval_url.geturl(), **input.to_request_params()
+            )
 
         if response.status != 200:
             fail_msg = f"Unable to approve {input.kind.value} for {input.name}"

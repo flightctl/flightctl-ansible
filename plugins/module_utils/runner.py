@@ -202,30 +202,36 @@ def perform_approval(module: FlightctlAPIModule) -> None:
     """
     try:
         kind = Kind(module.params.get("kind"))
-    except (TypeError, ValueError):
-        raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
+    except (TypeError, ValueError) as e:
+        raise ValidationException(f"Invalid Kind {module.params.get('kind')}") from e
 
     input = ApprovalInput(
         kind=kind,
         name=module.params.get("name"),
         approved=module.params.get("approved"),
         approved_by=module.params.get("approved_by"),
-        labels=module.params.get("labels")
+        labels=module.params.get("labels"),
     )
 
     try:
         existing = module.get_endpoint(input.kind.value, input.name)
         currently_approved = None
         if input.kind is Kind.ENROLLMENT:
-            currently_approved = existing.json.get('status', {}).get('approval', {}).get('approved', None)
+            currently_approved = (
+                existing.json.get("status", {})
+                .get("approval", {})
+                .get("approved", None)
+            )
         elif input.kind is Kind.CSR:
-            conditions = existing.json.get('status', {}).get('conditions', [])
-            approval_condition = next((c for c in conditions if c.get('type') == "Approved"), None)
+            conditions = existing.json.get("status", {}).get("conditions", [])
+            approval_condition = next(
+                (c for c in conditions if c.get("type") == "Approved"), None
+            )
             if approval_condition is not None:
                 # The api returns string values for booleans in the conditions
-                if approval_condition['status'].lower() == 'true':
+                if approval_condition["status"].lower() == "true":
                     currently_approved = True
-                elif approval_condition['status'].lower() == 'false':
+                elif approval_condition["status"].lower() == "false":
                     currently_approved = False
 
         if input.approved == currently_approved:
