@@ -10,7 +10,7 @@
           flightctl_ca_path: "{{ flightctl_ca_path | default(omit)}}"
           flightctl_token: "{{ flightctl_token | default(omit)}}"
           flightctl_host: "{{ flightctl_host | default(omit)}}"
-          flightctl_validate_certs: "{{ flightctl_validate_certs | default(omit)}}"
+          flightctl_validate_certs: "{{ flightctl_validate_certs | default(False)}}"
 
     - name: Delete devices
       flightctl.edge.flightctl:
