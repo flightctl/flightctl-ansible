@@ -162,22 +162,25 @@ class FlightctlModule(AnsibleModule):
         Args:
             config_loader (ConfigLoader): The ConfigLoader instance used to load configuration.
         """
-        for module_attr, config_attr in self.short_params.items():
+        for module_attr, _ in self.short_params.items():
             # Check if the ConfigLoader has the attribute and update module attribute if present
             if hasattr(config_loader, module_attr):
                 setattr(self, module_attr, getattr(config_loader, module_attr))
 
-        # Special case - when we have ca data but not a file from the config loader
-        # TODO use helper methods for some of this stuff rather than magic strings?
+        # Special case - when we have loaded certificate authority data that needs to be written
+        # to a file so our underlying requests library can use it
         if hasattr(config_loader, "ca_data"):
             self._create_tmp_crt(getattr(config_loader, "ca_data"))
 
     def _create_tmp_crt(self, encoded_data):
         decoded_data = base64.b64decode(encoded_data)
         with tempfile.NamedTemporaryFile(delete=False, suffix="crt") as temp_file:
+            # Write our decoded data to a .crt file and point our ca_path to the filename
             temp_file.write(decoded_data)
             temp_file.flush()
-            setattr(self, "ca_path", temp_file.name)
+            self.ca_path = temp_file.name
+
+            # Ensure the created temp file is deleted when our module exits
             self.add_cleanup_file(temp_file.name)
 
     def logout(self) -> None:
