@@ -54,7 +54,6 @@ class ConfigLoader:
                 "service": {
                     "type": "object",
                     "properties": {
-                        "certificate-authority-data": {"type": "string"},  # certificate authority data is a b64 encoded string of a PEM encoded .crt file
                         "server": {"type": "string"},  # server must be a string
                         "insecureSkipVerify": {
                             "type": ["boolean", "string"]
@@ -103,16 +102,13 @@ class ConfigLoader:
         if config_data["service"].get("insecureSkipVerify") is not None:
             verify_ssl_value = config_data["service"]["insecureSkipVerify"]
             if isinstance(verify_ssl_value, str):
-                setattr(self, "verify_ssl", not bool(strtobool(verify_ssl_value)))
+                setattr(self, "verify_ssl", bool(strtobool(verify_ssl_value)))
             else:
-                setattr(self, "verify_ssl", not bool(verify_ssl_value))
+                setattr(self, "verify_ssl", bool(verify_ssl_value))
 
         # Assign host, username, password, etc., from the config if they exist
         if config_data["service"].get("server"):
             setattr(self, "host", config_data["service"]["server"])
-
-        if config_data["service"].get("certificate-authority-data"):
-            setattr(self, "ca_data", config_data["service"]["certificate-authority-data"])
 
     def __repr__(self):
         """Represent the current configuration state."""
