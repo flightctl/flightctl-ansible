@@ -162,7 +162,7 @@ class FlightctlModule(AnsibleModule):
         Args:
             config_loader (ConfigLoader): The ConfigLoader instance used to load configuration.
         """
-        for module_attr, _ in self.short_params.items():
+        for module_attr, config_attr in self.short_params.items():
             # Check if the ConfigLoader has the attribute and update module attribute if present
             if hasattr(config_loader, module_attr):
                 setattr(self, module_attr, getattr(config_loader, module_attr))
