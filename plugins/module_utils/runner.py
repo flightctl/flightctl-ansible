@@ -142,13 +142,10 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
         ValidationException: If necessary definition parameters do not exist.
         FlightctlException: If performing the action fails.
     """
-    if definition["metadata"].get("name") is None:
-        raise ValidationException("A name must be specified")
-
     if definition.get("kind") is None:
         raise ValidationException("A kind value must be specified")
 
-    name = definition["metadata"]["name"]
+    name = definition["metadata"].get("name")
     kind = definition["kind"]
     fleet_name = module.params.get("fleet_name")
     state = module.params.get("state")
@@ -174,7 +171,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
             except Exception as e:
                 raise FlightctlException(f"Failed to delete resource: {e}") from e
 
-    elif module.params["state"] == "present":
+    elif state == "present":
         # validate(definition)
 
         if existing:

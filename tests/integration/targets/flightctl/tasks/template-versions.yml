@@ -50,7 +50,7 @@
       fleet_name: "{{ fleet_name }}"
     register: template_version_result
 
-  - name: Assert that multiple temlate versions were created
+  - name: Assert that three temlate versions were created
     ansible.builtin.assert:
       that:
         - template_version_result is success
@@ -62,7 +62,7 @@
       flightctl_validate_certs: false
       kind: TemplateVersion
       fleet_name: "{{ fleet_name }}"
-      name: template_version_result.result[0].name
+      name: "{{ template_version_result.result[0]['metadata']['name'] }}"
       state: absent
     register: delete_single_template_version_result
 
@@ -70,7 +70,50 @@
     ansible.builtin.assert:
       that:
         - delete_single_template_version_result is success
+        - delete_single_template_version_result.changed
 
+  - name: Get all template versions
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: TemplateVersion
+      fleet_name: "{{ fleet_name }}"
+    register: template_version_result
+
+  - name: Assert that there are now two that exist
+    ansible.builtin.assert:
+      that:
+        - template_version_result is success
+        - template_version_result.result | length == 2
+
+  - name: Delete all template versions owned by a fleet
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: TemplateVersion
+      fleet_name: "{{ fleet_name }}"
+      state: absent
+    register: delete_all_template_version_result
+
+  - name: Assert that there are now zero that exist
+    ansible.builtin.assert:
+      that:
+        - delete_all_template_version_result is success
+        - delete_all_template_version_result.changed
+
+  - name: Get all template versions
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: TemplateVersion
+      fleet_name: "{{ fleet_name }}"
+    register: template_version_result
+
+  - name: Assert that there are now zero that exist
+    ansible.builtin.assert:
+      that:
+        - template_version_result is success
+        - template_version_result.result | length == 0
   always:
     - flightctl.edge.flightctl:
         flightctl_host: "{{ flightctl_host }}"
