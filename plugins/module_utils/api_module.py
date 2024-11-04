@@ -121,6 +121,7 @@ class FlightctlAPIModule(FlightctlModule):
             cookies=CookieJar(),
             timeout=self.request_timeout,
             validate_certs=self.verify_ssl,
+            ca_path=self.ca_path,
         )
 
     @staticmethod
