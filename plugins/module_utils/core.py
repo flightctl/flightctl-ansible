@@ -140,8 +140,7 @@ class FlightctlModule(AnsibleModule):
         """
         Load configuration files using ConfigLoader.
         """
-        # TODO account for alias
-        config_file = self.params.get("flightctl_config_file", None)
+        config_file = self.params.get("flightctl_config_file") or self.params.get("config_file")
         if not config_file:
             return
 
