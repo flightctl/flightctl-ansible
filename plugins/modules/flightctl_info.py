@@ -25,6 +25,10 @@ options:
     description:
       - Use to specify an object name.
     type: str
+  fleet_name:
+    description:
+      - Use to specify a fleet that owns the assocated resource(s).
+    type: str
   label_selector:
     description:
       - A selector to restrict the list of returned objects by their labels.
@@ -55,6 +59,11 @@ EXAMPLES = r"""
   flightctl.edge.flightctl_info:
     kind: Device
     label_selector: "owner=test"
+
+- name: Get all template versions for a specific fleet
+  flightctl.edge.flightctl_info:
+    kind: TemplateVersion
+    fleet_name: test_fleet
 """
 
 
@@ -99,6 +108,7 @@ def main():
         kind=dict(required=True),
         name=dict(type="str"),
         label_selector=dict(type="str"),
+        fleet_name=dict(type="str")
     )
 
     module = FlightctlAPIModule(
@@ -107,6 +117,7 @@ def main():
 
     name = module.params.get("name")
     kind = module.params.get("kind")
+    fleet_name = module.params.get("fleet_name")
 
     params = {}
     if module.params.get("label_selector"):
@@ -114,7 +125,7 @@ def main():
 
     # Attempt to look up resource based on the provided name
     try:
-        result = module.get_one_or_many(kind, name=name, **params)
+        result = module.get_one_or_many(kind, name=name, fleet_name=fleet_name, **params)
     except FlightctlException as e:
         module.fail_json(msg=f"Failed to get resource: {e}")
 

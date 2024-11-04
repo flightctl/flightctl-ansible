@@ -1,0 +1,106 @@
+---
+- name: Test Get Device Info
+  vars:
+    deivce_name: ansible-integration-test-device
+    deivce_name_with_label_1: ansible-integration-test-device-label-1
+    deivce_name_with_label_2: ansible-integration-test-device-label-2
+  block:
+  - name: Create a test device
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      name: "{{ deivce_name }}"
+      api_version: v1alpha1
+
+  - name: Get test device
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      name: "{{ deivce_name }}"
+    register: device_result
+
+  - name: Assert that device info was fetched
+    ansible.builtin.assert:
+      that:
+        - device_result is success
+        - device_result.result[0].metadata.name == "ansible-integration-test-device"
+
+  - name: Create a test device with a label
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      name: "{{ deivce_name_with_label_1 }}"
+      api_version: v1alpha1
+      resource_definition:
+        metadata:
+          labels:
+            machine_type: forklift
+
+  - name: Create a second test device with a label
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      name: "{{ deivce_name_with_label_2 }}"
+      api_version: v1alpha1
+      resource_definition:
+        metadata:
+          labels:
+            machine_type: forklift
+
+  - name: Query for all devices by label
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      label_selector: machine_type=forklift
+    register: device_with_label_result
+
+  - name: Assert that the device info was fetched by label
+    ansible.builtin.assert:
+      that:
+        - device_with_label_result is success
+        - device_with_label_result.result | length == 2
+        - device_with_label_result.result[0].metadata.name == "ansible-integration-test-device-label-1"
+        - device_with_label_result.result[1].metadata.name == "ansible-integration-test-device-label-2"
+
+  - name: Query for all devices
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+    register: all_devices_result
+
+  - name: Assert that the device info was fetched by label
+    ansible.builtin.assert:
+      that:
+        - all_devices_result is success
+        - all_devices_result.result | length == 3
+
+  always:
+    - name: Delete test device
+      flightctl.edge.flightctl:
+        flightctl_host: "{{ flightctl_host }}"
+        flightctl_validate_certs: false
+        kind: Device
+        name: "{{ deivce_name }}"
+        state: absent
+
+    - name: Delete test device with label 1
+      flightctl.edge.flightctl:
+        flightctl_host: "{{ flightctl_host }}"
+        flightctl_validate_certs: false
+        kind: Device
+        name: "{{ deivce_name_with_label_1 }}"
+        state: absent
+
+    - name: Delete test device with label 2
+      flightctl.edge.flightctl:
+        flightctl_host: "{{ flightctl_host }}"
+        flightctl_validate_certs: false
+        kind: Device
+        name: "{{ deivce_name_with_label_2 }}"
+        state: absent

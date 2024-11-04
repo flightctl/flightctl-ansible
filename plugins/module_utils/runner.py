@@ -150,6 +150,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
 
     name = definition["metadata"]["name"]
     kind = definition["kind"]
+    fleet_name = module.params.get("fleet_name")
     state = module.params.get("state")
     params = {}
     result: Dict[str, Any] = {}
@@ -159,7 +160,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
         params["labelSelector"] = module.params["label_selector"]
 
     try:
-        existing = module.get_one_or_many(kind, name=name, **params)
+        existing = module.get_one_or_many(kind, name=name, fleet_name=fleet_name, **params)
     except Exception as e:
         raise FlightctlException(f"Failed to get resource: {e}") from e
 
@@ -169,7 +170,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 module.exit_json(**{"changed": True})
 
             try:
-                changed, result = module.delete(kind, name)
+                changed, result = module.delete(kind, name, fleet_name)
             except Exception as e:
                 raise FlightctlException(f"Failed to delete resource: {e}") from e
 

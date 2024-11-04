@@ -89,7 +89,8 @@ class FlightctlAPIModule(FlightctlModule):
         "device": "/api/v1/devices",
         "repository": "/api/v1/repositories",
         "enrollmentrequest": "api/v1/enrollmentrequests",
-        "certificatesigningrequest": "api/v1/certificatesigningrequests"
+        "certificatesigningrequest": "api/v1/certificatesigningrequests",
+        "templateversion": "api/v1/fleets/{0}/templateversions",
     }
 
     def __init__(
@@ -138,7 +139,11 @@ class FlightctlAPIModule(FlightctlModule):
         return endpoint.lower() if endpoint else None
 
     def get_endpoint(
-        self, endpoint: str, name: Optional[str] = None, **kwargs: Any
+        self,
+        endpoint: str,
+        name: Optional[str] = None,
+        fleet_name: Optional[str] = None,
+        **kwargs: Any
     ) -> Response:
         """
         Sends a GET request to the specified API endpoint.
@@ -150,7 +155,7 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        url = self.build_url(endpoint, name, query_params=kwargs)
+        url = self.build_url(endpoint, name, fleet_name=fleet_name, query_params=kwargs)
         return self.request("GET", url.geturl(), **kwargs)
 
     def patch_endpoint(
@@ -184,7 +189,7 @@ class FlightctlAPIModule(FlightctlModule):
         url = self.build_url(endpoint, None)
         return self.request("POST", url.geturl(), **kwargs)
 
-    def delete_endpoint(self, endpoint: str, name: str, **kwargs: Any) -> Response:
+    def delete_endpoint(self, endpoint: str, name: str, fleet_name: str, **kwargs: Any) -> Response:
         """
         Sends a DELETE request to the specified API endpoint.
 
@@ -195,13 +200,14 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        url = self.build_url(endpoint, name)
+        url = self.build_url(endpoint, name, fleet_name)
         return self.request("DELETE", url.geturl(), **kwargs)
 
     def build_url(
         self,
         endpoint: str,
         name: Optional[str] = None,
+        fleet_name: Optional[str] = None,
         query_params: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -229,6 +235,10 @@ class FlightctlAPIModule(FlightctlModule):
             base_path = f"{self.url_prefix.rstrip('/')}{api_endpoint}/{name}"
         else:
             base_path = f"{self.url_prefix.rstrip('/')}{api_endpoint}"
+
+        # TODO something more extensible
+        if normalized_endpoint == "templateversion":
+            base_path = base_path.format(fleet_name)
 
         # Update the URL path with the base path
         url = self.url._replace(path=base_path)
@@ -370,7 +380,11 @@ class FlightctlAPIModule(FlightctlModule):
         pass
 
     def get_one_or_many(
-        self, endpoint: str, name: Optional[str] = None, **kwargs: Any
+        self,
+        endpoint: str,
+        name: Optional[str] = None,
+        fleet_name: Optional[str] = None,
+        **kwargs: Any
     ) -> List:
         """
         Retrieves one or many resources from the API.
@@ -386,7 +400,7 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the response status is not 200 or 404.
         """
-        response = self.get_endpoint(endpoint, name, **kwargs)
+        response = self.get_endpoint(endpoint, name, fleet_name, **kwargs)
         if response.status not in [200, 404]:
             fail_msg = f"Got a {response.status} when trying to get {endpoint}"
             if "message" in response.json:
@@ -470,7 +484,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         return changed, (response.json if diffs else existing)
 
-    def delete(self, endpoint: str, name: str) -> Tuple[bool, Dict[str, Any]]:
+    def delete(self, endpoint: str, name: str, fleet_name: str) -> Tuple[bool, Dict[str, Any]]:
         """
         Deletes a resource from the API.
 
@@ -488,7 +502,7 @@ class FlightctlAPIModule(FlightctlModule):
             FlightctlException: If the deletion fails.
         """
         changed: bool = False
-        response = self.delete_endpoint(endpoint, name)
+        response = self.delete_endpoint(endpoint, name, fleet_name)
         if response.status == 200:
             changed |= True
         else:
