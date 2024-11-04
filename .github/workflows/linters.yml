@@ -1,0 +1,27 @@
+---
+on: [push, pull_request]
+name: Linters
+defaults:
+ run:
+  working-directory: ansible_collections/flightctl/edge
+jobs:
+  linters:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ansible_collections/flightctl/edge
+          submodules: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          cache: pip
+          python-version: '3.10'
+          cache-dependency-path: "*requirements*.txt"
+
+      - name: Install tox
+        run: python3 -m pip install --upgrade pip wheel tox
+
+      - name: Run tox
+        run: tox -e lint

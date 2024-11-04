@@ -2,34 +2,29 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
+
 try:
     import jsonschema
-except ImportError as imp_exc:
-    JSONSCHEMA_IMPORT_ERROR = imp_exc
-else:
-    JSONSCHEMA_IMPORT_ERROR = None
+except ImportError:
+    pass  # Handled by FlightctlModule
 
 try:
     import yaml
-except ImportError as imp_exc:
-    PYYAML_IMPORT_ERROR = imp_exc
-else:
-    PYYAML_IMPORT_ERROR = None
+except ImportError:
+    pass  # Handled by FlightctlModule
 
 from ansible.module_utils.parsing.convert_bool import boolean as strtobool
+
+from .exceptions import FlightctlException
 
 
 class ConfigLoader:
     def __init__(self, config_file=None):
-        if JSONSCHEMA_IMPORT_ERROR:
-            raise JSONSCHEMA_IMPORT_ERROR
-        if PYYAML_IMPORT_ERROR:
-            raise PYYAML_IMPORT_ERROR
-
+        config_data = None
         # Assign token from config if it exists
         # Load from config file if provided
         if config_file:
@@ -77,15 +72,17 @@ class ConfigLoader:
             jsonschema.validate(instance=config_data, schema=schema)
 
         except FileNotFoundError as e:
-            raise Exception(f"The file '{config_file}' was not found: {e}") from e
+            raise FlightctlException(
+                f"The file '{config_file}' was not found: {e}"
+            ) from e
         except yaml.YAMLError as e:
-            raise Exception(
+            raise FlightctlException(
                 f"Failed to parse YAML file due to a syntax issue: {e}"
             ) from e
         except jsonschema.ValidationError as e:
-            raise Exception(f"Schema validation error: {e}") from e
+            raise FlightctlException(f"Schema validation error: {e}") from e
         except Exception as e:
-            raise Exception(
+            raise FlightctlException(
                 f"An unknown exception occurred while loading config file: {e}"
             ) from e
 

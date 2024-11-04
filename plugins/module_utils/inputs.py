@@ -2,7 +2,7 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
@@ -23,7 +23,9 @@ class ApprovalInput:
 
     def __post_init__(self):
         if self.kind not in [Kind.CSR, Kind.ENROLLMENT]:
-            raise ValidationException(f"Kind {self.kind.value} does not support approval")
+            raise ValidationException(
+                f"Kind {self.kind.value} does not support approval"
+            )
         if not self.name:
             raise ValidationException("Name must be specified")
         if self.approved is None:
@@ -34,7 +36,7 @@ class ApprovalInput:
             approved=self.approved,
         )
         if self.approved_by:
-            params['approvedBy'] = self.approved_by
+            params["approvedBy"] = self.approved_by
         if self.labels:
-            params['labels'] = self.labels
+            params["labels"] = self.labels
         return params

@@ -2,7 +2,7 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
@@ -10,17 +10,13 @@ from typing import Any, Dict, List, Tuple
 
 try:
     import yaml
-except ImportError as imp_exc:
-    PYYAML_IMPORT_ERROR = imp_exc
-else:
-    PYYAML_IMPORT_ERROR = None
+except ImportError:
+    pass  # Handled by FlightctlModule
 
 try:
     from openapi_schema_validator import OAS30Validator
-except ImportError as imp_exc:
-    OPENAPI_SCHEMA_IMPORT_ERROR = imp_exc
-else:
-    OPENAPI_SCHEMA_IMPORT_ERROR = None
+except ImportError:
+    pass  # Handled by FlightctlModule
 
 from .api_module import FlightctlAPIModule
 from .constants import Kind
@@ -39,8 +35,6 @@ def load_schema(file_path: str) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: The loaded schema as a dictionary.
     """
-    if PYYAML_IMPORT_ERROR:
-        raise PYYAML_IMPORT_ERROR
     with open(file_path, "r") as file:
         schema = yaml.safe_load(file)
     return schema
@@ -57,9 +51,6 @@ def validate(definition: Dict[str, Any]) -> None:
         ValueError: If the resource kind is not found in the schema.
         ValidationException: If the validation fails.
     """
-    if OPENAPI_SCHEMA_IMPORT_ERROR:
-        raise OPENAPI_SCHEMA_IMPORT_ERROR
-
     kind = definition["kind"]
     openapi_schema = load_schema("../../api/v1alpha1/openapi.yml")
     components = openapi_schema.get("components", {}).get("schemas", {})
@@ -211,30 +202,36 @@ def perform_approval(module: FlightctlAPIModule) -> None:
     """
     try:
         kind = Kind(module.params.get("kind"))
-    except (TypeError, ValueError):
-        raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
+    except (TypeError, ValueError) as e:
+        raise ValidationException(f"Invalid Kind {module.params.get('kind')}") from e
 
     input = ApprovalInput(
         kind=kind,
         name=module.params.get("name"),
         approved=module.params.get("approved"),
         approved_by=module.params.get("approved_by"),
-        labels=module.params.get("labels")
+        labels=module.params.get("labels"),
     )
 
     try:
         existing = module.get_endpoint(input.kind.value, input.name)
         currently_approved = None
         if input.kind is Kind.ENROLLMENT:
-            currently_approved = existing.json.get('status', {}).get('approval', {}).get('approved', None)
+            currently_approved = (
+                existing.json.get("status", {})
+                .get("approval", {})
+                .get("approved", None)
+            )
         elif input.kind is Kind.CSR:
-            conditions = existing.json.get('status', {}).get('conditions', [])
-            approval_condition = next((c for c in conditions if c.get('type') == "Approved"), None)
+            conditions = existing.json.get("status", {}).get("conditions", [])
+            approval_condition = next(
+                (c for c in conditions if c.get("type") == "Approved"), None
+            )
             if approval_condition is not None:
                 # The api returns string values for booleans in the conditions
-                if approval_condition['status'].lower() == 'true':
+                if approval_condition["status"].lower() == "true":
                     currently_approved = True
-                elif approval_condition['status'].lower() == 'false':
+                elif approval_condition["status"].lower() == "false":
                     currently_approved = False
 
         if input.approved == currently_approved:

@@ -2,7 +2,7 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
@@ -13,8 +13,7 @@ from urllib.parse import ParseResult
 from ansible.module_utils.six.moves.http_cookiejar import CookieJar
 from ansible.module_utils.six.moves.urllib.error import HTTPError
 from ansible.module_utils.six.moves.urllib.parse import urlencode
-from ansible.module_utils.urls import (ConnectionError, Request,
-                                       SSLValidationError)
+from ansible.module_utils.urls import ConnectionError, Request, SSLValidationError
 
 from .constants import Kind
 from .core import FlightctlModule
@@ -89,7 +88,7 @@ class FlightctlAPIModule(FlightctlModule):
         "device": "/api/v1/devices",
         "repository": "/api/v1/repositories",
         "enrollmentrequest": "api/v1/enrollmentrequests",
-        "certificatesigningrequest": "api/v1/certificatesigningrequests"
+        "certificatesigningrequest": "api/v1/certificatesigningrequests",
     }
 
     def __init__(
@@ -243,7 +242,7 @@ class FlightctlAPIModule(FlightctlModule):
     def request(
         self,
         method: str,
-        url: str,
+        url: ParseResult,
         patch: Optional[Any] = None,
         **kwargs: Any,
     ) -> Response:
@@ -401,9 +400,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         return [response.json]
 
-    def create(
-        self, definition: Dict[str, Any]
-    ) -> Tuple[bool, Dict[str, Any]]:
+    def create(self, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
         """
         Creates a new resource in the API.
 
@@ -420,12 +417,14 @@ class FlightctlAPIModule(FlightctlModule):
             FlightctlException: If the creation fails.
         """
         changed: bool = False
-        response = self.post_endpoint(definition.get("kind"), **definition)
+        response = self.post_endpoint(definition["kind"], **definition)
         if response.status == 201:
             changed |= True
         else:
             msg = (
-                f"Unable to create {definition.get('kind')} {definition.get('metadata', None).get('name', None)}: {response.status}"
+                f"Unable to create {definition['kind']} "
+                f"{definition.get('metadata', None).get('name', None)}: "
+                f"{response.status}"
             )
             raise FlightctlException(msg)
 
@@ -457,6 +456,9 @@ class FlightctlAPIModule(FlightctlModule):
         obj, error = json_patch(existing, patch)
         if error:
             raise FlightctlException(f"There was an error with json_patch: {error}")
+
+        if not obj:
+            return changed, existing
 
         match, diffs = diff_dicts(existing, obj)
         if diffs:
@@ -514,7 +516,9 @@ class FlightctlAPIModule(FlightctlModule):
         if input.kind is Kind.CSR and input.approved is False:
             response = self.request("DELETE", approval_url.geturl())
         else:
-            response = self.request("POST", approval_url.geturl(), **input.to_request_params())
+            response = self.request(
+                "POST", approval_url.geturl(), **input.to_request_params()
+            )
 
         if response.status != 200:
             fail_msg = f"Unable to approve {input.kind.value} for {input.name}"
