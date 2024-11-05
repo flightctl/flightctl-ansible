@@ -9,7 +9,11 @@ __metaclass__ = type
 from enum import Enum
 
 
-# TODO expand Kind to include additional types
 class Kind(Enum):
-    ENROLLMENT = "EnrollmentRequest"
     CSR = "CertificateSigningRequest"
+    DEVICE = "Device"
+    ENROLLMENT = "EnrollmentRequest"
+    FLEET = "Fleet"
+    RESOURCE_SYNC = "ResourceSync"
+    REPOSITORY = "Repository"
+    TEMPLATE_VERSION = "TemplateVersion"

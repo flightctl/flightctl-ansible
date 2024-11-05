@@ -27,12 +27,15 @@ options:
     type: str
   fleet_name:
     description:
-      - Use to specify a fleet that owns the assocated resource(s).
+      - Use to specify a fleet name for accessing templateversions (Only applicable when kind is TemplateVersions).
     type: str
   label_selector:
     description:
       - A selector to restrict the list of returned objects by their labels.
     type: str
+  owner:
+    description:
+      - Filter results by owner, specified in kind/name format.
   rendered:
     description:
       - Return the rendered device configuration that is presented to the device (Only applicable when kind is Device).
@@ -104,7 +107,9 @@ result:
 
 
 from ..module_utils.api_module import FlightctlAPIModule
-from ..module_utils.exceptions import FlightctlException
+from ..module_utils.exceptions import FlightctlException, ValidationException
+from ..module_utils.inputs import InfoInput
+from ..module_utils.constants import Kind
 
 
 def main():
@@ -114,6 +119,7 @@ def main():
         name=dict(type="str"),
         label_selector=dict(type="str"),
         fleet_name=dict(type="str"),
+        owner=dict(type="str"),
         rendered=dict(type=bool),
     )
 
@@ -121,17 +127,29 @@ def main():
         argument_spec=argument_spec,
     )
 
-    name = module.params.get("name")
-    kind = module.params.get("kind")
-    fleet_name = module.params.get("fleet_name")
+    # TODO move this to a perform function instead?
+    try:
+        kind = Kind(module.params.get("kind"))
+    except (TypeError, ValueError):
+        raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
 
-    params = {}
-    if module.params.get("label_selector"):
-        params["labelSelector"] = module.params["label_selector"]
+    input = InfoInput(
+        kind=kind,
+        name=module.params.get("name"),
+        label_selector=module.params.get("label_selector"),
+        fleet_name=module.params.get("fleet_name"),
+        owner=module.params.get("owner"),
+        rendered=module.params.get("rendered")
+    )
 
     # Attempt to look up resource based on the provided name
     try:
-        result = module.get_one_or_many(kind, name=name, fleet_name=fleet_name, **params)
+        result = module.get_one_or_many(
+          input.kind.value,
+          name=input.name,
+          fleet_name=input.fleet_name,
+          **input.to_request_params()
+        )
     except FlightctlException as e:
         module.fail_json(msg=f"Failed to get resource: {e}")
 

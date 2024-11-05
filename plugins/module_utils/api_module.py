@@ -83,8 +83,6 @@ class FlightctlAPIModule(FlightctlModule):
         API_ENDPOINTS (dict): Mapping of resource types to API endpoints.
     """
 
-    # TODO - add:
-    # GET Status endpoints
     API_ENDPOINTS: Dict[str, str] = {
         "device": "/api/v1/devices",
         "fleet": "/api/v1/fleets",

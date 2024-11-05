@@ -4,14 +4,34 @@
     deivce_name: ansible-integration-test-device
     deivce_name_with_label_1: ansible-integration-test-device-label-1
     deivce_name_with_label_2: ansible-integration-test-device-label-2
+    fleet_name: ansible-integration-test-fleet
   block:
+  - name: Create a test fleet
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Fleet
+      name: "{{ fleet_name }}"
+      resource_definition:
+        spec:
+          selector:
+            matchLabels:
+              fleet: "{{ fleet_name }}"
+          template:
+            spec:
+              os:
+                image: quay.io/redhat/rhde:9.2
+
   - name: Create a test device
     flightctl.edge.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
       name: "{{ deivce_name }}"
-      api_version: v1alpha1
+      resource_definition:
+        metadata:
+          labels:
+            fleet: "{{ fleet_name }}"
 
   - name: Get test device
     flightctl.edge.flightctl_info:
@@ -64,8 +84,23 @@
       that:
         - device_with_label_result is success
         - device_with_label_result.result | length == 2
-        - device_with_label_result.result[0].metadata.name == "ansible-integration-test-device-label-1"
-        - device_with_label_result.result[1].metadata.name == "ansible-integration-test-device-label-2"
+        - device_with_label_result.result[0].metadata.name is match("ansible-integration-test-device-label-*")
+        - device_with_label_result.result[1].metadata.name is match("ansible-integration-test-device-label-*")
+
+  - name: Query for all devices by owner
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      owner: "Fleet/{{ fleet_name }}"
+    register: device_with_owner_result
+
+  - name: Assert that the device info was filtered by owner
+    ansible.builtin.assert:
+      that:
+        - device_with_owner_result is success
+        - device_with_owner_result.result | length == 1
+        - device_with_owner_result.result[0].metadata.name == "ansible-integration-test-device"
 
   - name: Query for all devices
     flightctl.edge.flightctl_info:
@@ -103,4 +138,12 @@
         flightctl_validate_certs: false
         kind: Device
         name: "{{ deivce_name_with_label_2 }}"
+        state: absent
+
+    - name: Delete test fleet
+      flightctl.edge.flightctl:
+        flightctl_host: "{{ flightctl_host }}"
+        flightctl_validate_certs: false
+        kind: Fleet
+        name: "{{ fleet_name }}"
         state: absent

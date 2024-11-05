@@ -38,3 +38,30 @@ class ApprovalInput:
         if self.labels:
             params['labels'] = self.labels
         return params
+
+@dataclass
+class InfoInput:
+    kind: Kind
+    name: str
+    label_selector: Optional[str] = None
+    owner: Optional[str] = None
+    fleet_name: Optional[str] = None
+    rendered: Optional[bool] = None
+
+    def __post_init__(self):
+        if not self.kind:
+            raise ValidationException("Kind must be specified")
+        if self.owner and self.kind not in [Kind.DEVICE, Kind.FLEET]:
+            raise ValidationException(f"Owner field is only valid for Device and Fleet kinds")
+        if self.rendered and self.kind is not Kind.DEVICE:
+            raise ValidationException(f"Rendered field is only valid for Device kind")
+        if self.fleet_name and self.kind is not Kind.TEMPLATE_VERSION:
+            raise ValidationException(f"Fleet name field is only valid for TemplateVersion kind")
+
+    def to_request_params(self):
+        params = dict()
+        if self.label_selector:
+            params['labelSelector'] = self.label_selector
+        if self.owner:
+            params['owner'] = self.owner
+        return params
