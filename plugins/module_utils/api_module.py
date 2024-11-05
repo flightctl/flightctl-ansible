@@ -83,14 +83,17 @@ class FlightctlAPIModule(FlightctlModule):
         API_ENDPOINTS (dict): Mapping of resource types to API endpoints.
     """
 
+    # TODO - add:
+    # GET Status endpoints
     API_ENDPOINTS: Dict[str, str] = {
+        "device": "/api/v1/devices",
         "fleet": "/api/v1/fleets",
         "resourcesync": "/api/v1/resourcesyncs",
-        "device": "/api/v1/devices",
         "repository": "/api/v1/repositories",
         "enrollmentrequest": "api/v1/enrollmentrequests",
         "certificatesigningrequest": "api/v1/certificatesigningrequests",
         "templateversion": "api/v1/fleets/{0}/templateversions",
+        "enrollmentconfig": "api/v1/enrollmentconfig",
     }
 
     def __init__(

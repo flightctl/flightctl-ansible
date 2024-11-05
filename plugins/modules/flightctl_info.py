@@ -33,6 +33,11 @@ options:
     description:
       - A selector to restrict the list of returned objects by their labels.
     type: str
+  rendered:
+    description:
+      - Return the rendered device configuration that is presented to the device (Only applicable when kind is Device).
+    type: bool
+    default: False
 extends_documentation_fragment:
   - flightctl.edge.auth
 requirements:
@@ -108,7 +113,8 @@ def main():
         kind=dict(required=True),
         name=dict(type="str"),
         label_selector=dict(type="str"),
-        fleet_name=dict(type="str")
+        fleet_name=dict(type="str"),
+        rendered=dict(type=bool),
     )
 
     module = FlightctlAPIModule(
