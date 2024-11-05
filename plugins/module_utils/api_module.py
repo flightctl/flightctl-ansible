@@ -144,6 +144,7 @@ class FlightctlAPIModule(FlightctlModule):
         endpoint: str,
         name: Optional[str] = None,
         fleet_name: Optional[str] = None,
+        rendered: Optional[bool] = None,
         **kwargs: Any
     ) -> Response:
         """
@@ -157,6 +158,12 @@ class FlightctlAPIModule(FlightctlModule):
             Response: The response object.
         """
         url = self.build_url(endpoint, name, fleet_name=fleet_name, query_params=kwargs)
+
+        # TODO not this
+        if rendered:
+            rendered_path = url.path + "/rendered"
+            url = url._replace(path=rendered_path)
+
         return self.request("GET", url.geturl(), **kwargs)
 
     def patch_endpoint(
@@ -385,6 +392,7 @@ class FlightctlAPIModule(FlightctlModule):
         endpoint: str,
         name: Optional[str] = None,
         fleet_name: Optional[str] = None,
+        rendered: Optional[bool] = None,
         **kwargs: Any
     ) -> List:
         """
@@ -401,7 +409,7 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the response status is not 200 or 404.
         """
-        response = self.get_endpoint(endpoint, name, fleet_name, **kwargs)
+        response = self.get_endpoint(endpoint, name, fleet_name, rendered, **kwargs)
         if response.status not in [200, 404]:
             fail_msg = f"Got a {response.status} when trying to get {endpoint}"
             if "message" in response.json:

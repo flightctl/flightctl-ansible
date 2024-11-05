@@ -47,6 +47,21 @@
         - device_result is success
         - device_result.result[0].metadata.name == "ansible-integration-test-device"
 
+  - name: Get rendered spec for the test device
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      name: "{{ deivce_name }}"
+      rendered: True
+    register: rendered_result
+
+  - name: Assert that the rendered device info was fetched
+    ansible.builtin.assert:
+      that:
+        - rendered_result is success
+        - rendered_result.result[0].os.image == "quay.io/redhat/rhde:9.2"
+
   - name: Create a test device with a label
     flightctl.edge.flightctl:
       flightctl_host: "{{ flightctl_host }}"

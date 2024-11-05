@@ -148,6 +148,7 @@ def main():
           input.kind.value,
           name=input.name,
           fleet_name=input.fleet_name,
+          rendered=input.rendered,
           **input.to_request_params()
         )
     except FlightctlException as e:
