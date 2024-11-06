@@ -50,6 +50,8 @@ class InfoInput:
     fleet_name: Optional[str] = None
     rendered: Optional[bool] = None
     summary_only: Optional[bool] = True
+    limit: Optional[int] = None
+    continue_token: Optional[str] = None
 
     def __post_init__(self):
         if not self.kind:
@@ -74,4 +76,8 @@ class InfoInput:
             params['owner'] = self.owner
         if self.summary_only:
             params['summaryOnly'] = self.summary_only
+        if self.limit:
+            params['limit'] = self.limit
+        if self.continue_token:
+            params['continue'] = self.continue_token
         return params

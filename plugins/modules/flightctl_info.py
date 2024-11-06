@@ -46,6 +46,14 @@ options:
       - Return only the summary info for devices.  Only the 'owner' and 'label_selector' parameters are supported. Only applicable when kind is Device.
     type: bool
     default: False
+  limit:
+    description:
+      - Maximum number of resources returned.  Only applicable when querying lists of resources.
+    type: int
+  continue_token:
+    description:
+      - Use to retrieve the next set of available objects.
+    type: str
 extends_documentation_fragment:
   - flightctl.edge.auth
 requirements:
@@ -116,9 +124,16 @@ result:
           type: dict
   metadata:
     description:
-      - TODO
+      - Request metadata for requesting additional resources form list endpoints.
     type: dict
     returned: when C(name) is not used and a list of objects is fetched
+    contains:
+      continue_token:
+        description: An opaque token used to issue another request to the endpoint that served a list to retrieve the next set of available objects.
+        returned: when C(limit) is used and less values than the limit are returned, or when the number of items returned is greater than the server default limit.
+      remainingItemCount:
+        description: The number of subsequent items in the list which are not included in this list response.
+        returned: when C(limit) is used and less values than the limit are returned, or when the number of items returned is greater than the server default limit.
   summary:
     description:
       - A summary rollup of queried objects
@@ -142,7 +157,9 @@ def main():
         fleet_name=dict(type="str"),
         owner=dict(type="str"),
         rendered=dict(type=bool),
-        summary_only=dict(type=bool)
+        summary_only=dict(type=bool),
+        limit=(dict(type=int)),
+        continue_token=(dict(type=str))
     )
 
     module = FlightctlAPIModule(
@@ -163,7 +180,9 @@ def main():
         fleet_name=module.params.get("fleet_name"),
         owner=module.params.get("owner"),
         rendered=module.params.get("rendered"),
-        summary_only=module.params.get("summary_only")
+        summary_only=module.params.get("summary_only"),
+        limit=module.params.get("limit"),
+        continue_token=module.params.get("continue_token")
     )
 
     # Attempt to look up resource based on the provided name
@@ -181,6 +200,7 @@ def main():
     # TODO figure out how the output is seen by ansible to avoid stuff like
     # device_with_owner_result.result["items"][0].metadata.name == "ansible-integration-test-device"
     # where sometimes dot notation works and sometimes it doesn't and its unclear why
+    # maybe something to do with dataclass internals?
     module.exit_json(result=result.dict)
 
 

@@ -74,9 +74,15 @@ class Response:
 
 
 @dataclass
+class Metadata:
+    continue_token: str
+    remaining_item_count: int
+
+
+@dataclass
 class ListResponse:
     items: List[dict]
-    metadata: Optional[dict] = None
+    metadata: Optional[Metadata] = None
     summary: Optional[dict] = None
 
     @property
@@ -433,9 +439,16 @@ class FlightctlAPIModule(FlightctlModule):
             return ListResponse(items=[])
 
         if response.json and response.json.get("items") is not None:
+            metadata = None
+            if response.json.get("metadata"):
+                metadata = Metadata(
+                    continue_token=response.json.get("metadata").get("continue"),
+                    remaining_item_count=response.json.get("metadata").get("remainingItemCount"),
+                )
+
             return ListResponse(
                 items=response.json.get("items"),
-                metadata=response.json.get("metadata"),
+                metadata=metadata,
                 summary=response.json.get("summary")
             )
 
