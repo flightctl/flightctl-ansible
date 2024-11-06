@@ -45,7 +45,7 @@
     ansible.builtin.assert:
       that:
         - device_result is success
-        - device_result.result[0].metadata.name == "ansible-integration-test-device"
+        - device_result.result["items"][0].metadata.name == "ansible-integration-test-device"
 
   - name: Get rendered spec for the test device
     flightctl.edge.flightctl_info:
@@ -60,7 +60,7 @@
     ansible.builtin.assert:
       that:
         - rendered_result is success
-        - rendered_result.result[0].os.image == "quay.io/redhat/rhde:9.2"
+        - rendered_result.result["items"][0].os.image == "quay.io/redhat/rhde:9.2"
 
   - name: Create a test device with a label
     flightctl.edge.flightctl:
@@ -98,9 +98,9 @@
     ansible.builtin.assert:
       that:
         - device_with_label_result is success
-        - device_with_label_result.result | length == 2
-        - device_with_label_result.result[0].metadata.name is match("ansible-integration-test-device-label-*")
-        - device_with_label_result.result[1].metadata.name is match("ansible-integration-test-device-label-*")
+        - device_with_label_result.result["items"] | length == 2
+        - device_with_label_result.result["items"][0].metadata.name is match("ansible-integration-test-device-label-*")
+        - device_with_label_result.result["items"][1].metadata.name is match("ansible-integration-test-device-label-*")
 
   - name: Query for all devices by owner
     flightctl.edge.flightctl_info:
@@ -114,8 +114,8 @@
     ansible.builtin.assert:
       that:
         - device_with_owner_result is success
-        - device_with_owner_result.result | length == 1
-        - device_with_owner_result.result[0].metadata.name == "ansible-integration-test-device"
+        - device_with_owner_result.result["items"] | length == 1
+        - device_with_owner_result.result["items"][0].metadata.name == "ansible-integration-test-device"
 
   - name: Query for all devices
     flightctl.edge.flightctl_info:
@@ -128,7 +128,22 @@
     ansible.builtin.assert:
       that:
         - all_devices_result is success
-        - all_devices_result.result | length == 3
+        - all_devices_result.result["items"] | length == 3
+
+  - name: Query for all devices with summary_only
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      summary_only: True
+    register: summary_only_result
+
+  - name: Assert that the device summary info was fetched
+    ansible.builtin.assert:
+      that:
+        - summary_only_result is success
+        - summary_only_result.result["items"] | length == 0
+        - summary_only_result.result["summary"]["total"] == 3
 
   always:
     - name: Delete test device

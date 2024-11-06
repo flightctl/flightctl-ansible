@@ -157,12 +157,12 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
         params["labelSelector"] = module.params["label_selector"]
 
     try:
-        existing = module.get_one_or_many(kind, name=name, fleet_name=fleet_name, **params)
+        existing_result = module.get_one_or_many(kind, name=name, fleet_name=fleet_name, **params)
     except Exception as e:
         raise FlightctlException(f"Failed to get resource: {e}") from e
 
     if state == "absent":
-        if existing:
+        if existing_result.items:
             if module.check_mode:
                 module.exit_json(**{"changed": True})
 
@@ -174,13 +174,13 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
     elif state == "present":
         # validate(definition)
 
-        if existing:
+        if existing_result.items:
             # Update resource
             if module.check_mode:
                 module.exit_json(**{"changed": True})
 
             try:
-                changed, result = module.update(existing[0], definition)
+                changed, result = module.update(existing_result.items[0], definition)
             except Exception as e:
                 raise FlightctlException(f"Failed to update resource: {e}") from e
         else:

@@ -7,6 +7,7 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 import json
+from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import ParseResult
 
@@ -70,6 +71,17 @@ class Response:
                     f"Received invalid JSON response: {self.data}"
                 ) from value_exp
         return self._json
+
+
+@dataclass
+class ListResponse:
+    items: List[dict]
+    metadata: Optional[dict] = None
+    summary: Optional[dict] = None
+
+    @property
+    def dict(self) -> dict:
+        return asdict(self)
 
 
 class FlightctlAPIModule(FlightctlModule):
@@ -394,7 +406,7 @@ class FlightctlAPIModule(FlightctlModule):
         fleet_name: Optional[str] = None,
         rendered: Optional[bool] = None,
         **kwargs: Any
-    ) -> List:
+    ) -> ListResponse:
         """
         Retrieves one or many resources from the API.
 
@@ -418,12 +430,18 @@ class FlightctlAPIModule(FlightctlModule):
 
         if response.status == 404:
             # Resource not found
-            return []
+            return ListResponse(items=[])
 
         if response.json and response.json.get("items") is not None:
-            return response.json["items"] if len(response.json.get("items")) > 0 else []
+            return ListResponse(
+                items=response.json.get("items"),
+                metadata=response.json.get("metadata"),
+                summary=response.json.get("summary")
+            )
 
-        return [response.json]
+        return ListResponse(
+            items=[response.json]
+        )
 
     def create(
         self, definition: Dict[str, Any]

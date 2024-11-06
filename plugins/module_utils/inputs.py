@@ -39,6 +39,8 @@ class ApprovalInput:
             params['labels'] = self.labels
         return params
 
+
+# TODO change to 'Options' rather than input and better enforce link between these options and the api module?
 @dataclass
 class InfoInput:
     kind: Kind
@@ -47,6 +49,7 @@ class InfoInput:
     owner: Optional[str] = None
     fleet_name: Optional[str] = None
     rendered: Optional[bool] = None
+    summary_only: Optional[bool] = True
 
     def __post_init__(self):
         if not self.kind:
@@ -57,6 +60,11 @@ class InfoInput:
             raise ValidationException(f"Rendered field is only valid for Device kind")
         if self.fleet_name and self.kind is not Kind.TEMPLATE_VERSION:
             raise ValidationException(f"Fleet name field is only valid for TemplateVersion kind")
+        if self.summary_only:
+            if self.kind is not Kind.DEVICE:
+                raise ValidationException(f"Summary Only field is only valid for Device kind")
+            if self.name:
+                raise ValidationException(f"Summary Only field is not valid when fetching one Device")
 
     def to_request_params(self):
         params = dict()
@@ -64,4 +72,6 @@ class InfoInput:
             params['labelSelector'] = self.label_selector
         if self.owner:
             params['owner'] = self.owner
+        if self.summary_only:
+            params['summaryOnly'] = self.summary_only
         return params

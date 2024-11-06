@@ -27,7 +27,7 @@ options:
     type: str
   fleet_name:
     description:
-      - Use to specify a fleet name for accessing templateversions (Only applicable when kind is TemplateVersions).
+      - Use to specify a fleet name for accessing templateversions. Only applicable when kind is TemplateVersions.
     type: str
   label_selector:
     description:
@@ -38,7 +38,12 @@ options:
       - Filter results by owner, specified in kind/name format.
   rendered:
     description:
-      - Return the rendered device configuration that is presented to the device (Only applicable when kind is Device).
+      - Return the rendered device configuration that is presented to the device.  Only applicable when kind is Device.
+    type: bool
+    default: False
+  summary_only:
+    description:
+      - Return only the summary info for devices.  Only the 'owner' and 'label_selector' parameters are supported. Only applicable when kind is Device.
     type: bool
     default: False
 extends_documentation_fragment:
@@ -78,31 +83,47 @@ EXAMPLES = r"""
 RETURN = r"""
 result:
   description:
-    - The object(s) that exists
-  returned: success
-  type: list
-  elements: dict
+    - The list response containing the object(s) that exist and relevant metadata
+  returned: sucess
+  type: complex
   contains:
-    apiVersion:
-      description: The versioned schema of this representation of an object.
+    items:
+      description:
+        - The object(s) that exists
       returned: success
-      type: str
-    kind:
-      description: Object model.
-      returned: success
-      type: str
-    metadata:
-      description: Object metadata.
-      returned: success
-      type: dict
-    spec:
-      description: Specific attributes of the object.
-      returned: success
-      type: dict
-    status:
-      description: Current status details for the object.
-      returned: success
-      type: dict
+      type: list
+      elements: complex
+      contains:
+        apiVersion:
+          description: The versioned schema of this representation of an object.
+          returned: success
+          type: str
+        kind:
+          description: Object model.
+          returned: success
+          type: str
+        metadata:
+          description: Object metadata.
+          returned: success
+          type: dict
+        spec:
+          description: Specific attributes of the object.
+          returned: success
+          type: dict
+        status:
+          description: Current status details for the object.
+          returned: success
+          type: dict
+  metadata:
+    description:
+      - TODO
+    type: dict
+    returned: when C(name) is not used and a list of objects is fetched
+  summary:
+    description:
+      - A summary rollup of queried objects
+    returned: when C(summary_only) is true
+    type: dict
 """
 
 
@@ -121,6 +142,7 @@ def main():
         fleet_name=dict(type="str"),
         owner=dict(type="str"),
         rendered=dict(type=bool),
+        summary_only=dict(type=bool)
     )
 
     module = FlightctlAPIModule(
@@ -133,13 +155,15 @@ def main():
     except (TypeError, ValueError):
         raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
 
+    # TODO use an argument spec validator instead of validation in the input? https://docs.ansible.com/ansible/latest/reference_appendices/module_utils.html#argumentspecvalidator
     input = InfoInput(
         kind=kind,
         name=module.params.get("name"),
         label_selector=module.params.get("label_selector"),
         fleet_name=module.params.get("fleet_name"),
         owner=module.params.get("owner"),
-        rendered=module.params.get("rendered")
+        rendered=module.params.get("rendered"),
+        summary_only=module.params.get("summary_only")
     )
 
     # Attempt to look up resource based on the provided name
@@ -154,7 +178,10 @@ def main():
     except FlightctlException as e:
         module.fail_json(msg=f"Failed to get resource: {e}")
 
-    module.exit_json(result=result)
+    # TODO figure out how the output is seen by ansible to avoid stuff like
+    # device_with_owner_result.result["items"][0].metadata.name == "ansible-integration-test-device"
+    # where sometimes dot notation works and sometimes it doesn't and its unclear why
+    module.exit_json(result=result.dict)
 
 
 if __name__ == "__main__":
