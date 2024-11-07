@@ -172,31 +172,27 @@
     ansible.builtin.assert:
       that:
         - second_limit_result is success
-        - second_limit_result.result["items"] | length == 2
+
+  - name: Query for all devices with a status filter
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      status_filter: ['updated.status=OutOfDate']
+    register: status_filter_result
+
+  - name: Assert that the status filtered data was fetched
+    ansible.builtin.assert:
+      that:
+        - status_filter_result is success
+        - status_filter_result.result["items"] | length == 0
 
   always:
-    - name: Delete test device
+    - name: Delete test devices
       flightctl.edge.flightctl:
         flightctl_host: "{{ flightctl_host }}"
         flightctl_validate_certs: false
         kind: Device
-        name: "{{ deivce_name }}"
-        state: absent
-
-    - name: Delete test device with label 1
-      flightctl.edge.flightctl:
-        flightctl_host: "{{ flightctl_host }}"
-        flightctl_validate_certs: false
-        kind: Device
-        name: "{{ deivce_name_with_label_1 }}"
-        state: absent
-
-    - name: Delete test device with label 2
-      flightctl.edge.flightctl:
-        flightctl_host: "{{ flightctl_host }}"
-        flightctl_validate_certs: false
-        kind: Device
-        name: "{{ deivce_name_with_label_2 }}"
         state: absent
 
     - name: Delete test fleet

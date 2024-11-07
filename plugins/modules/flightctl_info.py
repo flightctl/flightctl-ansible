@@ -50,6 +50,12 @@ options:
       - Return only the summary info for devices.  Only the 'owner' and 'label_selector' parameters are supported. Only applicable when kind is Device.
     type: bool
     default: False
+  status_filter:
+    description:
+      - A filter to restrict the list of devices by the value of the filtered status key.  Only applicable when kind is Device.
+    type: list
+    elements: str
+    default: []
   limit:
     description:
       - Maximum number of resources returned.  Only applicable when querying lists of resources.
@@ -163,6 +169,7 @@ def main():
         rendered=dict(type=bool),
         summary=dict(type=bool),
         summary_only=dict(type=bool),
+        status_filter=dict(type="list", elements="str", default=[]),
         limit=(dict(type=int)),
         continue_token=(dict(type=str))
     )
@@ -187,6 +194,7 @@ def main():
         rendered=module.params.get("rendered"),
         summary=module.params.get("summary"),
         summary_only=module.params.get("summary_only"),
+        status_filter=module.params.get("status_filter"),
         limit=module.params.get("limit"),
         continue_token=module.params.get("continue_token")
     )

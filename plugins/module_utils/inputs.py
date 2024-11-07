@@ -6,8 +6,8 @@ from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
 
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import List, Optional
 
 from .constants import Kind
 from .exceptions import ValidationException
@@ -51,6 +51,7 @@ class InfoInput:
     rendered: Optional[bool] = None
     summary: Optional[bool] = None
     summary_only: Optional[bool] = None
+    status_filter: List[str] = field(default_factory=list)
     limit: Optional[int] = None
     continue_token: Optional[str] = None
 
@@ -73,6 +74,11 @@ class InfoInput:
                 raise ValidationException(f"Summary field is only valid for Fleet kind")
             if not self.name:
                 raise ValidationException(f"Summary field is only valid when fetching one Fleet")
+        if self.status_filter:
+            if self.kind is not Kind.DEVICE:
+                raise ValidationException(f"Status filter field is only valid for Device kind")
+            if self.name:
+                raise ValidationException(f"Status filter field is not valid when fetching one Device")
 
     def to_request_params(self):
         params = dict()
@@ -88,4 +94,6 @@ class InfoInput:
             params['limit'] = self.limit
         if self.continue_token:
             params['continue'] = self.continue_token
+        if self.status_filter:
+            params['statusFilter'] = self.status_filter
         return params
