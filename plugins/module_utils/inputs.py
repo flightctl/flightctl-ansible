@@ -49,7 +49,8 @@ class InfoInput:
     owner: Optional[str] = None
     fleet_name: Optional[str] = None
     rendered: Optional[bool] = None
-    summary_only: Optional[bool] = True
+    summary: Optional[bool] = None
+    summary_only: Optional[bool] = None
     limit: Optional[int] = None
     continue_token: Optional[str] = None
 
@@ -67,6 +68,11 @@ class InfoInput:
                 raise ValidationException(f"Summary Only field is only valid for Device kind")
             if self.name:
                 raise ValidationException(f"Summary Only field is not valid when fetching one Device")
+        if self.summary:
+            if self.kind is not Kind.FLEET:
+                raise ValidationException(f"Summary field is only valid for Fleet kind")
+            if not self.name:
+                raise ValidationException(f"Summary field is only valid when fetching one Fleet")
 
     def to_request_params(self):
         params = dict()
@@ -74,6 +80,8 @@ class InfoInput:
             params['labelSelector'] = self.label_selector
         if self.owner:
             params['owner'] = self.owner
+        if self.summary:
+            params['addDevicesSummary'] = self.summary
         if self.summary_only:
             params['summaryOnly'] = self.summary_only
         if self.limit:

@@ -41,6 +41,10 @@ options:
       - Return the rendered device configuration that is presented to the device.  Only applicable when kind is Device.
     type: bool
     default: False
+  summary:
+    description:
+      - Return aggregate summary info for devices within a fleet.  Only applicable when kind is Fleet.
+    type: bool
   summary_only:
     description:
       - Return only the summary info for devices.  Only the 'owner' and 'label_selector' parameters are supported. Only applicable when kind is Device.
@@ -157,6 +161,7 @@ def main():
         fleet_name=dict(type="str"),
         owner=dict(type="str"),
         rendered=dict(type=bool),
+        summary=dict(type=bool),
         summary_only=dict(type=bool),
         limit=(dict(type=int)),
         continue_token=(dict(type=str))
@@ -180,6 +185,7 @@ def main():
         fleet_name=module.params.get("fleet_name"),
         owner=module.params.get("owner"),
         rendered=module.params.get("rendered"),
+        summary=module.params.get("summary"),
         summary_only=module.params.get("summary_only"),
         limit=module.params.get("limit"),
         continue_token=module.params.get("continue_token")
