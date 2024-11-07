@@ -187,6 +187,20 @@
         - status_filter_result is success
         - status_filter_result.result["items"] | length == 0
 
+  - name: Query for devices with a filter selector
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      field_selector: "metadata.name!={{ deivce_name }}"
+    register: field_selector_result
+
+  - name: Assert that the status filtered data was fetched
+    ansible.builtin.assert:
+      that:
+        - field_selector_result is success
+        - field_selector_result.result["items"] | length == 2
+
   always:
     - name: Delete test devices
       flightctl.edge.flightctl:

@@ -31,7 +31,11 @@ options:
     type: str
   label_selector:
     description:
-      - A selector to restrict the list of returned objects by their labels.
+      - A selector to restrict the list of returned objects by their labels.  Accepts a a comma-separated list of key1=value1,key2=value2
+    type: str
+  field_selector:
+    description:
+      - A selector to filter based on object fields.  Accepts a a comma-separated list of key1=value1,key2=value2
     type: str
   owner:
     description:
@@ -164,6 +168,7 @@ def main():
         kind=dict(required=True),
         name=dict(type="str"),
         label_selector=dict(type="str"),
+        field_selector=dict(type="str"),
         fleet_name=dict(type="str"),
         owner=dict(type="str"),
         rendered=dict(type=bool),
@@ -189,6 +194,7 @@ def main():
         kind=kind,
         name=module.params.get("name"),
         label_selector=module.params.get("label_selector"),
+        field_selector=module.params.get("field_selector"),
         fleet_name=module.params.get("fleet_name"),
         owner=module.params.get("owner"),
         rendered=module.params.get("rendered"),

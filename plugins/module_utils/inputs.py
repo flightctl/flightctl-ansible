@@ -46,6 +46,7 @@ class InfoInput:
     kind: Kind
     name: str
     label_selector: Optional[str] = None
+    field_selector: Optional[str] = None
     owner: Optional[str] = None
     fleet_name: Optional[str] = None
     rendered: Optional[bool] = None
@@ -79,11 +80,17 @@ class InfoInput:
                 raise ValidationException(f"Status filter field is only valid for Device kind")
             if self.name:
                 raise ValidationException(f"Status filter field is not valid when fetching one Device")
+        if self.label_selector and self.name:
+            raise ValidationException(f"Label selector field is not valid when fetching one resource")
+        if self.field_selector and self.name:
+            raise ValidationException(f"Label selector field is not valid when fetching one resource")
 
     def to_request_params(self):
         params = dict()
         if self.label_selector:
             params['labelSelector'] = self.label_selector
+        if self.field_selector:
+            params['fieldSelector'] = self.field_selector
         if self.owner:
             params['owner'] = self.owner
         if self.summary:
