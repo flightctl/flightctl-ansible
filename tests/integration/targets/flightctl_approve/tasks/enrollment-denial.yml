@@ -46,7 +46,7 @@
     ansible.builtin.assert:
       that:
         - check_result is success
-        - check_result.result[0].status.get('approval', None) == None
+        - check_result.result['items'][0].status.get('approval', None) == None
 
   - name: Deny the enrollment request
     flightctl.edge.flightctl_certificate:
@@ -77,7 +77,7 @@
     ansible.builtin.assert:
       that:
         - enrollment_result is success
-        - check_result.result[0].status.get('approval', None) == None
+        - check_result.result['items'][0].status.get('approval', None) == None
 
   always:
     - name: Delete enrollment request

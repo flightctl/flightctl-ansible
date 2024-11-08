@@ -44,8 +44,8 @@
     ansible.builtin.assert:
       that:
         - csr_result is success
-        - csr_result.result[0].status.conditions[0].type == "Approved"
-        - csr_result.result[0].status.conditions[0].status == "True"
+        - csr_result.result['items'][0].status.conditions[0].type == "Approved"
+        - csr_result.result['items'][0].status.conditions[0].status == "True"
 
   - name: Try to approve the csr again (idempotency)
     flightctl.edge.flightctl_certificate:
