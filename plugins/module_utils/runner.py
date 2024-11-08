@@ -25,7 +25,7 @@ else:
 from .api_module import FlightctlAPIModule
 from .constants import Kind
 from .exceptions import FlightctlException, ValidationException
-from .inputs import ApprovalInput
+from .inputs import ApprovalInput, GetOptions
 from .resources import create_definitions
 
 
@@ -145,19 +145,26 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
     if definition.get("kind") is None:
         raise ValidationException("A kind value must be specified")
 
+    try:
+        kind = Kind(definition.get("kind"))
+    except (TypeError, ValueError):
+        raise ValidationException(f"Invalid Kind {definition.get('kind')}")
+
     name = definition["metadata"].get("name")
-    kind = definition["kind"]
     fleet_name = module.params.get("fleet_name")
+    label_selector = module.params.get("label_selector")
     state = module.params.get("state")
-    params = {}
     result: Dict[str, Any] = {}
     changed: bool = False
 
-    if module.params.get("label_selector"):
-        params["labelSelector"] = module.params["label_selector"]
-
     try:
-        existing_result = module.get_one_or_many(kind, name=name, fleet_name=fleet_name, **params)
+        get_options = GetOptions(
+            kind=kind,
+            name=name,
+            fleet_name=fleet_name,
+            label_selector=label_selector,
+        )
+        existing_result = module.get_one_or_many(get_options)
     except Exception as e:
         raise FlightctlException(f"Failed to get resource: {e}") from e
 
@@ -167,7 +174,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 module.exit_json(**{"changed": True})
 
             try:
-                changed, result = module.delete(kind, name, fleet_name)
+                changed, result = module.delete(kind.value, name, fleet_name)
             except Exception as e:
                 raise FlightctlException(f"Failed to delete resource: {e}") from e
 
@@ -221,7 +228,11 @@ def perform_approval(module: FlightctlAPIModule) -> None:
     )
 
     try:
-        existing = module.get_endpoint(input.kind.value, input.name)
+        get_options = GetOptions(
+            kind=input.kind,
+            name=input.name,
+        )
+        existing = module.get_endpoint(get_options)
         currently_approved = None
         if input.kind is Kind.ENROLLMENT:
             currently_approved = existing.json.get('status', {}).get('approval', {}).get('approved', None)

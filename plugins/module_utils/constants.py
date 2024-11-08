@@ -17,3 +17,6 @@ class Kind(Enum):
     RESOURCE_SYNC = "ResourceSync"
     REPOSITORY = "Repository"
     TEMPLATE_VERSION = "TemplateVersion"
+
+    # TODO not really a kind
+    ENROLLMENT_CONFIG = "EnrollmentConfig"

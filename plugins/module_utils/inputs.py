@@ -13,6 +13,7 @@ from .constants import Kind
 from .exceptions import ValidationException
 
 
+# TODO rename to options and rename file
 @dataclass
 class ApprovalInput:
     kind: Kind
@@ -40,11 +41,10 @@ class ApprovalInput:
         return params
 
 
-# TODO change to 'Options' rather than input and better enforce link between these options and the api module?
 @dataclass
-class InfoInput:
+class GetOptions:
     kind: Kind
-    name: str
+    name: Optional[str] = None
     label_selector: Optional[str] = None
     field_selector: Optional[str] = None
     owner: Optional[str] = None
@@ -85,7 +85,8 @@ class InfoInput:
         if self.field_selector and self.name:
             raise ValidationException(f"Label selector field is not valid when fetching one resource")
 
-    def to_request_params(self):
+    @property
+    def request_params(self) -> dict:
         params = dict()
         if self.label_selector:
             params['labelSelector'] = self.label_selector

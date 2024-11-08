@@ -20,7 +20,7 @@ from ansible.module_utils.urls import (ConnectionError, Request,
 from .constants import Kind
 from .core import FlightctlModule
 from .exceptions import FlightctlException, FlightctlHTTPException
-from .inputs import ApprovalInput
+from .inputs import ApprovalInput, GetOptions
 from .utils import diff_dicts, get_patch, json_patch
 
 
@@ -157,14 +157,7 @@ class FlightctlAPIModule(FlightctlModule):
         """
         return endpoint.lower() if endpoint else None
 
-    def get_endpoint(
-        self,
-        endpoint: str,
-        name: Optional[str] = None,
-        fleet_name: Optional[str] = None,
-        rendered: Optional[bool] = None,
-        **kwargs: Any
-    ) -> Response:
+    def get_endpoint(self, options: GetOptions) -> Response:
         """
         Sends a GET request to the specified API endpoint.
 
@@ -175,14 +168,14 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        url = self.build_url(endpoint, name, fleet_name=fleet_name, query_params=kwargs)
+        params = options.request_params
+        url = self.build_url(options.kind.value, options.name, options.fleet_name, params)
 
-        # TODO not this
-        if rendered:
+        if options.rendered:
             rendered_path = url.path + "/rendered"
             url = url._replace(path=rendered_path)
 
-        return self.request("GET", url.geturl(), **kwargs)
+        return self.request("GET", url.geturl(), params)
 
     def patch_endpoint(
         self, endpoint: str, name: str, patch: List[Dict[str, Any]]
@@ -405,14 +398,7 @@ class FlightctlAPIModule(FlightctlModule):
         # self.authenticated = True
         pass
 
-    def get_one_or_many(
-        self,
-        endpoint: str,
-        name: Optional[str] = None,
-        fleet_name: Optional[str] = None,
-        rendered: Optional[bool] = None,
-        **kwargs: Any
-    ) -> ListResponse:
+    def get_one_or_many(self, options: GetOptions) -> ListResponse:
         """
         Retrieves one or many resources from the API.
 
@@ -427,9 +413,9 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the response status is not 200 or 404.
         """
-        response = self.get_endpoint(endpoint, name, fleet_name, rendered, **kwargs)
+        response = self.get_endpoint(options)
         if response.status not in [200, 404]:
-            fail_msg = f"Got a {response.status} when trying to get {endpoint}"
+            fail_msg = f"Got a {response.status} when trying to get {options.kind.value}"
             if "message" in response.json:
                 fail_msg += f", message: {response.json['message']}"
             raise FlightctlException(fail_msg)

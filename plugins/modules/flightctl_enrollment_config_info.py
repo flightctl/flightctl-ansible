@@ -87,7 +87,9 @@ result:
 
 
 from ..module_utils.api_module import FlightctlAPIModule
-from ..module_utils.exceptions import FlightctlException
+from ..module_utils.constants import Kind
+from ..module_utils.exceptions import FlightctlException, ValidationException
+from ..module_utils.inputs import GetOptions
 
 
 def main():
@@ -99,15 +101,16 @@ def main():
         argument_spec=argument_spec,
     )
 
-    # TODO this isn't really a kind...
-    kind = "enrollmentconfig"
-    name = module.params.get("name")
+    kind = Kind.ENROLLMENT_CONFIG
+    options = GetOptions(
+        kind=kind,
+        name=module.params.get("name")
+    )
 
     try:
-        # TODO this is a hack
-        one_or_many_result = module.get_one_or_many(kind, name=name)
-        if one_or_many_result:
-            result = one_or_many_result[0]
+        one_or_many_result = module.get_one_or_many(options)
+        if one_or_many_result.items:
+            result = one_or_many_result.items[0]
         else:
             result = {}
     except FlightctlException as e:

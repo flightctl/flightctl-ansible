@@ -158,7 +158,7 @@ result:
 
 from ..module_utils.api_module import FlightctlAPIModule
 from ..module_utils.exceptions import FlightctlException, ValidationException
-from ..module_utils.inputs import InfoInput
+from ..module_utils.inputs import GetOptions
 from ..module_utils.constants import Kind
 
 
@@ -183,14 +183,12 @@ def main():
         argument_spec=argument_spec,
     )
 
-    # TODO move this to a perform function instead?
     try:
         kind = Kind(module.params.get("kind"))
     except (TypeError, ValueError):
         raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
 
-    # TODO use an argument spec validator instead of validation in the input? https://docs.ansible.com/ansible/latest/reference_appendices/module_utils.html#argumentspecvalidator
-    input = InfoInput(
+    options = GetOptions(
         kind=kind,
         name=module.params.get("name"),
         label_selector=module.params.get("label_selector"),
@@ -207,13 +205,7 @@ def main():
 
     # Attempt to look up resource based on the provided name
     try:
-        result = module.get_one_or_many(
-          input.kind.value,
-          name=input.name,
-          fleet_name=input.fleet_name,
-          rendered=input.rendered,
-          **input.to_request_params()
-        )
+        result = module.get_one_or_many(options)
     except FlightctlException as e:
         module.fail_json(msg=f"Failed to get resource: {e}")
 
