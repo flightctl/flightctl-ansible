@@ -81,9 +81,9 @@ class Metadata:
 
 @dataclass
 class ListResponse:
-    items: List[dict]
+    items: List[Dict[str, Any]]
     metadata: Optional[Metadata] = None
-    summary: Optional[dict] = None
+    summary: Optional[Dict[str, Any]] = None
 
     @property
     def dict(self) -> dict:

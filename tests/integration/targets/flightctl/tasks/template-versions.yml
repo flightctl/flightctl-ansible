@@ -121,4 +121,3 @@
         kind: Fleet
         name: "{{ fleet_name }}"
         state: absent
-

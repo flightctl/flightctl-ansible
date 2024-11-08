@@ -40,11 +40,11 @@ options:
   owner:
     description:
       - Filter results by owner, specified in kind/name format.
+    type: str
   rendered:
     description:
       - Return the rendered device configuration that is presented to the device.  Only applicable when kind is Device.
     type: bool
-    default: False
   summary:
     description:
       - Return aggregate summary info for devices within a fleet.  Only applicable when kind is Fleet.
@@ -53,7 +53,6 @@ options:
     description:
       - Return only the summary info for devices.  Only the 'owner' and 'label_selector' parameters are supported. Only applicable when kind is Device.
     type: bool
-    default: False
   status_filter:
     description:
       - A filter to restrict the list of devices by the value of the filtered status key.  Only applicable when kind is Device.
@@ -114,7 +113,7 @@ result:
         - The object(s) that exists
       returned: success
       type: list
-      elements: complex
+      elements: dict
       contains:
         apiVersion:
           description: The versioned schema of this representation of an object.
@@ -136,29 +135,31 @@ result:
           description: Current status details for the object.
           returned: success
           type: dict
-  metadata:
-    description:
-      - Request metadata for requesting additional resources form list endpoints.
-    type: dict
-    returned: when C(name) is not used and a list of objects is fetched
-    contains:
-      continue_token:
-        description: An opaque token used to issue another request to the endpoint that served a list to retrieve the next set of available objects.
-        returned: when C(limit) is used and less values than the limit are returned, or when the number of items returned is greater than the server default limit.
-      remainingItemCount:
-        description: The number of subsequent items in the list which are not included in this list response.
-        returned: when C(limit) is used and less values than the limit are returned, or when the number of items returned is greater than the server default limit.
-  summary:
-    description:
-      - A summary rollup of queried objects
-    returned: when C(summary_only) is true
-    type: dict
+    metadata:
+      description:
+        - Request metadata for requesting additional resources form list endpoints.
+      type: dict
+      returned: when C(name) is not used and a list of objects is fetched
+      contains:
+        continue_token:
+          description: An opaque token used to issue another request to the endpoint that served a list to retrieve the next set of available objects.
+          returned: when the total number of items queried is greater than C(limit) or the default limit.
+          type: str
+        remainingItemCount:
+          description: The number of subsequent items in the list which are not included in this list response.
+          returned: when the total number of items queried is greater than C(limit) or the default limit.
+          type: int
+    summary:
+      description:
+        - A summary rollup of queried objects
+      returned: when C(summary_only) is true
+      type: dict
 """
 
 
 from ..module_utils.api_module import FlightctlAPIModule
 from ..module_utils.exceptions import FlightctlException, ValidationException
-from ..module_utils.inputs import GetOptions
+from ..module_utils.options import GetOptions
 from ..module_utils.constants import Kind
 
 
@@ -171,12 +172,12 @@ def main():
         field_selector=dict(type="str"),
         fleet_name=dict(type="str"),
         owner=dict(type="str"),
-        rendered=dict(type=bool),
-        summary=dict(type=bool),
-        summary_only=dict(type=bool),
+        rendered=dict(type="bool"),
+        summary=dict(type="bool"),
+        summary_only=dict(type="bool"),
         status_filter=dict(type="list", elements="str", default=[]),
-        limit=(dict(type=int)),
-        continue_token=(dict(type=str))
+        limit=dict(type="int"),
+        continue_token=dict(type="str", no_log=True)
     )
 
     module = FlightctlAPIModule(

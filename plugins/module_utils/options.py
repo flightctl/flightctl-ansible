@@ -59,30 +59,30 @@ class GetOptions:
         if not self.kind:
             raise ValidationException("Kind must be specified")
         if self.owner and self.kind not in [Kind.DEVICE, Kind.FLEET]:
-            raise ValidationException(f"Owner field is only valid for Device and Fleet kinds")
+            raise ValidationException("Owner field is only valid for Device and Fleet kinds")
         if self.rendered and self.kind is not Kind.DEVICE:
-            raise ValidationException(f"Rendered field is only valid for Device kind")
+            raise ValidationException("Rendered field is only valid for Device kind")
         if self.fleet_name and self.kind is not Kind.TEMPLATE_VERSION:
-            raise ValidationException(f"Fleet name field is only valid for TemplateVersion kind")
+            raise ValidationException("Fleet name field is only valid for TemplateVersion kind")
         if self.summary_only:
             if self.kind is not Kind.DEVICE:
-                raise ValidationException(f"Summary Only field is only valid for Device kind")
+                raise ValidationException("Summary Only field is only valid for Device kind")
             if self.name:
-                raise ValidationException(f"Summary Only field is not valid when fetching one Device")
+                raise ValidationException("Summary Only field is not valid when fetching one Device")
         if self.summary:
             if self.kind is not Kind.FLEET:
-                raise ValidationException(f"Summary field is only valid for Fleet kind")
+                raise ValidationException("Summary field is only valid for Fleet kind")
             if not self.name:
-                raise ValidationException(f"Summary field is only valid when fetching one Fleet")
+                raise ValidationException("Summary field is only valid when fetching one Fleet")
         if self.status_filter:
             if self.kind is not Kind.DEVICE:
-                raise ValidationException(f"Status filter field is only valid for Device kind")
+                raise ValidationException("Status filter field is only valid for Device kind")
             if self.name:
-                raise ValidationException(f"Status filter field is not valid when fetching one Device")
+                raise ValidationException("Status filter field is not valid when fetching one Device")
         if self.label_selector and self.name:
-            raise ValidationException(f"Label selector field is not valid when fetching one resource")
+            raise ValidationException("Label selector field is not valid when fetching one resource")
         if self.field_selector and self.name:
-            raise ValidationException(f"Label selector field is not valid when fetching one resource")
+            raise ValidationException("Label selector field is not valid when fetching one resource")
 
     @property
     def request_params(self) -> dict:

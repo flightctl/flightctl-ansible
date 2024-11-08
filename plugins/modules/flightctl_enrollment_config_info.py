@@ -46,50 +46,50 @@ result:
   contains:
     enrollment_service:
       description: Contains enrollment service data.
-        returned: success
-        type: dict
-        contains:
-          authentication:
-            description: Contains authentication details for an agent to use when enrolling a device.
-            type: dict
-            returned: success
-            contains:
-              client_certificate_data:
-                description: Client certificate data.
-                type: str
-                returned: success
-              client_key_data:
-                description: Client key data.
-                type: str
-                returned: success
-          service:
-            description: Service-related information an agent will use after enrollment is complete.
-            type: dict
-            returned: success
-            contains:
-              certificate_authority_data:
-                description: Certificate authority data.
-                type: str
-                returned: success
-              server:
-                description: Server address.
-                type: str
-                returned: success
-          enrollment_ui_endpoint:
-            description: Enrollment ui endpoint.
-            type: str
-            returned: success
+      returned: success
+      type: dict
+      contains:
+        authentication:
+          description: Contains authentication details for an agent to use when enrolling a device.
+          type: dict
+          returned: success
+          contains:
+            client_certificate_data:
+              description: Client certificate data.
+              type: str
+              returned: success
+            client_key_data:
+              description: Client key data.
+              type: str
+              returned: success
+        service:
+          description: Service-related information an agent will use after enrollment is complete.
+          type: dict
+          returned: success
+          contains:
+            certificate_authority_data:
+              description: Certificate authority data.
+              type: str
+              returned: success
+            server:
+              description: Server address.
+              type: str
+              returned: success
+        enrollment_ui_endpoint:
+          description: Enrollment ui endpoint.
+          type: str
+          returned: success
     grpc_management_endpoint:
-        description: grpc management endpoint.
-        returned: success
-        type: str
+      description: grpc management endpoint.
+      returned: success
+      type: str
 """
 
 
 from ..module_utils.api_module import FlightctlAPIModule
 from ..module_utils.constants import Kind
-from ..module_utils.exceptions import FlightctlException, ValidationException
-from ..module_utils.inputs import GetOptions
+from ..module_utils.exceptions import FlightctlException
+from ..module_utils.options import GetOptions
 
 
 def main():
