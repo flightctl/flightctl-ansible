@@ -1,2 +1,2 @@
-# ---
-# - include_tasks: template-versions.yml
+---
+- include_tasks: template-versions.yml
