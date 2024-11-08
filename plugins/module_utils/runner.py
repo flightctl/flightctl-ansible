@@ -25,7 +25,7 @@ else:
 from .api_module import FlightctlAPIModule
 from .constants import Kind
 from .exceptions import FlightctlException, ValidationException
-from .inputs import ApprovalInput, GetOptions
+from .options import ApprovalOptions, GetOptions
 from .resources import create_definitions
 
 
@@ -219,7 +219,7 @@ def perform_approval(module: FlightctlAPIModule) -> None:
     except (TypeError, ValueError):
         raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
 
-    input = ApprovalInput(
+    approval_options = ApprovalOptions(
         kind=kind,
         name=module.params.get("name"),
         approved=module.params.get("approved"),
@@ -229,14 +229,14 @@ def perform_approval(module: FlightctlAPIModule) -> None:
 
     try:
         get_options = GetOptions(
-            kind=input.kind,
-            name=input.name,
+            kind=approval_options.kind,
+            name=approval_options.name,
         )
         existing = module.get_endpoint(get_options)
         currently_approved = None
-        if input.kind is Kind.ENROLLMENT:
+        if approval_options.kind is Kind.ENROLLMENT:
             currently_approved = existing.json.get('status', {}).get('approval', {}).get('approved', None)
-        elif input.kind is Kind.CSR:
+        elif approval_options.kind is Kind.CSR:
             conditions = existing.json.get('status', {}).get('conditions', [])
             approval_condition = next((c for c in conditions if c.get('type') == "Approved"), None)
             if approval_condition is not None:
@@ -246,7 +246,7 @@ def perform_approval(module: FlightctlAPIModule) -> None:
                 elif approval_condition['status'].lower() == 'false':
                     currently_approved = False
 
-        if input.approved == currently_approved:
+        if approval_options.approved == currently_approved:
             module.exit_json(**{"changed": False})
             return
     except Exception as e:
@@ -257,7 +257,7 @@ def perform_approval(module: FlightctlAPIModule) -> None:
         return
 
     try:
-        module.approve(input)
+        module.approve(approval_options)
     except Exception as e:
         raise FlightctlException(f"Failed to approve resource: {e}") from e
 

@@ -13,9 +13,8 @@ from .constants import Kind
 from .exceptions import ValidationException
 
 
-# TODO rename to options and rename file
 @dataclass
-class ApprovalInput:
+class ApprovalOptions:
     kind: Kind
     name: str
     approved: bool

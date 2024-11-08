@@ -20,7 +20,7 @@ from ansible.module_utils.urls import (ConnectionError, Request,
 from .constants import Kind
 from .core import FlightctlModule
 from .exceptions import FlightctlException, FlightctlHTTPException
-from .inputs import ApprovalInput, GetOptions
+from .options import ApprovalOptions, GetOptions
 from .utils import diff_dicts, get_patch, json_patch
 
 
@@ -537,12 +537,12 @@ class FlightctlAPIModule(FlightctlModule):
 
         return changed, response.json
 
-    def approve(self, input: ApprovalInput) -> None:
+    def approve(self, input: ApprovalOptions) -> None:
         """
         Makes an approval request via the API.
 
         Args:
-            input (ApprovalInput): Input containing the necessary approval data
+            input (ApprovalOptions): Input containing the necessary approval data
 
         Raises:
             FlightctlException: If the approval request fails.
