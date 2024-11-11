@@ -255,8 +255,7 @@ class FlightctlAPIModule(FlightctlModule):
         else:
             base_path = f"{self.url_prefix.rstrip('/')}{api_endpoint}"
 
-        # TODO something more extensible
-        if normalized_endpoint == "templateversion":
+        if normalized_endpoint == Kind.TEMPLATE_VERSION.value.lower():
             base_path = base_path.format(fleet_name)
 
         # Update the URL path with the base path
