@@ -210,10 +210,6 @@ def main():
     except FlightctlException as e:
         module.fail_json(msg=f"Failed to get resource: {e}")
 
-    # TODO figure out how the output is seen by ansible to avoid stuff like
-    # device_with_owner_result.result["items"][0].metadata.name == "ansible-integration-test-device"
-    # where sometimes dot notation works and sometimes it doesn't and its unclear why
-    # maybe something to do with dataclass internals?
     module.exit_json(result=result.dict)
 
 

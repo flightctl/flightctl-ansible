@@ -169,7 +169,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
         raise FlightctlException(f"Failed to get resource: {e}") from e
 
     if state == "absent":
-        if existing_result.items:
+        if existing_result.data:
             if module.check_mode:
                 module.exit_json(**{"changed": True})
 
@@ -181,13 +181,13 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
     elif state == "present":
         # validate(definition)
 
-        if existing_result.items:
+        if existing_result.data:
             # Update resource
             if module.check_mode:
                 module.exit_json(**{"changed": True})
 
             try:
-                changed, result = module.update(existing_result.items[0], definition)
+                changed, result = module.update(existing_result.data[0], definition)
             except Exception as e:
                 raise FlightctlException(f"Failed to update resource: {e}") from e
         else:

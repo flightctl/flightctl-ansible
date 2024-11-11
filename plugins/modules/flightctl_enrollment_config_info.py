@@ -109,8 +109,8 @@ def main():
 
     try:
         one_or_many_result = module.get_one_or_many(options)
-        if one_or_many_result.items:
-            result = one_or_many_result.items[0]
+        if one_or_many_result.data:
+            result = one_or_many_result.data[0]
         else:
             result = {}
     except FlightctlException as e:

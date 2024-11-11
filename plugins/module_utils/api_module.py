@@ -81,7 +81,7 @@ class Metadata:
 
 @dataclass
 class ListResponse:
-    items: List[Dict[str, Any]]
+    data: List[Dict[str, Any]]
     metadata: Optional[Metadata] = None
     summary: Optional[Dict[str, Any]] = None
 
@@ -421,7 +421,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         if response.status == 404:
             # Resource not found
-            return ListResponse(items=[])
+            return ListResponse(data=[])
 
         if response.json and response.json.get("items") is not None:
             metadata = None
@@ -432,13 +432,13 @@ class FlightctlAPIModule(FlightctlModule):
                 )
 
             return ListResponse(
-                items=response.json.get("items"),
+                data=response.json.get("items"),
                 metadata=metadata,
                 summary=response.json.get("summary")
             )
 
         return ListResponse(
-            items=[response.json]
+            data=[response.json]
         )
 
     def create(

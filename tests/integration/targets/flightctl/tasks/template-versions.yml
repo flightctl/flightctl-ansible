@@ -62,7 +62,7 @@
       flightctl_validate_certs: false
       kind: TemplateVersion
       fleet_name: "{{ fleet_name }}"
-      name: "{{ template_version_result.result['items'][0]['metadata']['name'] }}"
+      name: "{{ template_version_result.result.data[0]['metadata']['name'] }}"
       state: absent
     register: delete_single_template_version_result
 
@@ -84,7 +84,7 @@
     ansible.builtin.assert:
       that:
         - template_version_result is success
-        - template_version_result.result['items'] | length == 2
+        - template_version_result.result.data | length == 2
 
   - name: Delete all template versions owned by a fleet
     flightctl.edge.flightctl:
@@ -113,7 +113,7 @@
     ansible.builtin.assert:
       that:
         - template_version_result is success
-        - template_version_result.result['items'] | length == 0
+        - template_version_result.result.data | length == 0
   always:
     - flightctl.edge.flightctl:
         flightctl_host: "{{ flightctl_host }}"
