@@ -137,7 +137,7 @@ result:
           type: dict
     metadata:
       description:
-        - Request metadata for requesting additional resources form list endpoints.
+        - Request metadata for requesting additional resources from list endpoints.
       type: dict
       returned: when C(name) is not used and a list of objects is fetched
       contains:

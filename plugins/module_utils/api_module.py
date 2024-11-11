@@ -75,12 +75,27 @@ class Response:
 
 @dataclass
 class Metadata:
+    """
+    Request metadata for requesting additional resources from list endpoints.
+
+    Attributes:
+        continue_token (str): Opaque token returned from the service.
+        remaining_item_count (int): Number of remaining items.
+    """
     continue_token: str
     remaining_item_count: int
 
 
 @dataclass
 class ListResponse:
+    """
+    Represents a list response object from the flightctl service.
+
+    Attributes:
+        data (List[Dict[str, Any]]): The response data
+        metadata (Optional[Metadata]): Related metadata for the response.
+        summary (Optional[Dict[str, Any]]): Summary data related to the response.
+    """
     data: List[Dict[str, Any]]
     metadata: Optional[Metadata] = None
     summary: Optional[Dict[str, Any]] = None
