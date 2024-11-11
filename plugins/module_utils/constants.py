@@ -13,10 +13,8 @@ class Kind(Enum):
     CSR = "CertificateSigningRequest"
     DEVICE = "Device"
     ENROLLMENT = "EnrollmentRequest"
+    ENROLLMENT_CONFIG = "EnrollmentConfig"
     FLEET = "Fleet"
     RESOURCE_SYNC = "ResourceSync"
     REPOSITORY = "Repository"
     TEMPLATE_VERSION = "TemplateVersion"
-
-    # TODO not really a kind
-    ENROLLMENT_CONFIG = "EnrollmentConfig"

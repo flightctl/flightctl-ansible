@@ -27,7 +27,7 @@ options:
     type: str
   fleet_name:
     description:
-      - Use to specify a fleet name for accessing templateversions. Only applicable when kind is TemplateVersions.
+      - Use to specify a fleet name that owns the associated resources. Only applicable when kind is TemplateVersions.
     type: str
   label_selector:
     description:
@@ -92,7 +92,22 @@ EXAMPLES = r"""
 - name: Get information about a specific device using label_selector
   flightctl.edge.flightctl_info:
     kind: Device
-    label_selector: "owner=test"
+    label_selector: "machine_type=forklift"
+
+- name: Get devices with a specific owner
+    flightctl.edge.flightctl_info:
+      kind: Device
+      owner: "Fleet/{{ fleet_name }}"
+
+- name: Get devices filtered by status
+    flightctl.edge.flightctl_info:
+      kind: Device
+      status_filter: ['updated.status=OutOfDate']
+
+- name: Get devices filtered by a field selector
+    flightctl.edge.flightctl_info:
+      kind: Device
+      field_selector: "metadata.name!={{ deivce_name }}"
 
 - name: Get all template versions for a specific fleet
   flightctl.edge.flightctl_info:
@@ -108,7 +123,7 @@ result:
   returned: sucess
   type: complex
   contains:
-    items:
+    data:
       description:
         - The object(s) that exists
       returned: success
@@ -139,20 +154,20 @@ result:
       description:
         - Request metadata for requesting additional resources from list endpoints.
       type: dict
-      returned: when C(name) is not used and a list of objects is fetched
+      returned: When C(name) is not used and a list of objects is fetched
       contains:
         continue_token:
           description: An opaque token used to issue another request to the endpoint that served a list to retrieve the next set of available objects.
-          returned: when the total number of items queried is greater than C(limit) or the default limit.
+          returned: When the total number of items queried is greater than C(limit) or the default limit.
           type: str
         remainingItemCount:
           description: The number of subsequent items in the list which are not included in this list response.
-          returned: when the total number of items queried is greater than C(limit) or the default limit.
+          returned: When the total number of items queried is greater than C(limit) or the default limit.
           type: int
     summary:
       description:
         - A summary rollup of queried objects
-      returned: when C(summary_only) is true
+      returned: When C(summary_only) is true
       type: dict
 """
 
