@@ -95,19 +95,19 @@ EXAMPLES = r"""
     label_selector: "machine_type=forklift"
 
 - name: Get devices with a specific owner
-    flightctl.edge.flightctl_info:
-      kind: Device
-      owner: "Fleet/{{ fleet_name }}"
+  flightctl.edge.flightctl_info:
+    kind: Device
+    owner: "Fleet/SomeFleet"
 
 - name: Get devices filtered by status
-    flightctl.edge.flightctl_info:
-      kind: Device
-      status_filter: ['updated.status=OutOfDate']
+  flightctl.edge.flightctl_info:
+    kind: Device
+    status_filter: ['updated.status=OutOfDate']
 
 - name: Get devices filtered by a field selector
-    flightctl.edge.flightctl_info:
-      kind: Device
-      field_selector: "metadata.name!={{ deivce_name }}"
+  flightctl.edge.flightctl_info:
+    kind: Device
+    field_selector: "metadata.name!=some_value"
 
 - name: Get all template versions for a specific fleet
   flightctl.edge.flightctl_info:
