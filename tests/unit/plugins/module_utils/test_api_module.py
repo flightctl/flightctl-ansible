@@ -32,6 +32,11 @@ def test_build_url_with_valid_endpoint_and_name(api_module):
     assert url.geturl() == 'https://test-flightctl-url.com/api/v1/devices/awesome-device-1'
 
 
+def test_build_url_with_valid_endpoint_and_name(api_module):
+    url = api_module.build_url('device', 'awesome-device-1')
+    assert url.geturl() == 'https://test-flightctl-url.com/api/v1/devices/awesome-device-1'
+
+
 def test_build_url_with_invalid_endpoint(api_module):
     with pytest.raises(FlightctlException, match="Invalid 'kind' specified: widget"):
         api_module.build_url('widget')

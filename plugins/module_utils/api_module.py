@@ -117,14 +117,14 @@ class FlightctlAPIModule(FlightctlModule):
     """
 
     API_ENDPOINTS: Dict[str, str] = {
+        "certificatesigningrequest": "api/v1/certificatesigningrequests",
         "device": "/api/v1/devices",
         "fleet": "/api/v1/fleets",
+        "enrollmentconfig": "api/v1/enrollmentconfig",
+        "enrollmentrequest": "api/v1/enrollmentrequests",
         "resourcesync": "/api/v1/resourcesyncs",
         "repository": "/api/v1/repositories",
-        "enrollmentrequest": "api/v1/enrollmentrequests",
-        "certificatesigningrequest": "api/v1/certificatesigningrequests",
-        "templateversion": "api/v1/fleets/{0}/templateversions",
-        "enrollmentconfig": "api/v1/enrollmentconfig",
+        "templateversion": "api/v1/fleets/{0}/templateversions"
     }
 
     def __init__(
