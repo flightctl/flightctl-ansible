@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from ..models.disk_resource_monitor_spec import DiskResourceMonitorSpec
     from ..models.memory_resource_monitor_spec import MemoryResourceMonitorSpec
     from ..models.rendered_application_spec import RenderedApplicationSpec
-    from ..models.rendered_device_spec_containers import RenderedDeviceSpecContainers
     from ..models.rendered_device_spec_systemd import RenderedDeviceSpecSystemd
 
 
@@ -34,7 +33,6 @@ class RenderedDeviceSpec:
     Attributes:
         rendered_version (str):
         os (Union[Unset, DeviceOSSpec]):
-        containers (Union[Unset, RenderedDeviceSpecContainers]):
         config (Union[Unset, str]):
         applications (Union[Unset, List['RenderedApplicationSpec']]):
         hooks (Union[Unset, DeviceHooksSpec]):
@@ -46,7 +44,6 @@ class RenderedDeviceSpec:
 
     rendered_version: str
     os: Union[Unset, "DeviceOSSpec"] = UNSET
-    containers: Union[Unset, "RenderedDeviceSpecContainers"] = UNSET
     config: Union[Unset, str] = UNSET
     applications: Union[Unset, List["RenderedApplicationSpec"]] = UNSET
     hooks: Union[Unset, "DeviceHooksSpec"] = UNSET
@@ -73,10 +70,6 @@ class RenderedDeviceSpec:
         os: Union[Unset, Dict[str, Any]] = UNSET
         if not isinstance(self.os, Unset):
             os = self.os.to_dict()
-
-        containers: Union[Unset, Dict[str, Any]] = UNSET
-        if not isinstance(self.containers, Unset):
-            containers = self.containers.to_dict()
 
         config = self.config
 
@@ -122,8 +115,6 @@ class RenderedDeviceSpec:
         )
         if os is not UNSET:
             field_dict["os"] = os
-        if containers is not UNSET:
-            field_dict["containers"] = containers
         if config is not UNSET:
             field_dict["config"] = config
         if applications is not UNSET:
@@ -148,9 +139,6 @@ class RenderedDeviceSpec:
         from ..models.disk_resource_monitor_spec import DiskResourceMonitorSpec
         from ..models.memory_resource_monitor_spec import MemoryResourceMonitorSpec
         from ..models.rendered_application_spec import RenderedApplicationSpec
-        from ..models.rendered_device_spec_containers import (
-            RenderedDeviceSpecContainers,
-        )
         from ..models.rendered_device_spec_systemd import RenderedDeviceSpecSystemd
 
         d = src_dict.copy()
@@ -162,13 +150,6 @@ class RenderedDeviceSpec:
             os = UNSET
         else:
             os = DeviceOSSpec.from_dict(_os)
-
-        _containers = d.pop("containers", UNSET)
-        containers: Union[Unset, RenderedDeviceSpecContainers]
-        if isinstance(_containers, Unset):
-            containers = UNSET
-        else:
-            containers = RenderedDeviceSpecContainers.from_dict(_containers)
 
         config = d.pop("config", UNSET)
 
@@ -248,7 +229,6 @@ class RenderedDeviceSpec:
         rendered_device_spec = cls(
             rendered_version=rendered_version,
             os=os,
-            containers=containers,
             config=config,
             applications=applications,
             hooks=hooks,

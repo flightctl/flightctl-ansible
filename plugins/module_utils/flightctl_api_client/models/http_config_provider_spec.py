@@ -16,19 +16,15 @@ T = TypeVar("T", bound="HttpConfigProviderSpec")
 class HttpConfigProviderSpec:
     """
     Attributes:
-        config_type (str):
-        name (str):
+        name (str): The name of the config provider
         http_ref (HttpConfigProviderSpecHttpRef):
     """
 
-    config_type: str
     name: str
     http_ref: "HttpConfigProviderSpecHttpRef"
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
-        config_type = self.config_type
-
         name = self.name
 
         http_ref = self.http_ref.to_dict()
@@ -37,7 +33,6 @@ class HttpConfigProviderSpec:
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "configType": config_type,
                 "name": name,
                 "httpRef": http_ref,
             }
@@ -52,14 +47,11 @@ class HttpConfigProviderSpec:
         )
 
         d = src_dict.copy()
-        config_type = d.pop("configType")
-
         name = d.pop("name")
 
         http_ref = HttpConfigProviderSpecHttpRef.from_dict(d.pop("httpRef"))
 
         http_config_provider_spec = cls(
-            config_type=config_type,
             name=name,
             http_ref=http_ref,
         )

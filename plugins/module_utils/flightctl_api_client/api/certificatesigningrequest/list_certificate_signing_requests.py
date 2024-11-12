@@ -7,6 +7,7 @@ from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.certificate_signing_request_list import CertificateSigningRequestList
 from ...models.error import Error
+from ...models.sort_order import SortOrder
 from ...types import UNSET, Response, Unset
 
 
@@ -14,7 +15,10 @@ def _get_kwargs(
     *,
     continue_: Union[Unset, str] = UNSET,
     label_selector: Union[Unset, str] = UNSET,
+    field_selector: Union[Unset, str] = UNSET,
     limit: Union[Unset, int] = UNSET,
+    sort_by: Union[Unset, str] = UNSET,
+    sort_order: Union[Unset, SortOrder] = UNSET,
 ) -> Dict[str, Any]:
     params: Dict[str, Any] = {}
 
@@ -22,7 +26,17 @@ def _get_kwargs(
 
     params["labelSelector"] = label_selector
 
+    params["fieldSelector"] = field_selector
+
     params["limit"] = limit
+
+    params["sortBy"] = sort_by
+
+    json_sort_order: Union[Unset, str] = UNSET
+    if not isinstance(sort_order, Unset):
+        json_sort_order = sort_order
+
+    params["sortOrder"] = json_sort_order
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
@@ -72,14 +86,20 @@ def sync_detailed(
     client: Union[AuthenticatedClient, Client],
     continue_: Union[Unset, str] = UNSET,
     label_selector: Union[Unset, str] = UNSET,
+    field_selector: Union[Unset, str] = UNSET,
     limit: Union[Unset, int] = UNSET,
+    sort_by: Union[Unset, str] = UNSET,
+    sort_order: Union[Unset, SortOrder] = UNSET,
 ) -> Response[Union[CertificateSigningRequestList, Error]]:
     """list CertificateSigningRequests
 
     Args:
         continue_ (Union[Unset, str]):
         label_selector (Union[Unset, str]):
+        field_selector (Union[Unset, str]):
         limit (Union[Unset, int]):
+        sort_by (Union[Unset, str]):
+        sort_order (Union[Unset, SortOrder]): Specifies the sort order.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -92,7 +112,10 @@ def sync_detailed(
     kwargs = _get_kwargs(
         continue_=continue_,
         label_selector=label_selector,
+        field_selector=field_selector,
         limit=limit,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
 
     response = client.get_httpx_client().request(
@@ -107,14 +130,20 @@ def sync(
     client: Union[AuthenticatedClient, Client],
     continue_: Union[Unset, str] = UNSET,
     label_selector: Union[Unset, str] = UNSET,
+    field_selector: Union[Unset, str] = UNSET,
     limit: Union[Unset, int] = UNSET,
+    sort_by: Union[Unset, str] = UNSET,
+    sort_order: Union[Unset, SortOrder] = UNSET,
 ) -> Optional[Union[CertificateSigningRequestList, Error]]:
     """list CertificateSigningRequests
 
     Args:
         continue_ (Union[Unset, str]):
         label_selector (Union[Unset, str]):
+        field_selector (Union[Unset, str]):
         limit (Union[Unset, int]):
+        sort_by (Union[Unset, str]):
+        sort_order (Union[Unset, SortOrder]): Specifies the sort order.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -128,7 +157,10 @@ def sync(
         client=client,
         continue_=continue_,
         label_selector=label_selector,
+        field_selector=field_selector,
         limit=limit,
+        sort_by=sort_by,
+        sort_order=sort_order,
     ).parsed
 
 
@@ -137,14 +169,20 @@ async def asyncio_detailed(
     client: Union[AuthenticatedClient, Client],
     continue_: Union[Unset, str] = UNSET,
     label_selector: Union[Unset, str] = UNSET,
+    field_selector: Union[Unset, str] = UNSET,
     limit: Union[Unset, int] = UNSET,
+    sort_by: Union[Unset, str] = UNSET,
+    sort_order: Union[Unset, SortOrder] = UNSET,
 ) -> Response[Union[CertificateSigningRequestList, Error]]:
     """list CertificateSigningRequests
 
     Args:
         continue_ (Union[Unset, str]):
         label_selector (Union[Unset, str]):
+        field_selector (Union[Unset, str]):
         limit (Union[Unset, int]):
+        sort_by (Union[Unset, str]):
+        sort_order (Union[Unset, SortOrder]): Specifies the sort order.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -157,7 +195,10 @@ async def asyncio_detailed(
     kwargs = _get_kwargs(
         continue_=continue_,
         label_selector=label_selector,
+        field_selector=field_selector,
         limit=limit,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -170,14 +211,20 @@ async def asyncio(
     client: Union[AuthenticatedClient, Client],
     continue_: Union[Unset, str] = UNSET,
     label_selector: Union[Unset, str] = UNSET,
+    field_selector: Union[Unset, str] = UNSET,
     limit: Union[Unset, int] = UNSET,
+    sort_by: Union[Unset, str] = UNSET,
+    sort_order: Union[Unset, SortOrder] = UNSET,
 ) -> Optional[Union[CertificateSigningRequestList, Error]]:
     """list CertificateSigningRequests
 
     Args:
         continue_ (Union[Unset, str]):
         label_selector (Union[Unset, str]):
+        field_selector (Union[Unset, str]):
         limit (Union[Unset, int]):
+        sort_by (Union[Unset, str]):
+        sort_order (Union[Unset, SortOrder]): Specifies the sort order.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -192,6 +239,9 @@ async def asyncio(
             client=client,
             continue_=continue_,
             label_selector=label_selector,
+            field_selector=field_selector,
             limit=limit,
+            sort_by=sort_by,
+            sort_order=sort_order,
         )
     ).parsed

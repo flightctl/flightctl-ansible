@@ -8,6 +8,7 @@ from ..types import UNSET, Unset
 if TYPE_CHECKING:
     from ..models.condition import Condition
     from ..models.devices_summary import DevicesSummary
+    from ..models.fleet_rollout_status import FleetRolloutStatus
 
 
 T = TypeVar("T", bound="FleetStatus")
@@ -20,11 +21,13 @@ class FleetStatus:
 
         Attributes:
             conditions (List['Condition']): Current state of the fleet.
+            rollout (Union[Unset, FleetRolloutStatus]):
             devices_summary (Union[Unset, DevicesSummary]): A summary of the devices in the fleet returned when fetching a
                 single Fleet.
     """
 
     conditions: List["Condition"]
+    rollout: Union[Unset, "FleetRolloutStatus"] = UNSET
     devices_summary: Union[Unset, "DevicesSummary"] = UNSET
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
@@ -33,6 +36,10 @@ class FleetStatus:
         for conditions_item_data in self.conditions:
             conditions_item = conditions_item_data.to_dict()
             conditions.append(conditions_item)
+
+        rollout: Union[Unset, Dict[str, Any]] = UNSET
+        if not isinstance(self.rollout, Unset):
+            rollout = self.rollout.to_dict()
 
         devices_summary: Union[Unset, Dict[str, Any]] = UNSET
         if not isinstance(self.devices_summary, Unset):
@@ -45,6 +52,8 @@ class FleetStatus:
                 "conditions": conditions,
             }
         )
+        if rollout is not UNSET:
+            field_dict["rollout"] = rollout
         if devices_summary is not UNSET:
             field_dict["devicesSummary"] = devices_summary
 
@@ -54,6 +63,7 @@ class FleetStatus:
     def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
         from ..models.condition import Condition
         from ..models.devices_summary import DevicesSummary
+        from ..models.fleet_rollout_status import FleetRolloutStatus
 
         d = src_dict.copy()
         conditions = []
@@ -62,6 +72,13 @@ class FleetStatus:
             conditions_item = Condition.from_dict(conditions_item_data)
 
             conditions.append(conditions_item)
+
+        _rollout = d.pop("rollout", UNSET)
+        rollout: Union[Unset, FleetRolloutStatus]
+        if isinstance(_rollout, Unset):
+            rollout = UNSET
+        else:
+            rollout = FleetRolloutStatus.from_dict(_rollout)
 
         _devices_summary = d.pop("devicesSummary", UNSET)
         devices_summary: Union[Unset, DevicesSummary]
@@ -72,6 +89,7 @@ class FleetStatus:
 
         fleet_status = cls(
             conditions=conditions,
+            rollout=rollout,
             devices_summary=devices_summary,
         )
 

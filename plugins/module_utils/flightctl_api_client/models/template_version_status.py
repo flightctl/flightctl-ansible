@@ -1,13 +1,5 @@
 import datetime
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    List,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar, Union
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
@@ -21,7 +13,6 @@ if TYPE_CHECKING:
     from ..models.cpu_resource_monitor_spec import CPUResourceMonitorSpec
     from ..models.device_hooks_spec import DeviceHooksSpec
     from ..models.device_os_spec import DeviceOSSpec
-    from ..models.device_spec_containers import DeviceSpecContainers
     from ..models.device_spec_systemd import DeviceSpecSystemd
     from ..models.disk_resource_monitor_spec import DiskResourceMonitorSpec
     from ..models.git_config_provider_spec import GitConfigProviderSpec
@@ -41,10 +32,9 @@ class TemplateVersionStatus:
         conditions (List['Condition']): Current state of the device.
         os (Union[Unset, DeviceOSSpec]):
         config (Union[Unset, List[Union['GitConfigProviderSpec', 'HttpConfigProviderSpec', 'InlineConfigProviderSpec',
-            'KubernetesSecretProviderSpec']]]): List of config resources.
+            'KubernetesSecretProviderSpec']]]): List of config providers.
         hooks (Union[Unset, DeviceHooksSpec]):
         applications (Union[Unset, List['ApplicationSpec']]): List of applications.
-        containers (Union[Unset, DeviceSpecContainers]):
         systemd (Union[Unset, DeviceSpecSystemd]):
         resources (Union[Unset, List[Union['CPUResourceMonitorSpec', 'DiskResourceMonitorSpec',
             'MemoryResourceMonitorSpec']]]): Array of resource monitor configurations.
@@ -66,7 +56,6 @@ class TemplateVersionStatus:
     ] = UNSET
     hooks: Union[Unset, "DeviceHooksSpec"] = UNSET
     applications: Union[Unset, List["ApplicationSpec"]] = UNSET
-    containers: Union[Unset, "DeviceSpecContainers"] = UNSET
     systemd: Union[Unset, "DeviceSpecSystemd"] = UNSET
     resources: Union[
         Unset,
@@ -126,10 +115,6 @@ class TemplateVersionStatus:
                 applications_item = applications_item_data.to_dict()
                 applications.append(applications_item)
 
-        containers: Union[Unset, Dict[str, Any]] = UNSET
-        if not isinstance(self.containers, Unset):
-            containers = self.containers.to_dict()
-
         systemd: Union[Unset, Dict[str, Any]] = UNSET
         if not isinstance(self.systemd, Unset):
             systemd = self.systemd.to_dict()
@@ -167,8 +152,6 @@ class TemplateVersionStatus:
             field_dict["hooks"] = hooks
         if applications is not UNSET:
             field_dict["applications"] = applications
-        if containers is not UNSET:
-            field_dict["containers"] = containers
         if systemd is not UNSET:
             field_dict["systemd"] = systemd
         if resources is not UNSET:
@@ -185,7 +168,6 @@ class TemplateVersionStatus:
         from ..models.cpu_resource_monitor_spec import CPUResourceMonitorSpec
         from ..models.device_hooks_spec import DeviceHooksSpec
         from ..models.device_os_spec import DeviceOSSpec
-        from ..models.device_spec_containers import DeviceSpecContainers
         from ..models.device_spec_systemd import DeviceSpecSystemd
         from ..models.disk_resource_monitor_spec import DiskResourceMonitorSpec
         from ..models.git_config_provider_spec import GitConfigProviderSpec
@@ -226,32 +208,40 @@ class TemplateVersionStatus:
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    config_item_type_0 = GitConfigProviderSpec.from_dict(data)
+                    componentsschemas_config_provider_spec_type_0 = (
+                        GitConfigProviderSpec.from_dict(data)
+                    )
 
-                    return config_item_type_0
+                    return componentsschemas_config_provider_spec_type_0
                 except:  # noqa: E722
                     pass
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    config_item_type_1 = KubernetesSecretProviderSpec.from_dict(data)
+                    componentsschemas_config_provider_spec_type_1 = (
+                        KubernetesSecretProviderSpec.from_dict(data)
+                    )
 
-                    return config_item_type_1
+                    return componentsschemas_config_provider_spec_type_1
                 except:  # noqa: E722
                     pass
                 try:
                     if not isinstance(data, dict):
                         raise TypeError()
-                    config_item_type_2 = InlineConfigProviderSpec.from_dict(data)
+                    componentsschemas_config_provider_spec_type_2 = (
+                        InlineConfigProviderSpec.from_dict(data)
+                    )
 
-                    return config_item_type_2
+                    return componentsschemas_config_provider_spec_type_2
                 except:  # noqa: E722
                     pass
                 if not isinstance(data, dict):
                     raise TypeError()
-                config_item_type_3 = HttpConfigProviderSpec.from_dict(data)
+                componentsschemas_config_provider_spec_type_3 = (
+                    HttpConfigProviderSpec.from_dict(data)
+                )
 
-                return config_item_type_3
+                return componentsschemas_config_provider_spec_type_3
 
             config_item = _parse_config_item(config_item_data)
 
@@ -270,13 +260,6 @@ class TemplateVersionStatus:
             applications_item = ApplicationSpec.from_dict(applications_item_data)
 
             applications.append(applications_item)
-
-        _containers = d.pop("containers", UNSET)
-        containers: Union[Unset, DeviceSpecContainers]
-        if isinstance(_containers, Unset):
-            containers = UNSET
-        else:
-            containers = DeviceSpecContainers.from_dict(_containers)
 
         _systemd = d.pop("systemd", UNSET)
         systemd: Union[Unset, DeviceSpecSystemd]
@@ -341,7 +324,6 @@ class TemplateVersionStatus:
             config=config,
             hooks=hooks,
             applications=applications,
-            containers=containers,
             systemd=systemd,
             resources=resources,
             updated_at=updated_at,

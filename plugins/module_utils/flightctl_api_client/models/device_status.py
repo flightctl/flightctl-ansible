@@ -7,7 +7,10 @@ from dateutil.parser import isoparse
 
 if TYPE_CHECKING:
     from ..models.condition import Condition
-    from ..models.device_applications_status import DeviceApplicationsStatus
+    from ..models.device_application_status import DeviceApplicationStatus
+    from ..models.device_applications_summary_status import (
+        DeviceApplicationsSummaryStatus,
+    )
     from ..models.device_config_status import DeviceConfigStatus
     from ..models.device_integrity_status import DeviceIntegrityStatus
     from ..models.device_os_status import DeviceOSStatus
@@ -27,7 +30,8 @@ class DeviceStatus:
     Attributes:
         conditions (List['Condition']): Conditions represent the observations of a the current state of a device.
         system_info (DeviceSystemInfo): DeviceSystemInfo is a set of ids/uuids to uniquely identify the device.
-        applications (DeviceApplicationsStatus):
+        applications (List['DeviceApplicationStatus']): List of device application status.
+        applications_summary (DeviceApplicationsSummaryStatus):
         resources (DeviceResourceStatus):
         integrity (DeviceIntegrityStatus):
         config (DeviceConfigStatus):
@@ -39,7 +43,8 @@ class DeviceStatus:
 
     conditions: List["Condition"]
     system_info: "DeviceSystemInfo"
-    applications: "DeviceApplicationsStatus"
+    applications: List["DeviceApplicationStatus"]
+    applications_summary: "DeviceApplicationsSummaryStatus"
     resources: "DeviceResourceStatus"
     integrity: "DeviceIntegrityStatus"
     config: "DeviceConfigStatus"
@@ -57,7 +62,12 @@ class DeviceStatus:
 
         system_info = self.system_info.to_dict()
 
-        applications = self.applications.to_dict()
+        applications = []
+        for applications_item_data in self.applications:
+            applications_item = applications_item_data.to_dict()
+            applications.append(applications_item)
+
+        applications_summary = self.applications_summary.to_dict()
 
         resources = self.resources.to_dict()
 
@@ -80,6 +90,7 @@ class DeviceStatus:
                 "conditions": conditions,
                 "systemInfo": system_info,
                 "applications": applications,
+                "applicationsSummary": applications_summary,
                 "resources": resources,
                 "integrity": integrity,
                 "config": config,
@@ -95,7 +106,10 @@ class DeviceStatus:
     @classmethod
     def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
         from ..models.condition import Condition
-        from ..models.device_applications_status import DeviceApplicationsStatus
+        from ..models.device_application_status import DeviceApplicationStatus
+        from ..models.device_applications_summary_status import (
+            DeviceApplicationsSummaryStatus,
+        )
         from ..models.device_config_status import DeviceConfigStatus
         from ..models.device_integrity_status import DeviceIntegrityStatus
         from ..models.device_os_status import DeviceOSStatus
@@ -114,7 +128,18 @@ class DeviceStatus:
 
         system_info = DeviceSystemInfo.from_dict(d.pop("systemInfo"))
 
-        applications = DeviceApplicationsStatus.from_dict(d.pop("applications"))
+        applications = []
+        _applications = d.pop("applications")
+        for applications_item_data in _applications:
+            applications_item = DeviceApplicationStatus.from_dict(
+                applications_item_data
+            )
+
+            applications.append(applications_item)
+
+        applications_summary = DeviceApplicationsSummaryStatus.from_dict(
+            d.pop("applicationsSummary")
+        )
 
         resources = DeviceResourceStatus.from_dict(d.pop("resources"))
 
@@ -134,6 +159,7 @@ class DeviceStatus:
             conditions=conditions,
             system_info=system_info,
             applications=applications,
+            applications_summary=applications_summary,
             resources=resources,
             integrity=integrity,
             config=config,

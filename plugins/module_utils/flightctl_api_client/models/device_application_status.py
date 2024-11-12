@@ -3,32 +3,47 @@ from typing import Any, Dict, List, Type, TypeVar
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-T = TypeVar("T", bound="GenericConfigSpec")
+from ..models.application_status_type import (
+    ApplicationStatusType,
+    check_application_status_type,
+)
+
+T = TypeVar("T", bound="DeviceApplicationStatus")
 
 
 @_attrs_define
-class GenericConfigSpec:
+class DeviceApplicationStatus:
     """
     Attributes:
-        config_type (str):
-        name (str):
+        name (str): Human readable name of the application.
+        ready (str): The number of containers which are ready in the application.
+        restarts (int): Number of restarts observed for the application.
+        status (ApplicationStatusType):
     """
 
-    config_type: str
     name: str
+    ready: str
+    restarts: int
+    status: ApplicationStatusType
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
-        config_type = self.config_type
-
         name = self.name
+
+        ready = self.ready
+
+        restarts = self.restarts
+
+        status: str = self.status
 
         field_dict: Dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "configType": config_type,
                 "name": name,
+                "ready": ready,
+                "restarts": restarts,
+                "status": status,
             }
         )
 
@@ -37,17 +52,23 @@ class GenericConfigSpec:
     @classmethod
     def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
         d = src_dict.copy()
-        config_type = d.pop("configType")
-
         name = d.pop("name")
 
-        generic_config_spec = cls(
-            config_type=config_type,
+        ready = d.pop("ready")
+
+        restarts = d.pop("restarts")
+
+        status = check_application_status_type(d.pop("status"))
+
+        device_application_status = cls(
             name=name,
+            ready=ready,
+            restarts=restarts,
+            status=status,
         )
 
-        generic_config_spec.additional_properties = d
-        return generic_config_spec
+        device_application_status.additional_properties = d
+        return device_application_status
 
     @property
     def additional_keys(self) -> List[str]:

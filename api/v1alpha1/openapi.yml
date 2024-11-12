@@ -37,6 +37,12 @@ paths:
           description: Token invalid
         "418":
           description: Auth not configured
+        "500":
+          description: InternalServerError
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/resourcesyncs:
     get:
       tags:
@@ -55,6 +61,11 @@ paths:
           description: A selector to restrict the list of returned objects by their labels. Defaults to everything.
           schema:
             type: string
+        - name: fieldSelector
+          in: query
+          description: A selector to restrict the list of returned objects by their fields, supports '=', '==', and '!='.(e.g. key1=value1,key2!=value2).
+          schema:
+            type: string
         - name: limit
           in: query
           description: The maximum number of results returned in the list response. The server will set the 'continue' field in the list response if more results exist. The continue value may then be specified as parameter in a subsequent query.
@@ -67,6 +78,21 @@ paths:
           description: The name of the repository to filter results by.
           schema:
             type: string
+        - name: sortBy
+          in: query
+          description: Specifies the field to sort by.
+          required: false
+          schema:
+            type: string
+          example: 'metadata.name'
+        - name: sortOrder
+          in: query
+          description: Specifies the sort order.
+          required: false
+          schema:
+            $ref: '#/components/schemas/SortOrder'
+            default: 'Asc'
+          example: 'Asc'
       responses:
         "200":
           description: OK
@@ -324,6 +350,11 @@ paths:
           description: A selector to restrict the list of returned objects by their labels. Defaults to everything.
           schema:
             type: string
+        - name: fieldSelector
+          in: query
+          description: A selector to restrict the list of returned objects by their fields, supports '=', '==', and '!='.(e.g. key1=value1,key2!=value2).
+          schema:
+            type: string
         - name: limit
           in: query
           description: The maximum number of results returned in the list response. The server will set the 'continue' field in the list response if more results exist. The continue value may then be specified as parameter in a subsequent query.
@@ -331,6 +362,21 @@ paths:
           schema:
             type: integer
             format: int32
+        - name: sortBy
+          in: query
+          description: Specifies the field to sort by.
+          required: false
+          schema:
+            type: string
+          example: 'metadata.name'
+        - name: sortOrder
+          in: query
+          description: Specifies the sort order.
+          required: false
+          schema:
+            $ref: '#/components/schemas/SortOrder'
+            default: 'Asc'
+          example: 'Asc'
       responses:
         "200":
           description: OK
@@ -588,6 +634,11 @@ paths:
           description: A selector to restrict the list of returned objects by their labels. Defaults to everything.
           schema:
             type: string
+        - name: fieldSelector
+          in: query
+          description: A selector to restrict the list of returned objects by their fields, supports '=', '==', and '!='.(e.g. key1=value1,key2!=value2).
+          schema:
+            type: string
         - name: statusFilter
           in: query
           description: A filter to restrict the list of devices by the value of the filtered status key. Defaults to everything.
@@ -614,6 +665,21 @@ paths:
           required: false
           schema:
             type: boolean
+        - name: sortBy
+          in: query
+          description: Specifies the field to sort by.
+          required: false
+          schema:
+            type: string
+          example: 'metadata.name'
+        - name: sortOrder
+          in: query
+          description: Specifies the sort order.
+          required: false
+          schema:
+            $ref: '#/components/schemas/SortOrder'
+            default: 'Asc'
+          example: 'Asc'
       responses:
         "200":
           description: OK
@@ -1075,6 +1141,11 @@ paths:
           description: A selector to restrict the list of returned objects by their labels. Defaults to everything.
           schema:
             type: string
+        - name: fieldSelector
+          in: query
+          description: A selector to restrict the list of returned objects by their fields, supports '=', '==', and '!='.(e.g. key1=value1,key2!=value2).
+          schema:
+            type: string
         - name: limit
           in: query
           description: The maximum number of results returned in the list response. The server will set the 'continue' field in the list response if more results exist. The continue value may then be specified as parameter in a subsequent query.
@@ -1082,6 +1153,21 @@ paths:
           schema:
             type: integer
             format: int32
+        - name: sortBy
+          in: query
+          description: Specifies the field to sort by.
+          required: false
+          schema:
+            type: string
+          example: 'metadata.name'
+        - name: sortOrder
+          in: query
+          description: Specifies the sort order.
+          required: false
+          schema:
+            $ref: '#/components/schemas/SortOrder'
+            default: 'Asc'
+          example: 'Asc'
       responses:
         "200":
           description: OK
@@ -1422,6 +1508,11 @@ paths:
           description: A selector to restrict the list of returned objects by their labels. Defaults to everything.
           schema:
             type: string
+        - name: fieldSelector
+          in: query
+          description: A selector to restrict the list of returned objects by their fields, supports '=', '==', and '!='.(e.g. key1=value1,key2!=value2).
+          schema:
+            type: string
         - name: limit
           in: query
           description: The maximum number of results returned in the list response. The server will set the 'continue' field in the list response if more results exist. The continue value may then be specified as parameter in a subsequent query.
@@ -1429,6 +1520,21 @@ paths:
           schema:
             type: integer
             format: int32
+        - name: sortBy
+          in: query
+          description: Specifies the field to sort by.
+          required: false
+          schema:
+            type: string
+          example: 'metadata.name'
+        - name: sortOrder
+          in: query
+          description: Specifies the sort order.
+          required: false
+          schema:
+            $ref: '#/components/schemas/SortOrder'
+            default: 'Asc'
+          example: 'Asc'
       responses:
         "200":
           description: OK
@@ -1789,6 +1895,11 @@ paths:
           description: A selector to restrict the list of returned objects by their labels. Defaults to everything.
           schema:
             type: string
+        - name: fieldSelector
+          in: query
+          description: A selector to restrict the list of returned objects by their fields, supports '=', '==', and '!='.(e.g. key1=value1,key2!=value2).
+          schema:
+            type: string
         - name: limit
           in: query
           description: The maximum number of results returned in the list response. The server will set the 'continue' field in the list response if more results exist. The continue value may then be specified as parameter in a subsequent query.
@@ -1808,6 +1919,21 @@ paths:
           required: false
           schema:
             type: boolean
+        - name: sortBy
+          in: query
+          description: Specifies the field to sort by.
+          required: false
+          schema:
+            type: string
+          example: 'metadata.name'
+        - name: sortOrder
+          in: query
+          description: Specifies the sort order.
+          required: false
+          schema:
+            $ref: '#/components/schemas/SortOrder'
+            default: 'Asc'
+          example: 'Asc'
       responses:
         "200":
           description: OK
@@ -2152,6 +2278,11 @@ paths:
           description: A selector to restrict the list of returned objects by their labels. Defaults to everything.
           schema:
             type: string
+        - name: fieldSelector
+          in: query
+          description: A selector to restrict the list of returned objects by their fields, supports '=', '==', and '!='.(e.g. key1=value1,key2!=value2).
+          schema:
+            type: string
         - name: limit
           in: query
           description: The maximum number of results returned in the list response. The server will set the 'continue' field in the list response if more results exist. The continue value may then be specified as parameter in a subsequent query.
@@ -2159,6 +2290,21 @@ paths:
           schema:
             type: integer
             format: int32
+        - name: sortBy
+          in: query
+          description: Specifies the field to sort by.
+          required: false
+          schema:
+            type: string
+          example: 'metadata.name'
+        - name: sortOrder
+          in: query
+          description: Specifies the sort order.
+          required: false
+          schema:
+            $ref: '#/components/schemas/SortOrder'
+            default: 'Asc'
+          example: 'Asc'
       responses:
         "200":
           description: OK
@@ -2280,6 +2426,13 @@ paths:
                 $ref: '#/components/schemas/Error'
 components:
   schemas:
+    SortOrder:
+      type: string
+      enum:
+        - 'Asc'
+        - 'Desc'
+      description: Specifies the sort order.
+      default: 'Asc'
     PatchRequest:
       type: array
       items:
@@ -2362,6 +2515,9 @@ components:
           $ref: "#/components/schemas/RepoSpecType"
         httpConfig:
           $ref: "#/components/schemas/HttpConfig"
+        validationSuffix:
+          type: string
+          description: 'URL suffix used only for validating access to the repository. Users might use the URL field as a root URL to be used by config sources adding suffixes. This will help with the validation of the http endpoint.'
       required:
         - url
         - type
@@ -2487,75 +2643,75 @@ components:
       required:
         - gRPCEndpoint
         - sessionID
-    GenericConfigSpec:
+    ConfigProviderSpec:
+      oneOf:
+        - $ref: "#/components/schemas/GitConfigProviderSpec"
+        - $ref: "#/components/schemas/KubernetesSecretProviderSpec"
+        - $ref: "#/components/schemas/InlineConfigProviderSpec"
+        - $ref: "#/components/schemas/HttpConfigProviderSpec"
+    GitConfigProviderSpec:
       type: object
       properties:
-        configType:
-          type: string
         name:
           type: string
-      discriminator:
-        propertyName: configType
+          description: "The name of the config provider"
+        gitRef:
+          type: object
+          properties:
+            repository:
+              type: string
+              description: |
+                The name of the repository resource to use as the sync source
+            targetRevision:
+              type: string
+            path:
+              type: string
+            mountPath:
+              description: Path to config in device
+              type: string
+              default: "/"
+          required:
+            - repository
+            - targetRevision
+            - path
       required:
-        - configType
-        - name
-    GitConfigProviderSpec:
-      allOf:
-        - $ref: '#/components/schemas/GenericConfigSpec'
-        - type: object
-          properties:
-            gitRef:
-              type: object
-              properties:
-                repository:
-                  type: string
-                  description: |
-                    The name of the repository resource to use as the sync source
-                targetRevision:
-                  type: string
-                path:
-                  type: string
-                mountPath:
-                  description: Path to config in device
-                  type: string
-                  default: "/"
-              required:
-                - repository
-                - targetRevision
-                - path
-          required:
-          - gitRef
+      - name
+      - gitRef
     KubernetesSecretProviderSpec:
-      allOf:
-        - $ref: '#/components/schemas/GenericConfigSpec'
-        - type: object
+      type: object
+      properties:
+        name:
+          type: string
+          description: "The name of the config provider"
+        secretRef:
+          type: object
           properties:
-            secretRef:
-              type: object
-              properties:
-                name:
-                  type: string
-                namespace:
-                  type: string
-                mountPath:
-                  type: string
-              required:
-                - name
-                - namespace
-                - mountPath
+            name:
+              type: string
+            namespace:
+              type: string
+            mountPath:
+              type: string
           required:
-          - secretRef
+            - name
+            - namespace
+            - mountPath
+      required:
+      - name
+      - secretRef
     InlineConfigProviderSpec:
-      allOf:
-        - $ref: '#/components/schemas/GenericConfigSpec'
-        - type: object
-          properties:
-            inline:
-              type: array
-              items:
-                $ref: '#/components/schemas/FileSpec'
-          required:
-          - inline
+      type: object
+      properties:
+        name:
+          type: string
+          description: "The name of the config provider"
+        inline:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileSpec'
+      required:
+      - name
+      - inline
     FileSpec:
       type: object
       properties:
@@ -2587,31 +2743,33 @@ components:
       - path
       - content
     HttpConfigProviderSpec:
-      allOf:
-        - $ref: '#/components/schemas/GenericConfigSpec'
-        - type: object
+      type: object
+      properties:
+        name:
+          type: string
+          description: "The name of the config provider"
+        httpRef:
+          type: object
           properties:
-            httpRef:
-              type: object
-              properties:
-                repository:
-                  type: string
-                  description: |
-                    The name of the repository resource to use as the sync source
-                suffix:
-                  type: string
-                  description: |
-                    Part of the URL that comes after the base URL. It can include query parameters such as:
-                    /path/to/endpoint?query=param
-                filePath:
-                  type: string
-                  description: |
-                    The path of the file where the response is stored in the filesystem of the device.
-              required:
-              - repository
-              - filePath
+            repository:
+              type: string
+              description: |
+                The name of the repository resource to use as the sync source
+            suffix:
+              type: string
+              description: |
+                Part of the URL that comes after the base URL. It can include query parameters such as:
+                /path/to/endpoint?query=param
+            filePath:
+              type: string
+              description: |
+                The path of the file where the response is stored in the filesystem of the device.
           required:
-          - httpRef
+          - repository
+          - filePath
+      required:
+      - name
+      - httpRef
     ApplicationSpec:
       type: object
       allOf:
@@ -2911,6 +3069,7 @@ components:
         - conditions
         - systemInfo
         - applications
+        - applicationsSummary
         - resources
         - integrity
         - config
@@ -2927,8 +3086,13 @@ components:
         systemInfo:
           $ref: "#/components/schemas/DeviceSystemInfo"
         applications:
-          $ref: "#/components/schemas/DeviceApplicationsStatus"
-          description: "Current status of the system applications."
+          type: array
+          description: "List of device application status."
+          items:
+            $ref: "#/components/schemas/DeviceApplicationStatus"
+        applicationsSummary:
+          $ref: "#/components/schemas/DeviceApplicationsSummaryStatus"
+          description: "Summary status of the device applications."
         resources:
           $ref: "#/components/schemas/DeviceResourceStatus"
           description: "Current status of the resources of the device."
@@ -2968,21 +3132,7 @@ components:
           type: string
           description: The Operating System reported by the device.
       description: "DeviceSystemInfo is a set of ids/uuids to uniquely identify the device."
-    DeviceApplicationsStatus:
-      type: object
-      required:
-        - data
-        - summary
-      properties:
-        data:
-          type: object
-          description: "Map of system application statuses."
-          additionalProperties:
-            $ref: "#/components/schemas/ApplicationStatus"
-        summary:
-          $ref: "#/components/schemas/ApplicationsSummaryStatus"
-          description: "Summary status of system applications."
-    ApplicationStatus:
+    DeviceApplicationStatus:
       type: object
       required:
         - name
@@ -3002,7 +3152,7 @@ components:
         status:
           $ref: "#/components/schemas/ApplicationStatusType"
           description: "Status of the application."
-    ApplicationsSummaryStatus:
+    DeviceApplicationsSummaryStatus:
       type: object
       required:
         - status
@@ -3438,11 +3588,95 @@ components:
         - metadata
         - items
       description: FleetList is a list of Fleets.
+
+    DisruptionAllowance:
+      type: object
+      properties:
+        groupBy:
+          type: array
+          items:
+            type: string
+          description: List of label keys to perform grouping for the disruption allowance.
+        minAvailable:
+          type: integer
+          description: The maximum number of unavailable devices allowed during rollout.
+        maxUnavailable:
+          type: integer
+          description: The minimum number of required available devices during rollout.
+      description: DisruptionAllowance defines the level of allowed disruption when rollout is in progress.
+
+    Percentage:
+      type: string
+      format: '^(100|[1-9]?[0-9])%$'
+      description: Percentage is the string format representing percentage string.
+
+    Batch:
+      type: object
+      properties:
+        selector:
+          $ref: '#/components/schemas/LabelSelector'
+        successThreshold:
+          $ref: '#/components/schemas/Percentage'
+        limit:
+          oneOf:
+            - $ref: '#/components/schemas/Percentage'
+            - type: integer
+              minimum: 1
+      description: Batch is an element in batch sequence.
+    Duration:
+      type: string
+      pattern: '^[1-9]\d*[smhd]$'
+      description: |
+        The maximum duration allowed for the action to complete.
+        The duration should be specified as a positive integer
+        followed by a time unit. Supported time units are:
+        - 's' for seconds
+        - 'm' for minutes
+        - 'h' for hours
+        - 'd' for days
+
+    BatchSequence:
+      type: object
+      properties:
+        sequence:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Batch'
+      description: BatchSequence defines the list of batches to be executed in sequence.
+
+    RolloutDeviceSelection:
+      type: object
+      required:
+        - strategy
+      properties:
+        strategy:
+          type: string
+      oneOf:
+        - $ref: '#/components/schemas/BatchSequence'
+      discriminator:
+        propertyName: strategy
+
+    RolloutPolicy:
+      type: object
+      properties:
+        disruptionAllowance:
+          $ref: '#/components/schemas/DisruptionAllowance'
+        deviceSelection:
+          $ref: '#/components/schemas/RolloutDeviceSelection'
+        successThreshold:
+          $ref: '#/components/schemas/Percentage'
+        defaultUpdateTimeout:
+          $ref: '#/components/schemas/Duration'
+      description: RolloutPolicy is the rollout policy of the fleet.
+
     FleetSpec:
       type: object
       properties:
         selector:
           $ref: '#/components/schemas/LabelSelector'
+        rolloutPolicy:
+          $ref: '#/components/schemas/RolloutPolicy'
         template:
           type: object
           properties:
@@ -3462,13 +3696,6 @@ components:
           type: string
         os:
           $ref: '#/components/schemas/DeviceOSSpec'
-        containers:
-          type: object
-          properties:
-            matchPatterns:
-              type: array
-              items:
-                type: string
         config:
           type: string
         applications:
@@ -3532,16 +3759,9 @@ components:
           $ref: '#/components/schemas/DeviceOSSpec'
         config:
           type: array
-          description: List of config resources.
+          description: List of config providers.
           items:
-            type: object
-            oneOf:
-              - $ref: "#/components/schemas/GitConfigProviderSpec"
-              - $ref: "#/components/schemas/KubernetesSecretProviderSpec"
-              - $ref: "#/components/schemas/InlineConfigProviderSpec"
-              - $ref: "#/components/schemas/HttpConfigProviderSpec"
-            discriminator:
-              propertyName: configType
+            $ref: '#/components/schemas/ConfigProviderSpec'
         hooks:
           $ref: '#/components/schemas/DeviceHooksSpec'
         applications:
@@ -3549,14 +3769,6 @@ components:
           description: List of applications.
           items:
             $ref: '#/components/schemas/ApplicationSpec'
-        containers:
-          type: object
-          properties:
-            matchPatterns:
-              type: array
-              items:
-                type: string
-                pattern: '^[a-z][a-z0-9-_.]*$'
         systemd:
           type: object
           properties:
@@ -3571,9 +3783,16 @@ components:
           description: 'Array of resource monitor configurations.'
           items:
             $ref: '#/components/schemas/ResourceMonitor'
+    FleetRolloutStatus:
+      type: object
+      properties:
+        currentBatch:
+          type: integer
     FleetStatus:
       type: object
       properties:
+        rollout:
+          $ref: '#/components/schemas/FleetRolloutStatus'
         conditions:
           type: array
           description: 'Current state of the fleet.'
@@ -3742,6 +3961,28 @@ components:
           type: string
           description: An opaque string that identifies the server's internal version of an object.
       description: ObjectMeta is metadata that all persisted resources must have, which includes all objects users must create.
+
+    MatchExpression:
+      properties:
+        key:
+          type: string
+        operator:
+          type: string
+          enum: [In, NotIn, Exists, DoesNotExist]
+        values:
+          type: array
+          items:
+            type: string
+      required:
+        - key
+        - operator
+
+    MatchExpressions:
+      type: array
+      minItems: 1
+      items:
+        $ref: '#/components/schemas/MatchExpression'
+
     LabelSelector:
       type: object
       properties:
@@ -3749,8 +3990,9 @@ components:
           type: object
           additionalProperties:
             type: string
-      required:
-        - matchLabels
+        matchExpressions:
+          $ref: '#/components/schemas/MatchExpressions'
+
       description: A map of key,value pairs that are ANDed. Empty/null label selectors match nothing.
     Status:
       type: object
@@ -3844,18 +4086,6 @@ components:
       - 'ConditionStatusTrue'
       - 'ConditionStatusFalse'
       - 'ConditionStatusUnknown'
-    TemplateDiscriminators:
-      type: string
-      enum:
-      - 'GitConfigProviderSpec'
-      - 'KubernetesSecretProviderSpec'
-      - 'InlineConfigProviderSpec'
-      - 'HttpConfigProviderSpec'
-      x-enum-varnames:
-      - 'TemplateDiscriminatorGitConfig'
-      - 'TemplateDiscriminatorKubernetesSec'
-      - 'TemplateDiscriminatorInlineConfig'
-      - 'TemplateDiscriminatorHttpConfig'
     CertificateSigningRequest:
       type: object
       properties:

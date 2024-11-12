@@ -1,74 +1,60 @@
-from typing import Any, Dict, List, Type, TypeVar
+from typing import Any, Dict, List, Type, TypeVar, Union
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..models.application_status_type import (
-    ApplicationStatusType,
-    check_application_status_type,
+from ..models.applications_summary_status_type import (
+    ApplicationsSummaryStatusType,
+    check_applications_summary_status_type,
 )
+from ..types import UNSET, Unset
 
-T = TypeVar("T", bound="ApplicationStatus")
+T = TypeVar("T", bound="DeviceApplicationsSummaryStatus")
 
 
 @_attrs_define
-class ApplicationStatus:
+class DeviceApplicationsSummaryStatus:
     """
     Attributes:
-        name (str): Human readable name of the application.
-        ready (str): The number of containers which are ready in the application.
-        restarts (int): Number of restarts observed for the application.
-        status (ApplicationStatusType):
+        status (ApplicationsSummaryStatusType):
+        info (Union[Unset, str]): Human readable information detailing the last system application transition.
     """
 
-    name: str
-    ready: str
-    restarts: int
-    status: ApplicationStatusType
+    status: ApplicationsSummaryStatusType
+    info: Union[Unset, str] = UNSET
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
-        name = self.name
-
-        ready = self.ready
-
-        restarts = self.restarts
-
         status: str = self.status
+
+        info = self.info
 
         field_dict: Dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "name": name,
-                "ready": ready,
-                "restarts": restarts,
                 "status": status,
             }
         )
+        if info is not UNSET:
+            field_dict["info"] = info
 
         return field_dict
 
     @classmethod
     def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
         d = src_dict.copy()
-        name = d.pop("name")
+        status = check_applications_summary_status_type(d.pop("status"))
 
-        ready = d.pop("ready")
+        info = d.pop("info", UNSET)
 
-        restarts = d.pop("restarts")
-
-        status = check_application_status_type(d.pop("status"))
-
-        application_status = cls(
-            name=name,
-            ready=ready,
-            restarts=restarts,
+        device_applications_summary_status = cls(
             status=status,
+            info=info,
         )
 
-        application_status.additional_properties = d
-        return application_status
+        device_applications_summary_status.additional_properties = d
+        return device_applications_summary_status
 
     @property
     def additional_keys(self) -> List[str]:

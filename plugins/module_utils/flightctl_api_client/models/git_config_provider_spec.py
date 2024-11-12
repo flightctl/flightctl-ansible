@@ -14,19 +14,15 @@ T = TypeVar("T", bound="GitConfigProviderSpec")
 class GitConfigProviderSpec:
     """
     Attributes:
-        config_type (str):
-        name (str):
+        name (str): The name of the config provider
         git_ref (GitConfigProviderSpecGitRef):
     """
 
-    config_type: str
     name: str
     git_ref: "GitConfigProviderSpecGitRef"
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
-        config_type = self.config_type
-
         name = self.name
 
         git_ref = self.git_ref.to_dict()
@@ -35,7 +31,6 @@ class GitConfigProviderSpec:
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "configType": config_type,
                 "name": name,
                 "gitRef": git_ref,
             }
@@ -50,14 +45,11 @@ class GitConfigProviderSpec:
         )
 
         d = src_dict.copy()
-        config_type = d.pop("configType")
-
         name = d.pop("name")
 
         git_ref = GitConfigProviderSpecGitRef.from_dict(d.pop("gitRef"))
 
         git_config_provider_spec = cls(
-            config_type=config_type,
             name=name,
             git_ref=git_ref,
         )

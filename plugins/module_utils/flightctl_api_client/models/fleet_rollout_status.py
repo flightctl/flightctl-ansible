@@ -1,47 +1,45 @@
-from typing import Any, Dict, List, Type, TypeVar, Union, cast
+from typing import Any, Dict, List, Type, TypeVar, Union
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-T = TypeVar("T", bound="RenderedDeviceSpecContainers")
+T = TypeVar("T", bound="FleetRolloutStatus")
 
 
 @_attrs_define
-class RenderedDeviceSpecContainers:
+class FleetRolloutStatus:
     """
     Attributes:
-        match_patterns (Union[Unset, List[str]]):
+        current_batch (Union[Unset, int]):
     """
 
-    match_patterns: Union[Unset, List[str]] = UNSET
+    current_batch: Union[Unset, int] = UNSET
     additional_properties: Dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
-        match_patterns: Union[Unset, List[str]] = UNSET
-        if not isinstance(self.match_patterns, Unset):
-            match_patterns = self.match_patterns
+        current_batch = self.current_batch
 
         field_dict: Dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update({})
-        if match_patterns is not UNSET:
-            field_dict["matchPatterns"] = match_patterns
+        if current_batch is not UNSET:
+            field_dict["currentBatch"] = current_batch
 
         return field_dict
 
     @classmethod
     def from_dict(cls: Type[T], src_dict: Dict[str, Any]) -> T:
         d = src_dict.copy()
-        match_patterns = cast(List[str], d.pop("matchPatterns", UNSET))
+        current_batch = d.pop("currentBatch", UNSET)
 
-        rendered_device_spec_containers = cls(
-            match_patterns=match_patterns,
+        fleet_rollout_status = cls(
+            current_batch=current_batch,
         )
 
-        rendered_device_spec_containers.additional_properties = d
-        return rendered_device_spec_containers
+        fleet_rollout_status.additional_properties = d
+        return fleet_rollout_status
 
     @property
     def additional_keys(self) -> List[str]:
