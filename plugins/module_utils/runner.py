@@ -27,6 +27,7 @@ from .constants import Kind
 from .exceptions import FlightctlException, ValidationException
 from .inputs import ApprovalInput
 from .resources import create_definitions
+from .flightctl_api_client.models.enrollment_request import EnrollmentRequest
 
 
 def load_schema(file_path: str) -> Dict[str, Any]:
@@ -223,10 +224,13 @@ def perform_approval(module: FlightctlAPIModule) -> None:
     )
 
     try:
-        existing = module.get_endpoint(input.kind.value, input.name)
+        existing = module.get_endpoint_new(input.name)
         currently_approved = None
-        if input.kind is Kind.ENROLLMENT:
-            currently_approved = existing.json.get('status', {}).get('approval', {}).get('approved', None)
+        if isinstance(existing, EnrollmentRequest):
+            try:
+                currently_approved = existing.status.approval.approved
+            except AttributeError:
+                pass
         elif input.kind is Kind.CSR:
             conditions = existing.json.get('status', {}).get('conditions', [])
             approval_condition = next((c for c in conditions if c.get('type') == "Approved"), None)

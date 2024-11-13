@@ -21,7 +21,8 @@ from .core import FlightctlModule
 from .exceptions import FlightctlException, FlightctlHTTPException
 from .inputs import ApprovalInput
 from .utils import diff_dicts, get_patch, json_patch
-
+from .flightctl_api_client import Client
+from .flightctl_api_client.api.enrollmentrequest import read_enrollment_request
 
 class Response:
     """
@@ -124,6 +125,11 @@ class FlightctlAPIModule(FlightctlModule):
             ca_path=self.ca_path,
         )
 
+        self.client = Client(
+            base_url=self.url.geturl(),
+            verify_ssl=self.verify_ssl,
+        )
+
     @staticmethod
     def normalize_endpoint(endpoint: str) -> Optional[str]:
         """
@@ -152,6 +158,11 @@ class FlightctlAPIModule(FlightctlModule):
         """
         url = self.build_url(endpoint, name, query_params=kwargs)
         return self.request("GET", url.geturl(), **kwargs)
+
+    def get_endpoint_new(
+        self, name: Optional[str] = None,
+    ) -> Any:
+        return read_enrollment_request.sync(name, client=self.client)
 
     def patch_endpoint(
         self, endpoint: str, name: str, patch: List[Dict[str, Any]]
@@ -182,6 +193,8 @@ class FlightctlAPIModule(FlightctlModule):
             Response: The response object.
         """
         url = self.build_url(endpoint, None)
+        self.warn("URL IN POST")
+        self.warn(url.geturl())
         return self.request("POST", url.geturl(), **kwargs)
 
     def delete_endpoint(self, endpoint: str, name: str, **kwargs: Any) -> Response:
