@@ -1,11 +1,12 @@
 ---
 - name: Test approve certificate signing request
   vars:
-    csr_name: ansible-integration-test-csr
+    csr_name: ansible-integration-test-denial-csr
   block:
   - name: Create a csr
     flightctl.edge.flightctl:
       flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
       api_version: v1alpha1
@@ -15,12 +16,13 @@
           signerName: enrollment
           usages: ["clientAuth", "CA:false"]
 
-  - name: Approve the csr
-    flightctl.edge.flightctl_approve:
+  - name: Deny the csr
+    flightctl.edge.flightctl_certificate:
       flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
-      approved: true
+      approved: false
       labels:
         testing_label: is_set_during_testing
     register: approve_result
@@ -33,23 +35,26 @@
   - name: Get the csr
     flightctl.edge.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
     register: csr_result
 
-  - name: Assert that the csr is now approved
+  - name: Assert that the csr is now denied
     ansible.builtin.assert:
       that:
         - csr_result is success
         - csr_result.result[0].status.conditions[0].type == "Approved"
-        - csr_result.result[0].status.conditions[0].status == "True"
+        - csr_result.result[0].status.conditions[0].message == "Denied"
+        - csr_result.result[0].status.conditions[0].status == "False"
 
   - name: Try to approve the csr again (idempotency)
-    flightctl.edge.flightctl_approve:
+    flightctl.edge.flightctl_certificate:
       flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
-      approved: true
+      approved: false
     register: idempotency_result
 
   - name: Assert that the result was not changed
@@ -62,6 +67,7 @@
     - name: Delete csr
       flightctl.edge.flightctl:
         flightctl_host: "{{ flightctl_host }}"
+        flightctl_validate_certs: false
         kind: CertificateSigningRequest
         name: "{{ csr_name }}"
         state: absent

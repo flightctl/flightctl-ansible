@@ -1,11 +1,16 @@
 - name: Test Flight Control Collection to delete resources
   hosts: localhost
+  gather_facts: false
 
   tasks:
     - name: Set default credentials
       ansible.builtin.set_fact:
         credential_defaults: &credential_defaults
-          flightctl_config_file: "~/Library/Application\ Support/flightctl/client.yaml"
+          flightctl_config_file: "{{ flightctl_config_file | default(omit) }}"
+          flightctl_ca_path: "{{ flightctl_ca_path | default(omit)}}"
+          flightctl_token: "{{ flightctl_token | default(omit)}}"
+          flightctl_host: "{{ flightctl_host | default(omit)}}"
+          flightctl_validate_certs: "{{ flightctl_validate_certs | default(False)}}"
 
     - name: Delete devices
       flightctl.edge.flightctl:

@@ -1,3 +1,5 @@
 ---
-- include_tasks: enrollment.yml
-- include_tasks: certificate-signing.yml
+- include_tasks: enrollment-approval.yml
+- include_tasks: enrollment-denial.yml
+- include_tasks: certificate-signing-approval.yml
+- include_tasks: certificate-signing-denial.yml

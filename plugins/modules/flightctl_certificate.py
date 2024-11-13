@@ -9,12 +9,12 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 DOCUMENTATION = r"""
-module: flightctl_approve
-short_description: Approve or deny requests
+module: flightctl_certificate
+short_description: Approve or deny certificate signing or enrollment requests.
 author:
   - "Dakota Crowder (@dakcrowder)"
 description:
-  - Approve or deny enrollment or certificate signing requests.
+  - Approve or deny certificate signing or enrollment requests.
 options:
   kind:
     description:
@@ -23,7 +23,7 @@ options:
     required: True
   name:
     description:
-      - Use to specify a device name.
+      - Use to specify a name corresponding to the resource kind.
     type: str
   approved:
     description:
@@ -45,7 +45,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Approve an enrollment request
-  flightctl.edge.flightctl_approve:
+  flightctl.edge.flightctl_certificate:
     kind: EnrollmentRequest
     approved: True
     approved_by: ExampleUser
@@ -53,7 +53,7 @@ EXAMPLES = r"""
       some_label: label_value
 
 - name: Deny an enrollment request
-  flightctl.edge.flightctl_approve:
+  flightctl.edge.flightctl_certificate:
     kind: EnrollmentRequest
     approved: False
     approved_by: ExampleUser
@@ -61,7 +61,7 @@ EXAMPLES = r"""
       some_label: label_value
 
 - name: Approve a certificate signing request
-  flightctl.edge.flightctl_approve:
+  flightctl.edge.flightctl_certificate:
     kind: CertificateSigningRequest
     approved: True
     labels:
@@ -86,22 +86,10 @@ def main():
     module = FlightctlAPIModule(
         argument_spec=argument_spec,
     )
-
-    kind = module.params.get("kind")
-    name = module.params.get("name")
-    params = {}
-    if module.params.get("approved"):
-        params["approved"] = module.params["approved"]
-    if module.params.get("approved_by"):
-        params["approvedBy"] = module.params["approved_by"]
-    if module.params.get("labels"):
-        params["labels"] = module.params["labels"]
-
-    # Attempt to approve the request identified by name
     try:
-        perform_approval(module, kind, name, params)
+        perform_approval(module)
     except FlightctlException as e:
-        module.fail_json(msg=f"Failed to approve request: {e}")
+        module.fail_json(msg=f"Failed certificate action: {e}")
 
 
 if __name__ == "__main__":

@@ -6,7 +6,9 @@ from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
 
+import base64
 import re
+import tempfile
 from typing import Any, Callable, Dict, Optional
 
 from ansible.module_utils.basic import AnsibleModule, env_fallback
@@ -51,6 +53,12 @@ class FlightctlModule(AnsibleModule):
             aliases=["config_file"],
             fallback=(env_fallback, ["FLIGHTCTL_CONFIG_FILE"]),
         ),
+        flightctl_ca_path=dict(
+            required=False,
+            type="path",
+            aliases=["ca_path"],
+            fallback=(env_fallback, ["FLIGHTCTL_CA_PATH"]),
+        )
     )
     short_params: Dict[str, str] = {
         "host": "flightctl_host",
@@ -59,6 +67,7 @@ class FlightctlModule(AnsibleModule):
         "verify_ssl": "flightctl_validate_certs",
         "request_timeout": "flightctl_request_timeout",
         "token": "flightctl_token",
+        "ca_path": "flightctl_ca_path",
     }
     # Default attribute values
     host: Optional[str] = None
@@ -68,6 +77,7 @@ class FlightctlModule(AnsibleModule):
     verify_ssl: bool = True
     request_timeout: float = 10
     token: Optional[str] = None
+    ca_path: Optional[str] = None
     # authenticated = False
 
     def __init__(
@@ -130,7 +140,7 @@ class FlightctlModule(AnsibleModule):
         """
         Load configuration files using ConfigLoader.
         """
-        config_file = self.params.get("flightctl_config_file", None)
+        config_file = self.params.get("flightctl_config_file") or self.params.get("config_file")
         if not config_file:
             return
 
@@ -155,6 +165,22 @@ class FlightctlModule(AnsibleModule):
             # Check if the ConfigLoader has the attribute and update module attribute if present
             if hasattr(config_loader, module_attr):
                 setattr(self, module_attr, getattr(config_loader, module_attr))
+
+        # Special case - when we have loaded certificate authority data that needs to be written
+        # to a file so our underlying requests library can use it
+        if hasattr(config_loader, "ca_data"):
+            self._create_tmp_crt(getattr(config_loader, "ca_data"))
+
+    def _create_tmp_crt(self, encoded_data):
+        decoded_data = base64.b64decode(encoded_data)
+        with tempfile.NamedTemporaryFile(delete=False, suffix="crt") as temp_file:
+            # Write our decoded data to a .crt file and point our ca_path to the filename
+            temp_file.write(decoded_data)
+            temp_file.flush()
+            self.ca_path = temp_file.name
+
+            # Ensure the created temp file is deleted when our module exits
+            self.add_cleanup_file(temp_file.name)
 
     def logout(self) -> None:
         # This method is intended to be overridden

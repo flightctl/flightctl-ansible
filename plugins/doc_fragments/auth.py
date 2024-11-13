@@ -49,4 +49,10 @@ options:
     - If value not set, will try environment variable C(FLIGHTCTL_CONFIG_FILE).
     type: path
     aliases: [ config_file ]
+  flightctl_ca_path:
+    description:
+    - Path to a CA cert file to use when making requests.
+    - If value not set, will try environment variable C(FLIGHTCTL_CA_PATH).
+    type: path
+    aliases: [ ca_path ]
 """
