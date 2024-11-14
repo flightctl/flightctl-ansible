@@ -7,6 +7,7 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 import json
+from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import ParseResult
 
@@ -23,11 +24,13 @@ from .inputs import ApprovalInput
 from .utils import diff_dicts, get_patch, json_patch
 
 from .flightctl_api_client import Client
+from .flightctl_api_client.types import Response as ClientResponse
 from .flightctl_api_client.models.error import Error
 from .flightctl_api_client.models.enrollment_request_approval import EnrollmentRequestApproval
 from .flightctl_api_client.api.default import approve_certificate_signing_request, deny_certificate_signing_request
-from .flightctl_api_client.api.certificatesigningrequest import read_certificate_signing_request
-from .flightctl_api_client.api.enrollmentrequest import approve_enrollment_request, read_enrollment_request
+from .flightctl_api_client.api.device import delete_device, read_device
+from .flightctl_api_client.api.certificatesigningrequest import delete_certificate_signing_request, read_certificate_signing_request
+from .flightctl_api_client.api.enrollmentrequest import delete_enrollment_request, approve_enrollment_request, read_enrollment_request
 
 class Response:
     """
@@ -166,11 +169,24 @@ class FlightctlAPIModule(FlightctlModule):
 
     def get_endpoint_new(
         self, kind: Kind, name: Optional[str] = None,
-    ) -> Any:
-        if kind is Kind.ENROLLMENT:
-            return read_enrollment_request.sync(name, client=self.client)
+    ) -> Optional[Any]:
+        if kind is Kind.DEVICE:
+            response = read_device.sync_detailed(name, client=self.client)
+        elif kind is Kind.ENROLLMENT:
+            response = read_enrollment_request.sync_detailed(name, client=self.client)
         else:
-            return read_certificate_signing_request.sync(name, client=self.client)
+            response = read_certificate_signing_request.sync_detailed(name, client=self.client)
+
+        if isinstance(response.parsed, Error):
+            if response.status_code is HTTPStatus.NOT_FOUND:
+                return None
+            fail_msg = f"Unable to fetch {kind.value} - {input.name}"
+            if response.message:
+                fail_msg += f", message: {response.message}"
+            raise FlightctlException(fail_msg)
+
+        return response.parsed
+
 
     def patch_endpoint(
         self, endpoint: str, name: str, patch: List[Dict[str, Any]]
@@ -204,20 +220,6 @@ class FlightctlAPIModule(FlightctlModule):
         self.warn("URL IN POST")
         self.warn(url.geturl())
         return self.request("POST", url.geturl(), **kwargs)
-
-    def delete_endpoint(self, endpoint: str, name: str, **kwargs: Any) -> Response:
-        """
-        Sends a DELETE request to the specified API endpoint.
-
-        Args:
-            endpoint (str): The API endpoint (resource type).
-            name (str): The resource name.
-
-        Returns:
-            Response: The response object.
-        """
-        url = self.build_url(endpoint, name)
-        return self.request("DELETE", url.geturl(), **kwargs)
 
     def build_url(
         self,
@@ -491,7 +493,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         return changed, (response.json if diffs else existing)
 
-    def delete(self, endpoint: str, name: str) -> Tuple[bool, Dict[str, Any]]:
+    def delete(self, kind: Kind, name: str) -> Optional[Any]:
         """
         Deletes a resource from the API.
 
@@ -500,23 +502,27 @@ class FlightctlAPIModule(FlightctlModule):
             name (str): The resource name.
 
         Returns:
-            Tuple[bool, Dict[str, Any]]:
+            Tuple[bool, Optional[Any]]:
                 A tuple containing:
                 - A boolean indicating whether the resource was deleted (changed).
-                - The result as a dictionary of the delete operation.
-
-        Raises:
-            FlightctlException: If the deletion fails.
+                - An optional response body of the delete operation.
         """
-        changed: bool = False
-        response = self.delete_endpoint(endpoint, name)
-        if response.status == 200:
-            changed |= True
+        if kind is Kind.DEVICE:
+            response = delete_device.sync_detailed(name, client=self.client)
+        elif kind is Kind.ENROLLMENT:
+            response = delete_enrollment_request.sync_detailed(name, client=self.client)
         else:
-            msg = f"Unable to delete {endpoint} {name}: {response.status}"
-            raise FlightctlException(msg)
+            response = delete_certificate_signing_request.sync_detailed(name, client=self.client)
 
-        return changed, response.json
+        if isinstance(response.parsed, Error):
+            if response.status_code.is_success:
+                return None
+            fail_msg = f"Unable to delete {kind.value} - {name}"
+            if response.message:
+                fail_msg += f", message: {response.message}"
+            raise FlightctlException(fail_msg)
+
+        return response.parsed
 
     def approve(self, input: ApprovalInput) -> None:
         """

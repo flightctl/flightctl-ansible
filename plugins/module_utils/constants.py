@@ -13,3 +13,4 @@ from enum import Enum
 class Kind(Enum):
     ENROLLMENT = "EnrollmentRequest"
     CSR = "CertificateSigningRequest"
+    DEVICE = "Device"

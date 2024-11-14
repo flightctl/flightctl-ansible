@@ -148,11 +148,12 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
     if definition["metadata"].get("name") is None:
         raise ValidationException("A name must be specified")
 
-    if definition.get("kind") is None:
-        raise ValidationException("A kind value must be specified")
+    try:
+        kind = Kind(definition.get("kind"))
+    except (TypeError, ValueError):
+        raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
 
     name = definition["metadata"]["name"]
-    kind = definition["kind"]
     state = module.params.get("state")
     params = {}
     result: Dict[str, Any] = {}
@@ -162,7 +163,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
         params["labelSelector"] = module.params["label_selector"]
 
     try:
-        existing = module.get_one_or_many(kind, name=name, **params)
+        existing = module.get_endpoint_new(kind, name)
     except Exception as e:
         raise FlightctlException(f"Failed to get resource: {e}") from e
 
@@ -172,7 +173,8 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 module.exit_json(**{"changed": True})
 
             try:
-                changed, result = module.delete(kind, name)
+                changed |= True
+                result = module.delete(kind, name).to_dict()
             except Exception as e:
                 raise FlightctlException(f"Failed to delete resource: {e}") from e
 
@@ -185,7 +187,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 module.exit_json(**{"changed": True})
 
             try:
-                changed, result = module.update(existing[0], definition)
+                changed, result = module.update(existing.to_dict(), definition)
             except Exception as e:
                 raise FlightctlException(f"Failed to update resource: {e}") from e
         else:
