@@ -21,9 +21,13 @@ from .core import FlightctlModule
 from .exceptions import FlightctlException, FlightctlHTTPException
 from .inputs import ApprovalInput
 from .utils import diff_dicts, get_patch, json_patch
+
 from .flightctl_api_client import Client
+from .flightctl_api_client.models.error import Error
+from .flightctl_api_client.models.enrollment_request_approval import EnrollmentRequestApproval
+from .flightctl_api_client.api.default import approve_certificate_signing_request, deny_certificate_signing_request
 from .flightctl_api_client.api.certificatesigningrequest import read_certificate_signing_request
-from .flightctl_api_client.api.enrollmentrequest import read_enrollment_request
+from .flightctl_api_client.api.enrollmentrequest import approve_enrollment_request, read_enrollment_request
 
 class Response:
     """
@@ -524,18 +528,21 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the approval request fails.
         """
-        base_url = self.build_url(input.kind.value, input.name)
-        approval_path = base_url.path + "/approval"
-        approval_url = base_url._replace(path=approval_path)
-
-        # CSR requests are denied by making a DELETE request to the approval endpoint
-        if input.kind is Kind.CSR and input.approved is False:
-            response = self.request("DELETE", approval_url.geturl())
+        if input.kind is Kind.CSR:
+            # CSR requests are approved / denied by hitting separate endpoints
+            if input.approved :
+                response = approve_certificate_signing_request.sync(input.name, client=self.client)
+            else:
+                response = deny_certificate_signing_request.sync(input.name, client=self.client)
         else:
-            response = self.request("POST", approval_url.geturl(), **input.to_request_params())
+            # Enrollment requests are approved / denied by hitting the same endpoint with different vlaues
+            # TODO not this
+            d = input.to_request_params()
+            b = EnrollmentRequestApproval.from_dict(d)
+            response = approve_enrollment_request.sync(input.name, client=self.client, body=b)
 
-        if response.status != 200:
+        if isinstance(response, Error):
             fail_msg = f"Unable to approve {input.kind.value} for {input.name}"
-            if "message" in response.json:
-                fail_msg += f", message: {response.json['message']}"
+            if response.message:
+                fail_msg += f", message: {response.message}"
             raise FlightctlException(fail_msg)
