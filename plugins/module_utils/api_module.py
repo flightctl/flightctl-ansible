@@ -22,6 +22,7 @@ from .exceptions import FlightctlException, FlightctlHTTPException
 from .inputs import ApprovalInput
 from .utils import diff_dicts, get_patch, json_patch
 from .flightctl_api_client import Client
+from .flightctl_api_client.api.certificatesigningrequest import read_certificate_signing_request
 from .flightctl_api_client.api.enrollmentrequest import read_enrollment_request
 
 class Response:
@@ -160,9 +161,12 @@ class FlightctlAPIModule(FlightctlModule):
         return self.request("GET", url.geturl(), **kwargs)
 
     def get_endpoint_new(
-        self, name: Optional[str] = None,
+        self, kind: Kind, name: Optional[str] = None,
     ) -> Any:
-        return read_enrollment_request.sync(name, client=self.client)
+        if kind is Kind.ENROLLMENT:
+            return read_enrollment_request.sync(name, client=self.client)
+        else:
+            return read_certificate_signing_request.sync(name, client=self.client)
 
     def patch_endpoint(
         self, endpoint: str, name: str, patch: List[Dict[str, Any]]

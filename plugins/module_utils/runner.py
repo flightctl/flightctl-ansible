@@ -27,6 +27,8 @@ from .constants import Kind
 from .exceptions import FlightctlException, ValidationException
 from .inputs import ApprovalInput
 from .resources import create_definitions
+from .flightctl_api_client.models.condition_type import ConditionType
+from .flightctl_api_client.models.certificate_signing_request import CertificateSigningRequest
 from .flightctl_api_client.models.enrollment_request import EnrollmentRequest
 
 
@@ -224,22 +226,25 @@ def perform_approval(module: FlightctlAPIModule) -> None:
     )
 
     try:
-        existing = module.get_endpoint_new(input.name)
+        existing = module.get_endpoint_new(kind, input.name)
         currently_approved = None
         if isinstance(existing, EnrollmentRequest):
             try:
                 currently_approved = existing.status.approval.approved
             except AttributeError:
                 pass
-        elif input.kind is Kind.CSR:
-            conditions = existing.json.get('status', {}).get('conditions', [])
-            approval_condition = next((c for c in conditions if c.get('type') == "Approved"), None)
-            if approval_condition is not None:
-                # The api returns string values for booleans in the conditions
-                if approval_condition['status'].lower() == 'true':
-                    currently_approved = True
-                elif approval_condition['status'].lower() == 'false':
-                    currently_approved = False
+        elif isinstance(existing, CertificateSigningRequest):
+            try:
+                conditions = existing.status.conditions
+                approval_condition = next((c for c in conditions if c.type == "Approved"), None)
+                if approval_condition is not None:
+                    # The api returns string values for booleans in the conditions
+                    if approval_condition.status == 'True':
+                        currently_approved = True
+                    elif approval_condition.status == 'False':
+                        currently_approved = False
+            except AttributeError:
+                pass
 
         if input.approved == currently_approved:
             module.exit_json(**{"changed": False})
