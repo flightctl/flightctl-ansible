@@ -163,7 +163,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
         params["labelSelector"] = module.params["label_selector"]
 
     try:
-        existing = module.get_endpoint_new(kind, name)
+        existing = module.get(kind, name)
     except Exception as e:
         raise FlightctlException(f"Failed to get resource: {e}") from e
 
@@ -229,7 +229,7 @@ def perform_approval(module: FlightctlAPIModule) -> None:
     )
 
     try:
-        existing = module.get_endpoint_new(kind, input.name)
+        existing = module.get(kind, input.name)
         currently_approved = None
         if isinstance(existing, EnrollmentRequest):
             try:

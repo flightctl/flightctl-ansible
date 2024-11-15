@@ -31,9 +31,9 @@ from .flightctl_api_client.models.error import Error
 from .flightctl_api_client.models.enrollment_request_approval import EnrollmentRequestApproval
 from .flightctl_api_client.models.patch_request_item import PatchRequestItem
 from .flightctl_api_client.api.default import approve_certificate_signing_request, deny_certificate_signing_request
-from .flightctl_api_client.api.device import create_device, delete_device, read_device, patch_device
-from .flightctl_api_client.api.certificatesigningrequest import create_certificate_signing_request, delete_certificate_signing_request, read_certificate_signing_request, patch_certificate_signing_request
-from .flightctl_api_client.api.enrollmentrequest import create_enrollment_request, delete_enrollment_request, approve_enrollment_request, read_enrollment_request
+from .flightctl_api_client.api.device import create_device, delete_device, read_device, patch_device, list_devices
+from .flightctl_api_client.api.certificatesigningrequest import create_certificate_signing_request, delete_certificate_signing_request, read_certificate_signing_request, patch_certificate_signing_request, list_certificate_signing_requests
+from .flightctl_api_client.api.enrollmentrequest import create_enrollment_request, delete_enrollment_request, approve_enrollment_request, read_enrollment_request, list_enrollment_requests
 
 class Response:
     """
@@ -170,7 +170,7 @@ class FlightctlAPIModule(FlightctlModule):
         url = self.build_url(endpoint, name, query_params=kwargs)
         return self.request("GET", url.geturl(), **kwargs)
 
-    def get_endpoint_new(
+    def get(
         self, kind: Kind, name: Optional[str] = None,
     ) -> Optional[Any]:
         if kind is Kind.DEVICE:
@@ -395,8 +395,24 @@ class FlightctlAPIModule(FlightctlModule):
         # self.authenticated = True
         pass
 
+    def list(self, kind: Kind, **kwargs: Any) -> List:
+        if kind is Kind.DEVICE:
+            response = list_devices.sync_detailed(client=self.client, **kwargs)
+        elif kind is Kind.ENROLLMENT:
+            response = list_enrollment_requests.sync_detailed(client=self.client, **kwargs)
+        else:
+            response = list_certificate_signing_requests.sync_detailed(client=self.client, **kwargs)
+
+        if isinstance(response.parsed, Error):
+            fail_msg = f"Unable to list {kind.value}"
+            if response.message:
+                fail_msg += f", message: {response.message}"
+            raise FlightctlException(fail_msg)
+
+        return response.parsed
+
     def get_one_or_many(
-        self, endpoint: str, name: Optional[str] = None, **kwargs: Any
+        self, kind: Kind, name: Optional[str] = None, **kwargs: Any
     ) -> List:
         """
         Retrieves one or many resources from the API.
@@ -412,21 +428,13 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the response status is not 200 or 404.
         """
-        response = self.get_endpoint(endpoint, name, **kwargs)
-        if response.status not in [200, 404]:
-            fail_msg = f"Got a {response.status} when trying to get {endpoint}"
-            if "message" in response.json:
-                fail_msg += f", message: {response.json['message']}"
-            raise FlightctlException(fail_msg)
-
-        if response.status == 404:
-            # Resource not found
-            return []
-
-        if response.json and response.json.get("items") is not None:
-            return response.json["items"] if len(response.json.get("items")) > 0 else []
-
-        return [response.json]
+        if name:
+            response = self.get(kind, name)
+            if not response:
+                return []
+            return [response.to_dict()]
+        else:
+            return self.list(kind, **kwargs).to_dict()
 
     def create(
         self, kind: Kind, definition: Dict[str, Any]

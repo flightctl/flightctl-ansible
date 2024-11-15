@@ -90,7 +90,8 @@ result:
 
 
 from ..module_utils.api_module import FlightctlAPIModule
-from ..module_utils.exceptions import FlightctlException
+from ..module_utils.exceptions import FlightctlException, ValidationException
+from ..module_utils.constants import Kind
 
 
 def main():
@@ -106,7 +107,10 @@ def main():
     )
 
     name = module.params.get("name")
-    kind = module.params.get("kind")
+    try:
+        kind = Kind(module.params.get("kind"))
+    except (TypeError, ValueError):
+        raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
 
     params = {}
     if module.params.get("label_selector"):
