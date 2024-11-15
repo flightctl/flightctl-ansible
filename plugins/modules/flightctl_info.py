@@ -91,7 +91,7 @@ result:
 
 from ..module_utils.api_module import FlightctlAPIModule
 from ..module_utils.exceptions import FlightctlException, ValidationException
-from ..module_utils.constants import Kind
+from ..module_utils.constants import ResourceType
 
 
 def main():
@@ -108,7 +108,7 @@ def main():
 
     name = module.params.get("name")
     try:
-        kind = Kind(module.params.get("kind"))
+        resource = ResourceType(module.params.get("kind"))
     except (TypeError, ValueError):
         raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
 
@@ -118,7 +118,7 @@ def main():
 
     # Attempt to look up resource based on the provided name
     try:
-        result = module.get_one_or_many(kind, name=name, **params)
+        result = module.get_one_or_many(resource, name=name, **params)
     except FlightctlException as e:
         module.fail_json(msg=f"Failed to get resource: {e}")
 

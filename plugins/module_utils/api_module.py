@@ -9,7 +9,7 @@ __metaclass__ = type
 from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple
 
-from .constants import Kind, RESOURCE_MAPPING
+from .constants import ResourceType, RESOURCE_MAPPING
 from .core import FlightctlModule
 from .exceptions import FlightctlException # TODO use FlightctlHTTPException
 from .inputs import ApprovalInput
@@ -67,27 +67,27 @@ class FlightctlAPIModule(FlightctlModule):
         )
 
     def get(
-        self, kind: Kind, name: Optional[str] = None,
+        self, resource: ResourceType, name: Optional[str] = None,
     ) -> Optional[Any]:
-        resource = RESOURCE_MAPPING[kind]
+        resource = RESOURCE_MAPPING[resource]
         response = resource.get(name, client=self.client)
 
         if isinstance(response.parsed, Error):
             if response.status_code is HTTPStatus.NOT_FOUND:
                 return None
-            fail_msg = f"Unable to fetch {kind.value} - {input.name}"
+            fail_msg = f"Unable to fetch {resource.value} - {input.name}"
             if response.message:
                 fail_msg += f", message: {response.message}"
             raise FlightctlException(fail_msg)
 
         return response.parsed
 
-    def list(self, kind: Kind, **kwargs: Any) -> List:
-        resource = RESOURCE_MAPPING[kind]
+    def list(self, resource: ResourceType, **kwargs: Any) -> List:
+        resource = RESOURCE_MAPPING[resource]
         response = resource.list(client=self.client, **kwargs)
 
         if isinstance(response.parsed, Error):
-            fail_msg = f"Unable to list {kind.value}"
+            fail_msg = f"Unable to list {resource.value}"
             if response.message:
                 fail_msg += f", message: {response.message}"
             raise FlightctlException(fail_msg)
@@ -95,7 +95,7 @@ class FlightctlAPIModule(FlightctlModule):
         return response.parsed
 
     def get_one_or_many(
-        self, kind: Kind, name: Optional[str] = None, **kwargs: Any
+        self, resource: ResourceType, name: Optional[str] = None, **kwargs: Any
     ) -> Any:
         """
         Retrieves one or many resources from the API.
@@ -112,18 +112,18 @@ class FlightctlAPIModule(FlightctlModule):
             FlightctlException: If the response status is not 200 or 404.
         """
         if name:
-            response = self.get(kind, name)
+            response = self.get(resource, name)
             if not response:
                 return []
             return [response.to_dict()]
         else:
-            res = self.list(kind, **kwargs)
+            res = self.list(resource, **kwargs)
             if res:
                 return res.to_dict()
             return {}
 
     def create(
-        self, kind: Kind, definition: Dict[str, Any]
+        self, resource: ResourceType, definition: Dict[str, Any]
     ) -> Any:
         """
         Creates a new resource in the API.
@@ -140,11 +140,11 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the creation fails.
         """
-        resource = RESOURCE_MAPPING[kind]
+        resource = RESOURCE_MAPPING[resource]
         response = resource.create(client=self.client, body=resource.model.from_dict(definition))
 
         if isinstance(response.parsed, Error):
-            fail_msg = f"Unable to create {kind.value}"
+            fail_msg = f"Unable to create {resource.value}"
             if response.message:
                 fail_msg += f", message: {response.message}"
             raise FlightctlException(fail_msg)
@@ -152,7 +152,7 @@ class FlightctlAPIModule(FlightctlModule):
         return response.parsed.to_dict()
 
     def update(
-        self, kind: Kind, existing: Dict[str, Any], definition: Dict[str, Any]
+        self, resource: ResourceType, existing: Dict[str, Any], definition: Dict[str, Any]
     ) -> Tuple[bool, Dict[str, Any]]:
         """
         TODO - update the docstrings for modified methods
@@ -185,11 +185,11 @@ class FlightctlAPIModule(FlightctlModule):
 
             # TODO handle some patch endpoints not existing... like enrollment requests
             # should probably branch out a patch / put method in this module...
-            resource = RESOURCE_MAPPING[kind]
-            response = resource.patch(client=self.client, body=patch_items)
+            resource = RESOURCE_MAPPING[resource]
+            response = resource.patch(name, client=self.client, body=patch_items)
 
             if isinstance(response.parsed, Error):
-                fail_msg = f"Unable to update {kind.value}"
+                fail_msg = f"Unable to update {resource.value}"
                 if response.message:
                     fail_msg += f", message: {response.message}"
                 raise FlightctlException(fail_msg)
@@ -198,7 +198,7 @@ class FlightctlAPIModule(FlightctlModule):
         # The others always returned changed = True but this one may not run based on the diffs between existing and definition
         return changed, (response.json if diffs else existing)
 
-    def delete(self, kind: Kind, name: str) -> Optional[Any]:
+    def delete(self, resource: ResourceType, name: str) -> Optional[Any]:
         """
         Deletes a resource from the API.
 
@@ -212,13 +212,13 @@ class FlightctlAPIModule(FlightctlModule):
                 - A boolean indicating whether the resource was deleted (changed).
                 - An optional response body of the delete operation.
         """
-        resource = RESOURCE_MAPPING[kind]
+        resource = RESOURCE_MAPPING[resource]
         response = resource.delete(name, client=self.client)
 
         if isinstance(response.parsed, Error):
             if response.status_code.is_success:
                 return None
-            fail_msg = f"Unable to delete {kind.value} - {name}"
+            fail_msg = f"Unable to delete {resource.value} - {name}"
             if response.message:
                 fail_msg += f", message: {response.message}"
             raise FlightctlException(fail_msg)
@@ -235,7 +235,7 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the approval request fails.
         """
-        if input.kind is Kind.CSR:
+        if input.resource is ResourceType.CSR:
             # CSR requests are approved / denied by hitting separate endpoints
             if input.approved :
                 response = approve_certificate_signing_request.sync(input.name, client=self.client)
@@ -249,7 +249,7 @@ class FlightctlAPIModule(FlightctlModule):
             response = approve_enrollment_request.sync(input.name, client=self.client, body=b)
 
         if isinstance(response, Error):
-            fail_msg = f"Unable to approve {input.kind.value} for {input.name}"
+            fail_msg = f"Unable to approve {input.resource.value} for {input.name}"
             if response.message:
                 fail_msg += f", message: {response.message}"
             raise FlightctlException(fail_msg)

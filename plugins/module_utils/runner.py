@@ -23,7 +23,7 @@ else:
     OPENAPI_SCHEMA_IMPORT_ERROR = None
 
 from .api_module import FlightctlAPIModule
-from .constants import Kind
+from .constants import ResourceType
 from .exceptions import FlightctlException, ValidationException
 from .inputs import ApprovalInput
 from .resources import create_definitions
@@ -149,7 +149,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
         raise ValidationException("A name must be specified")
 
     try:
-        kind = Kind(definition.get("kind"))
+        resource = ResourceType(definition.get("kind"))
     except (TypeError, ValueError):
         raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
 
@@ -163,7 +163,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
         params["label_selector"] = module.params["label_selector"]
 
     try:
-        existing = module.get(kind, name)
+        existing = module.get(resource, name)
     except Exception as e:
         raise FlightctlException(f"Failed to get resource: {e}") from e
 
@@ -173,7 +173,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 module.exit_json(**{"changed": True})
 
             try:
-                result = module.delete(kind, name).to_dict()
+                result = module.delete(resource, name).to_dict()
                 changed |= True
             except Exception as e:
                 raise FlightctlException(f"Failed to delete resource: {e}") from e
@@ -187,7 +187,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 module.exit_json(**{"changed": True})
 
             try:
-                changed, result = module.update(kind, existing.to_dict(), definition)
+                changed, result = module.update(resource, existing.to_dict(), definition)
             except Exception as e:
                 raise FlightctlException(f"Failed to update resource: {e}") from e
         else:
@@ -196,7 +196,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 module.exit_json(**{"changed": True})
 
             try:
-                result = module.create(kind, definition)
+                result = module.create(resource, definition)
                 changed |= True
             except Exception as e:
                 raise FlightctlException(f"Failed to create resource: {e}") from e
@@ -216,12 +216,12 @@ def perform_approval(module: FlightctlAPIModule) -> None:
         FlightctlException: If performing the action fails.
     """
     try:
-        kind = Kind(module.params.get("kind"))
+        resource = ResourceType(module.params.get("kind"))
     except (TypeError, ValueError):
         raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
 
     input = ApprovalInput(
-        kind=kind,
+        resource=resource,
         name=module.params.get("name"),
         approved=module.params.get("approved"),
         approved_by=module.params.get("approved_by"),
@@ -229,7 +229,7 @@ def perform_approval(module: FlightctlAPIModule) -> None:
     )
 
     try:
-        existing = module.get(kind, input.name)
+        existing = module.get(resource, input.name)
         currently_approved = None
         if isinstance(existing, EnrollmentRequest):
             try:

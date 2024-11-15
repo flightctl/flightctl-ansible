@@ -23,11 +23,12 @@ from .flightctl_api_client.api.certificatesigningrequest import create_certifica
 from .flightctl_api_client.api.enrollmentrequest import create_enrollment_request, delete_enrollment_request, approve_enrollment_request, read_enrollment_request, list_enrollment_requests
 
 
-# TODO expand Kind to include additional types
-class Kind(Enum):
+# TODO expand ResourceType to include additional types
+class ResourceType(Enum):
     CSR = "CertificateSigningRequest"
     DEVICE = "Device"
     ENROLLMENT = "EnrollmentRequest"
+    FLEET = "Fleet"
 
 
 class RequestType(Enum):
@@ -39,7 +40,7 @@ class RequestType(Enum):
 
 
 @dataclass
-class Resource:
+class ApiResource:
     model: Union[Device, EnrollmentRequest, CertificateSigningRequest]
 
     get: Optional[Callable[..., Response]] = None
@@ -50,7 +51,7 @@ class Resource:
 
 
 RESOURCE_MAPPING = {
-    Kind.CSR: Resource(
+    ResourceType.CSR: ApiResource(
         model=CertificateSigningRequest,
         get=read_certificate_signing_request.sync_detailed,
         list=list_certificate_signing_requests.sync_detailed,
@@ -58,7 +59,7 @@ RESOURCE_MAPPING = {
         create=create_certificate_signing_request.sync_detailed,
         delete=delete_certificate_signing_request.sync_detailed
     ),
-    Kind.DEVICE: Resource(
+    ResourceType.DEVICE: ApiResource(
         model=Device,
         get=read_device.sync_detailed,
         list=read_device.sync_detailed,
@@ -66,11 +67,11 @@ RESOURCE_MAPPING = {
         create=create_device.sync_detailed,
         delete=delete_device.sync_detailed
     ),
-    Kind.ENROLLMENT: Resource(
+    ResourceType.ENROLLMENT: ApiResource(
         model=EnrollmentRequest,
         get=read_enrollment_request.sync_detailed,
         list=list_enrollment_requests.sync_detailed,
         create=create_enrollment_request.sync_detailed,
         delete=delete_enrollment_request.sync_detailed
-    )
+    ),
 }

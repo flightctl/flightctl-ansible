@@ -5,7 +5,7 @@ __metaclass__ = type
 import pytest
 from unittest.mock import MagicMock
 
-from plugins.module_utils.constants import Kind
+from plugins.module_utils.constants import ResourceType
 from plugins.module_utils.exceptions import FlightctlException, FlightctlHTTPException, ValidationException
 from plugins.module_utils.runner import perform_approval
 
@@ -20,7 +20,7 @@ def mock_module():
 
     # Input parameters
     mock_module.params = {
-        "kind": Kind.ENROLLMENT.value,
+        "kind": ResourceType.ENROLLMENT.value,
         "name": "test-resource",
         "approved": True,
     }
@@ -59,7 +59,7 @@ def test_perform_approval__approval_of_already_approved_csr_returns_early(mock_m
     mock_approved_csr_response = MagicMock()
     mock_approved_csr_response.json.get.return_value = {"conditions": [{"type": "Approved", "status": "True"}]}
     mock_module.get_endpoint.return_value = mock_approved_csr_response
-    mock_module.params["kind"] = Kind.CSR.value
+    mock_module.params["kind"] = ResourceType.CSR.value
 
     perform_approval(mock_module)
     mock_module.get_endpoint.assert_called()
@@ -92,7 +92,7 @@ def test_perform_approval__successful_enrollment_approval_with_false_value(mock_
 
 
 def test_perform_approval__successful_csr_approval(mock_module):
-    mock_module.params["kind"] = Kind.CSR.value
+    mock_module.params["kind"] = ResourceType.CSR.value
     perform_approval(mock_module)
     mock_module.get_endpoint.assert_called()
     mock_module.approve.assert_called()
