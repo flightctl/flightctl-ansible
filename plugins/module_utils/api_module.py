@@ -29,9 +29,10 @@ from .flightctl_api_client.models.enrollment_request import EnrollmentRequest
 from .flightctl_api_client.models.certificate_signing_request import CertificateSigningRequest
 from .flightctl_api_client.models.error import Error
 from .flightctl_api_client.models.enrollment_request_approval import EnrollmentRequestApproval
+from .flightctl_api_client.models.patch_request_item import PatchRequestItem
 from .flightctl_api_client.api.default import approve_certificate_signing_request, deny_certificate_signing_request
-from .flightctl_api_client.api.device import create_device, delete_device, read_device
-from .flightctl_api_client.api.certificatesigningrequest import create_certificate_signing_request, delete_certificate_signing_request, read_certificate_signing_request
+from .flightctl_api_client.api.device import create_device, delete_device, read_device, patch_device
+from .flightctl_api_client.api.certificatesigningrequest import create_certificate_signing_request, delete_certificate_signing_request, read_certificate_signing_request, patch_certificate_signing_request
 from .flightctl_api_client.api.enrollmentrequest import create_enrollment_request, delete_enrollment_request, approve_enrollment_request, read_enrollment_request
 
 class Response:
@@ -468,9 +469,11 @@ class FlightctlAPIModule(FlightctlModule):
         return response.parsed.to_dict()
 
     def update(
-        self, existing: Dict[str, Any], definition: Dict[str, Any]
+        self, kind: Kind, existing: Dict[str, Any], definition: Dict[str, Any]
     ) -> Tuple[bool, Dict[str, Any]]:
         """
+        TODO - update the docstrings for modified methods
+
         Updates an existing resource in the API.
 
         Args:
@@ -486,9 +489,9 @@ class FlightctlAPIModule(FlightctlModule):
             FlightctlException: If the update fails or there are errors with the patch.
         """
         changed: bool = False
-        endpoint = existing["kind"]
         name = existing["metadata"]["name"]
 
+        # TODO put this below calcing diffs so we can short circuit?
         patch = get_patch(existing, definition)
         obj, error = json_patch(existing, patch)
         if error:
@@ -496,13 +499,23 @@ class FlightctlAPIModule(FlightctlModule):
 
         match, diffs = diff_dicts(existing, obj)
         if diffs:
-            response = self.patch_endpoint(endpoint, name, patch)
-            if response.status == 200:
-                changed |= True
+            patch_items = [PatchRequestItem.from_dict(p) for p in patch]
+            if kind is Kind.DEVICE:
+                response = patch_device.sync_detailed(name, client=self.client, body=patch_items)
+            elif kind is Kind.ENROLLMENT:
+                # TODO handle some patch endpoints not existing... like enrollment requests
+                raise Exception("OH NO!")
             else:
-                msg = f"Unable to update {endpoint} {name}: {response.status}"
-                raise FlightctlException(msg)
+                response = patch_certificate_signing_request.sync_detailed(name, client=self.client, body=patch_items)
 
+            if isinstance(response.parsed, Error):
+                fail_msg = f"Unable to update {kind.value}"
+                if response.message:
+                    fail_msg += f", message: {response.message}"
+                raise FlightctlException(fail_msg)
+
+        # TODO align on these methods returning changed or if it should just be handled by the caller?
+        # The others always returned changed = True but this one may not run based on the diffs between existing and definition
         return changed, (response.json if diffs else existing)
 
     def delete(self, kind: Kind, name: str) -> Optional[Any]:
