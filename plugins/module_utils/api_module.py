@@ -9,23 +9,18 @@ __metaclass__ = type
 from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple
 
-from .constants import Kind
+from .constants import Kind, RESOURCE_MAPPING
 from .core import FlightctlModule
 from .exceptions import FlightctlException # TODO use FlightctlHTTPException
 from .inputs import ApprovalInput
 from .utils import diff_dicts, get_patch, json_patch
 
 from .flightctl_api_client import AuthenticatedClient
-from .flightctl_api_client.models.device import Device
-from .flightctl_api_client.models.enrollment_request import EnrollmentRequest
-from .flightctl_api_client.models.certificate_signing_request import CertificateSigningRequest
 from .flightctl_api_client.models.error import Error
 from .flightctl_api_client.models.enrollment_request_approval import EnrollmentRequestApproval
 from .flightctl_api_client.models.patch_request_item import PatchRequestItem
 from .flightctl_api_client.api.default import approve_certificate_signing_request, deny_certificate_signing_request
-from .flightctl_api_client.api.device import create_device, delete_device, read_device, patch_device, list_devices
-from .flightctl_api_client.api.certificatesigningrequest import create_certificate_signing_request, delete_certificate_signing_request, read_certificate_signing_request, patch_certificate_signing_request, list_certificate_signing_requests
-from .flightctl_api_client.api.enrollmentrequest import create_enrollment_request, delete_enrollment_request, approve_enrollment_request, read_enrollment_request, list_enrollment_requests
+from .flightctl_api_client.api.enrollmentrequest import approve_enrollment_request
 
 
 class FlightctlAPIModule(FlightctlModule):
@@ -74,12 +69,8 @@ class FlightctlAPIModule(FlightctlModule):
     def get(
         self, kind: Kind, name: Optional[str] = None,
     ) -> Optional[Any]:
-        if kind is Kind.DEVICE:
-            response = read_device.sync_detailed(name, client=self.client)
-        elif kind is Kind.ENROLLMENT:
-            response = read_enrollment_request.sync_detailed(name, client=self.client)
-        else:
-            response = read_certificate_signing_request.sync_detailed(name, client=self.client)
+        resource = RESOURCE_MAPPING[kind]
+        response = resource.get(name, client=self.client)
 
         if isinstance(response.parsed, Error):
             if response.status_code is HTTPStatus.NOT_FOUND:
@@ -92,12 +83,8 @@ class FlightctlAPIModule(FlightctlModule):
         return response.parsed
 
     def list(self, kind: Kind, **kwargs: Any) -> List:
-        if kind is Kind.DEVICE:
-            response = list_devices.sync_detailed(client=self.client, **kwargs)
-        elif kind is Kind.ENROLLMENT:
-            response = list_enrollment_requests.sync_detailed(client=self.client, **kwargs)
-        else:
-            response = list_certificate_signing_requests.sync_detailed(client=self.client, **kwargs)
+        resource = RESOURCE_MAPPING[kind]
+        response = resource.list(client=self.client, **kwargs)
 
         if isinstance(response.parsed, Error):
             fail_msg = f"Unable to list {kind.value}"
@@ -153,20 +140,9 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the creation fails.
         """
-        # TODO Dicts / structs for looking up resource -> methods
-        if kind is Kind.DEVICE:
-            # TODO cleaner passing around of data / figure out what types we want where and when we
-            # should represent resources as their types or dicts...
-            d = Device.from_dict(definition)
-            response = create_device.sync_detailed(client=self.client, body=d)
-        elif kind is Kind.ENROLLMENT:
-            e = EnrollmentRequest.from_dict(definition)
-            response = create_enrollment_request.sync_detailed(client=self.client, body=e)
-        else:
-            c = CertificateSigningRequest.from_dict(definition)
-            response = create_certificate_signing_request.sync_detailed(client=self.client, body=c)
+        resource = RESOURCE_MAPPING[kind]
+        response = resource.create(client=self.client, body=resource.model.from_dict(definition))
 
-        # TODO share request response handling?
         if isinstance(response.parsed, Error):
             fail_msg = f"Unable to create {kind.value}"
             if response.message:
@@ -198,7 +174,6 @@ class FlightctlAPIModule(FlightctlModule):
         changed: bool = False
         name = existing["metadata"]["name"]
 
-        # TODO put this below calcing diffs so we can short circuit?
         patch = get_patch(existing, definition)
         obj, error = json_patch(existing, patch)
         if error:
@@ -207,13 +182,11 @@ class FlightctlAPIModule(FlightctlModule):
         match, diffs = diff_dicts(existing, obj)
         if diffs:
             patch_items = [PatchRequestItem.from_dict(p) for p in patch]
-            if kind is Kind.DEVICE:
-                response = patch_device.sync_detailed(name, client=self.client, body=patch_items)
-            elif kind is Kind.ENROLLMENT:
-                # TODO handle some patch endpoints not existing... like enrollment requests
-                raise Exception("OH NO!")
-            else:
-                response = patch_certificate_signing_request.sync_detailed(name, client=self.client, body=patch_items)
+
+            # TODO handle some patch endpoints not existing... like enrollment requests
+            # should probably branch out a patch / put method in this module...
+            resource = RESOURCE_MAPPING[kind]
+            response = resource.patch(client=self.client, body=patch_items)
 
             if isinstance(response.parsed, Error):
                 fail_msg = f"Unable to update {kind.value}"
@@ -239,12 +212,8 @@ class FlightctlAPIModule(FlightctlModule):
                 - A boolean indicating whether the resource was deleted (changed).
                 - An optional response body of the delete operation.
         """
-        if kind is Kind.DEVICE:
-            response = delete_device.sync_detailed(name, client=self.client)
-        elif kind is Kind.ENROLLMENT:
-            response = delete_enrollment_request.sync_detailed(name, client=self.client)
-        else:
-            response = delete_certificate_signing_request.sync_detailed(name, client=self.client)
+        resource = RESOURCE_MAPPING[kind]
+        response = resource.delete(name, client=self.client)
 
         if isinstance(response.parsed, Error):
             if response.status_code.is_success:
