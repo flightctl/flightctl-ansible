@@ -235,18 +235,21 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the approval request fails.
         """
-        if input.resource is ResourceType.CSR:
-            # CSR requests are approved / denied by hitting separate endpoints
-            if input.approved :
-                response = approve_certificate_signing_request.sync(input.name, client=self.client)
-            else:
-                response = deny_certificate_signing_request.sync(input.name, client=self.client)
-        else:
-            # Enrollment requests are approved / denied by hitting the same endpoint with different vlaues
-            # TODO not this
+        # TODO cleanup resource names/naming this is confusing
+        resource = RESOURCE_MAPPING[input.resource]
+        kwargs = dict(client=self.client)
+
+        if input.resource is ResourceType.ENROLLMENT:
+            # Enrollment requests require an additional body argument
+            # TODO clean up the dict params -> input -> dict -> request serialization steps
             d = input.to_request_params()
             b = EnrollmentRequestApproval.from_dict(d)
-            response = approve_enrollment_request.sync(input.name, client=self.client, body=b)
+            kwargs['body'] = b
+
+        if input.approved:
+            response = resource.approve(input.name, **kwargs)
+        else:
+            response = resource.deny(input.name, **kwargs)
 
         if isinstance(response, Error):
             fail_msg = f"Unable to approve {input.resource.value} for {input.name}"

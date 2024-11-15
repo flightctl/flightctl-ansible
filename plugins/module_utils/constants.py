@@ -49,6 +49,9 @@ class ApiResource:
     create: Optional[Callable[..., Response]] = None
     delete: Optional[Callable[..., Response]] = None
 
+    approve: Optional[Callable[..., Response]] = None
+    deny: Optional[Callable[..., Response]] = None
+
 
 RESOURCE_MAPPING = {
     ResourceType.CSR: ApiResource(
@@ -57,7 +60,9 @@ RESOURCE_MAPPING = {
         list=list_certificate_signing_requests.sync_detailed,
         patch=patch_certificate_signing_request.sync_detailed,
         create=create_certificate_signing_request.sync_detailed,
-        delete=delete_certificate_signing_request.sync_detailed
+        delete=delete_certificate_signing_request.sync_detailed,
+        approve=approve_certificate_signing_request.sync_detailed,
+        deny=deny_certificate_signing_request.sync_detailed
     ),
     ResourceType.DEVICE: ApiResource(
         model=Device,
@@ -72,6 +77,8 @@ RESOURCE_MAPPING = {
         get=read_enrollment_request.sync_detailed,
         list=list_enrollment_requests.sync_detailed,
         create=create_enrollment_request.sync_detailed,
-        delete=delete_enrollment_request.sync_detailed
+        delete=delete_enrollment_request.sync_detailed,
+        approve=approve_enrollment_request.sync_detailed,
+        deny=approve_enrollment_request.sync_detailed
     ),
 }
