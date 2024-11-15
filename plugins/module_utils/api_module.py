@@ -6,20 +6,12 @@ from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
 
-import json
 from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import ParseResult
-
-from ansible.module_utils.six.moves.http_cookiejar import CookieJar
-from ansible.module_utils.six.moves.urllib.error import HTTPError
-from ansible.module_utils.six.moves.urllib.parse import urlencode
-from ansible.module_utils.urls import (ConnectionError, Request,
-                                       SSLValidationError)
 
 from .constants import Kind
 from .core import FlightctlModule
-from .exceptions import FlightctlException, FlightctlHTTPException
+from .exceptions import FlightctlException # TODO use FlightctlHTTPException
 from .inputs import ApprovalInput
 from .utils import diff_dicts, get_patch, json_patch
 
@@ -35,54 +27,6 @@ from .flightctl_api_client.api.device import create_device, delete_device, read_
 from .flightctl_api_client.api.certificatesigningrequest import create_certificate_signing_request, delete_certificate_signing_request, read_certificate_signing_request, patch_certificate_signing_request, list_certificate_signing_requests
 from .flightctl_api_client.api.enrollmentrequest import create_enrollment_request, delete_enrollment_request, approve_enrollment_request, read_enrollment_request, list_enrollment_requests
 
-class Response:
-    """
-    Represents an HTTP response.
-
-    Attributes:
-        status (int): The HTTP status code of the response.
-        data (Any): The response data (raw content).
-        headers (Optional[Any]): The response headers, converted to lowercase keys.
-    """
-
-    def __init__(self, status: int, data: Any, headers: Optional[Any] = None) -> None:
-        """
-        Initializes the Response object.
-
-        Args:
-            status (int): The HTTP status code.
-            data (Any): The response data.
-            headers (Optional[Any], optional): The response headers.
-        """
-        self.status = status
-        self.data = data
-        # [('h1', 'v1'), ('H2', 'V2')] -> {'h1': 'v1', 'h2': 'V2'}
-        self.headers = (
-            dict((k.lower(), v) for k, v in dict(headers).items()) if headers else {}
-        )
-
-        self._json = None
-
-    @property
-    def json(self) -> Any:
-        """
-        Returns the response data as JSON, if possible.
-
-        Returns:
-            Any: The parsed JSON data.
-
-        Raises:
-            FlightctlHTTPException: If the data is not valid JSON.
-        """
-        if self._json is None:
-            try:
-                self._json = json.loads(self.data)
-            except ValueError as value_exp:
-                raise FlightctlHTTPException(
-                    f"Received invalid JSON response: {self.data}"
-                ) from value_exp
-        return self._json
-
 
 class FlightctlAPIModule(FlightctlModule):
     """
@@ -90,19 +34,7 @@ class FlightctlAPIModule(FlightctlModule):
 
     Inherits from FlightctlModule and provides methods to perform API requests
     like GET, POST, PATCH, and DELETE.
-
-    Attributes:
-        API_ENDPOINTS (dict): Mapping of resource types to API endpoints.
     """
-
-    API_ENDPOINTS: Dict[str, str] = {
-        "fleet": "/api/v1/fleets",
-        "resourcesync": "/api/v1/resourcesyncs",
-        "device": "/api/v1/devices",
-        "repository": "/api/v1/repositories",
-        "enrollmentrequest": "api/v1/enrollmentrequests",
-        "certificatesigningrequest": "api/v1/certificatesigningrequests"
-    }
 
     def __init__(
         self,
@@ -129,13 +61,6 @@ class FlightctlAPIModule(FlightctlModule):
             **kwargs,
         )
 
-        self.session = Request(
-            cookies=CookieJar(),
-            timeout=self.request_timeout,
-            validate_certs=self.verify_ssl,
-            ca_path=self.ca_path,
-        )
-
         self.client = AuthenticatedClient(
             base_url=self.url.geturl(),
             verify_ssl=self.verify_ssl,
@@ -145,35 +70,6 @@ class FlightctlAPIModule(FlightctlModule):
                 cert=self.ca_path,
             )
         )
-
-    @staticmethod
-    def normalize_endpoint(endpoint: str) -> Optional[str]:
-        """
-        Normalizes the endpoint by converting it to lowercase.
-
-        Args:
-            endpoint (str): The API endpoint.
-
-        Returns:
-            Union[str, None]: The normalized endpoint or None if the input is invalid.
-        """
-        return endpoint.lower() if endpoint else None
-
-    def get_endpoint(
-        self, endpoint: str, name: Optional[str] = None, **kwargs: Any
-    ) -> Response:
-        """
-        Sends a GET request to the specified API endpoint.
-
-        Args:
-            endpoint (str): The API endpoint (resource type).
-            name (Optional[str], optional): The resource name (optional).
-
-        Returns:
-            Response: The response object.
-        """
-        url = self.build_url(endpoint, name, query_params=kwargs)
-        return self.request("GET", url.geturl(), **kwargs)
 
     def get(
         self, kind: Kind, name: Optional[str] = None,
@@ -194,211 +90,6 @@ class FlightctlAPIModule(FlightctlModule):
             raise FlightctlException(fail_msg)
 
         return response.parsed
-
-
-    def patch_endpoint(
-        self, endpoint: str, name: str, patch: List[Dict[str, Any]]
-    ) -> Response:
-        """
-        Sends a PATCH request to the specified endpoint with a JSON patch.
-
-        Args:
-            endpoint (str): The API endpoint (resource type) to patch.
-            name (str): The resource name to patch.
-            patch (List[Dict[str, Any]]): The patch data (list of patch operations).
-
-        Returns:
-            Response: The response object.
-        """
-        url = self.build_url(endpoint, name)
-        return self.request("PATCH", url.geturl(), patch=patch)
-
-    def post_endpoint(self, endpoint: str, **kwargs: Any) -> Response:
-        """
-        Sends a POST request to the specified API endpoint.
-
-        Args:
-            endpoint (str): The API endpoint (resource type).
-            **kwargs (Any): Additional parameters for the request.
-
-        Returns:
-            Response: The response object.
-        """
-        url = self.build_url(endpoint, None)
-        self.warn("URL IN POST")
-        self.warn(url.geturl())
-        return self.request("POST", url.geturl(), **kwargs)
-
-    def build_url(
-        self,
-        endpoint: str,
-        name: Optional[str] = None,
-        query_params: Optional[Dict[str, Any]] = None,
-    ):
-        """
-        Constructs the full URL for an API request.
-
-        Args:
-            endpoint (str): The API endpoint (resource type).
-            name (Optional[str], optional): The resource name.
-            query_params (Optional[Dict[str, Any]], optional): Query parameters for the URL.
-
-        Returns:
-            ParseResult: The complete URL with the path and query parameters.
-
-        Raises:
-            FlightctlException: If the endpoint is invalid.
-        """
-        normalized_endpoint = self.normalize_endpoint(endpoint)
-        if not normalized_endpoint or normalized_endpoint not in self.API_ENDPOINTS:
-            raise FlightctlException(f"Invalid 'kind' specified: {endpoint}")
-
-        api_endpoint = self.API_ENDPOINTS[normalized_endpoint]
-
-        # Construct the full path
-        if name:
-            base_path = f"{self.url_prefix.rstrip('/')}{api_endpoint}/{name}"
-        else:
-            base_path = f"{self.url_prefix.rstrip('/')}{api_endpoint}"
-
-        # Update the URL path with the base path
-        url = self.url._replace(path=base_path)
-
-        # Append query parameters if provided
-        if query_params:
-            # Encode the query parameters and append to the URL
-            query_string = urlencode(query_params, doseq=True)
-            url = url._replace(query=query_string)
-
-        return url
-
-    def request(
-        self,
-        method: str,
-        url: str,
-        patch: Optional[Any] = None,
-        **kwargs: Any,
-    ) -> Response:
-        """
-        Builds and sends an HTTP request.
-
-        Args:
-            method (str): The HTTP method (GET, POST, PATCH, DELETE, etc.).
-            url (str): The URL for the request.
-            patch (Optional[Any], optional): The patch data for PATCH requests.
-            kwargs (Any): Additional parameters for the request.
-
-        Returns:
-            Response: The response object.
-
-        Raises:
-            FlightctlHTTPException: If the method is not defined or there are request errors.
-        """
-        if not method:
-            raise FlightctlHTTPException("The HTTP method must be defined")
-
-        # Extract the headers, this will be used in a couple of places
-        headers = kwargs.get("headers", {})
-
-        # # Authenticate to Flight Control service (if we don't have a token and if not already done so)
-        # if not self.token and not self.authenticated:
-        #     # This method will set a cookie in the cookie jar for us and also an token
-        #     self.authenticate(**kwargs)
-
-        if self.token:
-            # If we have a token, we just use a bearer header
-            headers["Authorization"] = f"Bearer {self.token}"
-
-        if method == "PATCH":
-            headers.setdefault("Content-Type", "application/json-patch+json")
-            kwargs["headers"] = headers
-            data = json.dumps(patch)
-        elif method in ["POST", "PUT"]:
-            headers.setdefault("Content-Type", "application/json")
-            kwargs["headers"] = headers
-            data = json.dumps(kwargs)
-        else:
-            data = None  # Important, if content type is not JSON, this should not be dict type
-
-        return self._request(method, url, data=data, headers=headers)
-
-    def _request(
-        self,
-        method: str,
-        url: ParseResult,
-        data: Optional[str] = None,
-        headers: Optional[str] = None,
-    ) -> Response:
-        """
-        Sends a raw HTTP request using the session object.
-
-        Args:
-            method (str): The HTTP method (GET, POST, etc.).
-            url (str): The URL for the request.
-            data (Optional[str], optional): The request body data.
-            headers (Optional[str], optional): The request headers.
-
-        Returns:
-            Response: The response object.
-
-        Raises:
-            FlightctlHTTPException: If there are SSL, connection, or HTTP errors.
-        """
-        try:
-            raw_resp = self.session.open(
-                method,
-                url,
-                headers=headers,
-                timeout=self.request_timeout,
-                validate_certs=self.verify_ssl,
-                follow_redirects=True,
-                data=data,
-            )
-        except SSLValidationError as ssl_err:
-            raise FlightctlHTTPException(
-                f"Could not establish a secure connection to your host ({ssl_err}): {url.netloc}."
-            ) from ssl_err
-        except ConnectionError as con_err:
-            raise FlightctlHTTPException(
-                f"There was a network error of some kind trying to connect to your host ({con_err}): {url.netloc}."
-            ) from con_err
-        except HTTPError as http_err:
-            if http_err.code >= 500:
-                raise FlightctlHTTPException(
-                    f"The host sent back a server error ({http_err}): {url}. Please check the logs and try again."
-                ) from http_err
-            elif http_err.code == 401:
-                raise FlightctlHTTPException(
-                    f"Invalid authentication credentials for {url} (HTTP 401)."
-                ) from http_err
-            elif http_err.code == 403:
-                raise FlightctlHTTPException(
-                    f"You don't have permission to {method} to {url} (HTTP 403)."
-                ) from http_err
-            elif http_err.code == 404:
-                # raise FlightctlHTTPException(f"The requested object could not be found at {url.path}.") from http_err
-                return Response(http_err.code, b"{}")
-            elif http_err.code == 405:
-                raise FlightctlHTTPException(
-                    f"Cannot make a request with the {method} method to this endpoint {url}."
-                ) from http_err
-            elif http_err.code == 204 and method == "DELETE":
-                # A 204 is a normal response for a delete function
-                pass
-            else:
-                raise FlightctlHTTPException(
-                    f"Unexpected return code when calling {url}: {http_err}."
-                ) from http_err
-        except Exception as e:
-            raise FlightctlHTTPException(
-                f"There was an unknown error when trying to connect to {url}: {type(e).__name__} {e}."
-            ) from e
-
-        return Response(raw_resp.status, raw_resp.read(), raw_resp.headers)
-
-    def authenticate(self, **kwargs):
-        # self.authenticated = True
-        pass
 
     def list(self, kind: Kind, **kwargs: Any) -> List:
         if kind is Kind.DEVICE:
