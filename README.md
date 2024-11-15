@@ -119,3 +119,9 @@ You can either call modules, rulebooks and playbooks by their Fully Qualified Co
 ## License Information
 
 See [LICENSE](./LICENSE) to see the full text.
+
+## Generating the api client
+
+1. Install the [openapi-python-client](https://github.com/openapi-generators/openapi-python-client) library
+2. Update the /api/v1alpha1/openapi.yml to whatever version you want to use for generating the client
+3. Run `make generate-api-client`
