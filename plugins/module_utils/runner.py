@@ -173,8 +173,8 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 module.exit_json(**{"changed": True})
 
             try:
-                changed |= True
                 result = module.delete(kind, name).to_dict()
+                changed |= True
             except Exception as e:
                 raise FlightctlException(f"Failed to delete resource: {e}") from e
 
@@ -196,7 +196,8 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 module.exit_json(**{"changed": True})
 
             try:
-                changed, result = module.create(definition)
+                result = module.create(kind, definition)
+                changed |= True
             except Exception as e:
                 raise FlightctlException(f"Failed to create resource: {e}") from e
 

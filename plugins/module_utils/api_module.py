@@ -24,13 +24,15 @@ from .inputs import ApprovalInput
 from .utils import diff_dicts, get_patch, json_patch
 
 from .flightctl_api_client import Client
-from .flightctl_api_client.types import Response as ClientResponse
+from .flightctl_api_client.models.device import Device
+from .flightctl_api_client.models.enrollment_request import EnrollmentRequest
+from .flightctl_api_client.models.certificate_signing_request import CertificateSigningRequest
 from .flightctl_api_client.models.error import Error
 from .flightctl_api_client.models.enrollment_request_approval import EnrollmentRequestApproval
 from .flightctl_api_client.api.default import approve_certificate_signing_request, deny_certificate_signing_request
-from .flightctl_api_client.api.device import delete_device, read_device
-from .flightctl_api_client.api.certificatesigningrequest import delete_certificate_signing_request, read_certificate_signing_request
-from .flightctl_api_client.api.enrollmentrequest import delete_enrollment_request, approve_enrollment_request, read_enrollment_request
+from .flightctl_api_client.api.device import create_device, delete_device, read_device
+from .flightctl_api_client.api.certificatesigningrequest import create_certificate_signing_request, delete_certificate_signing_request, read_certificate_signing_request
+from .flightctl_api_client.api.enrollmentrequest import create_enrollment_request, delete_enrollment_request, approve_enrollment_request, read_enrollment_request
 
 class Response:
     """
@@ -426,12 +428,12 @@ class FlightctlAPIModule(FlightctlModule):
         return [response.json]
 
     def create(
-        self, definition: Dict[str, Any]
-    ) -> Tuple[bool, Dict[str, Any]]:
+        self, kind: Kind, definition: Dict[str, Any]
+    ) -> Any:
         """
         Creates a new resource in the API.
 
-        Args:
+        Args:s
             definition (Dict[str, Any]): The resource definition.
 
         Returns:
@@ -443,17 +445,27 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the creation fails.
         """
-        changed: bool = False
-        response = self.post_endpoint(definition.get("kind"), **definition)
-        if response.status == 201:
-            changed |= True
+        # TODO Dicts / structs for looking up resource -> methods
+        if kind is Kind.DEVICE:
+            # TODO cleaner passing around of data / figure out what types we want where and when we
+            # should represent resources as their types or dicts...
+            d = Device.from_dict(definition)
+            response = create_device.sync_detailed(client=self.client, body=d)
+        elif kind is Kind.ENROLLMENT:
+            e = EnrollmentRequest.from_dict(definition)
+            response = create_enrollment_request.sync_detailed(client=self.client, body=e)
         else:
-            msg = (
-                f"Unable to create {definition.get('kind')} {definition.get('metadata', None).get('name', None)}: {response.status}"
-            )
-            raise FlightctlException(msg)
+            c = CertificateSigningRequest.from_dict(definition)
+            response = create_certificate_signing_request.sync_detailed(client=self.client, body=c)
 
-        return changed, response.json
+        # TODO share request response handling?
+        if isinstance(response.parsed, Error):
+            fail_msg = f"Unable to create {kind.value}"
+            if response.message:
+                fail_msg += f", message: {response.message}"
+            raise FlightctlException(fail_msg)
+
+        return response.parsed.to_dict()
 
     def update(
         self, existing: Dict[str, Any], definition: Dict[str, Any]
