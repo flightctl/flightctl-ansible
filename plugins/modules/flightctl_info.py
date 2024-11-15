@@ -114,7 +114,7 @@ def main():
 
     params = {}
     if module.params.get("label_selector"):
-        params["labelSelector"] = module.params["label_selector"]
+        params["label_selector"] = module.params["label_selector"]
 
     # Attempt to look up resource based on the provided name
     try:

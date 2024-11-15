@@ -160,7 +160,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
     changed: bool = False
 
     if module.params.get("label_selector"):
-        params["labelSelector"] = module.params["label_selector"]
+        params["label_selector"] = module.params["label_selector"]
 
     try:
         existing = module.get(kind, name)

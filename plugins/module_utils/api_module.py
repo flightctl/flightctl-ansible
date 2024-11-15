@@ -23,7 +23,7 @@ from .exceptions import FlightctlException, FlightctlHTTPException
 from .inputs import ApprovalInput
 from .utils import diff_dicts, get_patch, json_patch
 
-from .flightctl_api_client import Client
+from .flightctl_api_client import AuthenticatedClient
 from .flightctl_api_client.models.device import Device
 from .flightctl_api_client.models.enrollment_request import EnrollmentRequest
 from .flightctl_api_client.models.certificate_signing_request import CertificateSigningRequest
@@ -136,9 +136,14 @@ class FlightctlAPIModule(FlightctlModule):
             ca_path=self.ca_path,
         )
 
-        self.client = Client(
+        self.client = AuthenticatedClient(
             base_url=self.url.geturl(),
             verify_ssl=self.verify_ssl,
+            raise_on_unexpected_status=True,
+            token=self.token,
+            httpx_args=dict(
+                cert=self.ca_path,
+            )
         )
 
     @staticmethod
@@ -413,7 +418,7 @@ class FlightctlAPIModule(FlightctlModule):
 
     def get_one_or_many(
         self, kind: Kind, name: Optional[str] = None, **kwargs: Any
-    ) -> List:
+    ) -> Any:
         """
         Retrieves one or many resources from the API.
 
@@ -434,7 +439,10 @@ class FlightctlAPIModule(FlightctlModule):
                 return []
             return [response.to_dict()]
         else:
-            return self.list(kind, **kwargs).to_dict()
+            res = self.list(kind, **kwargs)
+            if res:
+                return res.to_dict()
+            return {}
 
     def create(
         self, kind: Kind, definition: Dict[str, Any]

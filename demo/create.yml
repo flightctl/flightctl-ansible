@@ -2,6 +2,7 @@
   hosts: localhost
   gather_facts: false
 
+  # TODO verify demos work with new response types
   tasks:
     - name: Set default credentials
       ansible.builtin.set_fact:

@@ -50,7 +50,7 @@ cat ~/.config/flightctl/client.yaml | grep server | awk '{print $2}'
 ```
 3.  Enter your username (demouser) and password retrieved from step 1 in the browser window.
 
-Note: The default access tokens provisioned have a ttl of and you will need to refresh them by re-running the login step every couple of hours.
+Note: The default access tokens provisioned have a ttl and you will need to refresh them by re-running the login step every couple of hours.
 
 
 If you followed the above steps the `client.yaml` file can now be used for authentication with the flightctl services.
@@ -86,5 +86,6 @@ Alternatively, a filepath to the cert file can also be directly passed via the `
 ```
 ansible-playbook demo/create.yml \
     --extra-vars "flightctl_host='your-service-address-here'" \
-    --extra-vars "flightctl_ca_path=path/to/cert/ca.crt"
+    --extra-vars "flightctl_ca_path=path/to/cert/ca.crt" \
+    --extra-vars "flightctl_validate_certs=True"
 ```
