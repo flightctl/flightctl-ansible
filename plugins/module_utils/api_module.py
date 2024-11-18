@@ -140,8 +140,19 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the creation fails.
         """
+        self.warn("HERE 0")
+        self.warn(resource.value)
         resource = RESOURCE_MAPPING[resource]
-        response = resource.create(client=self.client, body=resource.model.from_dict(definition))
+        if resource:
+            self.warn("HAVE RESOURCE")
+        self.warn("HERE 1")
+        b = resource.model.from_dict(definition)
+        self.warn("HERE 2")
+        import json
+        j = json.dumps(definition)
+        self.warn(j)
+        response = resource.create(client=self.client, body=b)
+        self.warn("HERE 3")
 
         if isinstance(response.parsed, Error):
             fail_msg = f"Unable to create {resource.value}"
@@ -213,7 +224,11 @@ class FlightctlAPIModule(FlightctlModule):
                 - An optional response body of the delete operation.
         """
         resource = RESOURCE_MAPPING[resource]
-        response = resource.delete(name, client=self.client)
+
+        if name:
+            response = resource.delete(name, client=self.client)
+        else:
+            response = resource.delete_all(client=self.client)
 
         if isinstance(response.parsed, Error):
             if response.status_code.is_success:

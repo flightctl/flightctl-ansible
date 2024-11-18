@@ -145,15 +145,12 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
         ValidationException: If necessary definition parameters do not exist.
         FlightctlException: If performing the action fails.
     """
-    if definition["metadata"].get("name") is None:
-        raise ValidationException("A name must be specified")
-
     try:
         resource = ResourceType(definition.get("kind"))
     except (TypeError, ValueError):
         raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
 
-    name = definition["metadata"]["name"]
+    name = definition["metadata"].get("name")
     state = module.params.get("state")
     params = {}
     result: Dict[str, Any] = {}
