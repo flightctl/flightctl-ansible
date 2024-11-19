@@ -12,6 +12,7 @@ from plugins.module_utils.constants import ResourceType
 from plugins.module_utils.exceptions import FlightctlException
 from plugins.module_utils.inputs import ApprovalInput
 
+from plugins.module_utils.api_client.exceptions import NotFoundException
 from plugins.module_utils.api_client.models.enrollment_request_approval import EnrollmentRequestApproval
 
 
@@ -25,9 +26,9 @@ def api_module():
 
 
 @patch('plugins.module_utils.api_module.EnrollmentrequestApi')
-def test_approve_success(MockEnrollmentrequestApi, api_module):
+def test_approve_enrollment_success(mock_api, api_module):
     mock_api_instance = MagicMock()
-    MockEnrollmentrequestApi.return_value = mock_api_instance
+    mock_api.return_value = mock_api_instance
 
     input = ApprovalInput(ResourceType.ENROLLMENT, "test-enrollment", True)
     body = EnrollmentRequestApproval.from_dict(input.to_request_params())
@@ -35,35 +36,43 @@ def test_approve_success(MockEnrollmentrequestApi, api_module):
     mock_api_instance.approve_enrollment_request.assert_called_with(input.name, body)
 
 
-# def test_approve_404(api_module):
-#     mock_response = Mock()
-#     mock_response.status = 404
-#     mock_response.json = {}
-#     mock_request = Mock(return_value=mock_response)
-#     api_module.request = mock_request
+@patch('plugins.module_utils.api_module.EnrollmentrequestApi')
+def test_deny_enrollment_success(mock_api, api_module):
+    mock_api_instance = MagicMock()
+    mock_api.return_value = mock_api_instance
 
-#     input = ApprovalInput(ResourceType.ENROLLMENT, "test-enrollment", True)
-#     with pytest.raises(FlightctlException, match="Unable to approve EnrollmentRequest for test-enrollment"):
-#         api_module.approve(input)
-
-
-# def test_approve_csr(api_module):
-#     mock_response = Mock()
-#     mock_response.status = 200
-#     mock_request = Mock(return_value=mock_response)
-#     api_module.request = mock_request
-
-#     input = ApprovalInput(ResourceType.CSR, "test-csr", True)
-#     api_module.approve(input)
-#     mock_request.assert_called_with("POST", "https://test-flightctl-url.com/api/v1/certificatesigningrequests/test-csr/approval", **input.to_request_params())
+    input = ApprovalInput(ResourceType.ENROLLMENT, "test-enrollment", False)
+    body = EnrollmentRequestApproval.from_dict(input.to_request_params())
+    api_module.approve(input)
+    mock_api_instance.approve_enrollment_request.assert_called_with(input.name, body)
 
 
-# def test_deny_csr(api_module):
-#     mock_response = Mock()
-#     mock_response.status = 200
-#     mock_request = Mock(return_value=mock_response)
-#     api_module.request = mock_request
+@patch('plugins.module_utils.api_module.EnrollmentrequestApi')
+def test_approve_404(mock_api, api_module):
+    mock_api_instance = MagicMock()
+    mock_api.return_value = mock_api_instance
+    mock_api_instance.approve_enrollment_request.side_effect = NotFoundException()
 
-#     input = ApprovalInput(ResourceType.CSR, "test-csr", False)
-#     api_module.approve(input)
-#     mock_request.assert_called_with("DELETE", "https://test-flightctl-url.com/api/v1/certificatesigningrequests/test-csr/approval")
+    input = ApprovalInput(ResourceType.ENROLLMENT, "test-enrollment", True)
+    with pytest.raises(FlightctlException, match="Unable to approve EnrollmentRequest - test-enrollment: *"):
+        api_module.approve(input)
+
+
+@patch('plugins.module_utils.api_module.DefaultApi')
+def test_approve_csr(mock_api, api_module):
+    mock_api_instance = MagicMock()
+    mock_api.return_value = mock_api_instance
+
+    input = ApprovalInput(ResourceType.CSR, "test-csr", True)
+    api_module.approve(input)
+    mock_api_instance.approve_certificate_signing_request.assert_called_with(input.name)
+
+
+@patch('plugins.module_utils.api_module.DefaultApi')
+def test_approve_csr(mock_api, api_module):
+    mock_api_instance = MagicMock()
+    mock_api.return_value = mock_api_instance
+
+    input = ApprovalInput(ResourceType.CSR, "test-csr", False)
+    api_module.approve(input)
+    mock_api_instance.deny_certificate_signing_request.assert_called_with(input.name)
