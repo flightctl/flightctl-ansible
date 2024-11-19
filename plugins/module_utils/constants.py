@@ -15,23 +15,26 @@ from .api_client.api.device_api import DeviceApi
 from .api_client.api.fleet_api import FleetApi
 from .api_client.api.certificatesigningrequest_api import CertificatesigningrequestApi
 from .api_client.api.enrollmentrequest_api import EnrollmentrequestApi
-from .api_client.models.device import Device as Dev
-from .api_client.models.fleet import Fleet as Fl
-from .api_client.models.certificate_signing_request import CertificateSigningRequest as Cert
-from .api_client.models.enrollment_request import EnrollmentRequest as Enroll
+from .api_client.api.repository_api import RepositoryApi
+from .api_client.models.device import Device
+from .api_client.models.fleet import Fleet
+from .api_client.models.certificate_signing_request import CertificateSigningRequest
+from .api_client.models.enrollment_request import EnrollmentRequest
+from .api_client.models.repository import Repository
 
-# TODO expand ResourceType to include additional types
+
 class ResourceType(Enum):
     CSR = "CertificateSigningRequest"
     DEVICE = "Device"
     ENROLLMENT = "EnrollmentRequest"
     FLEET = "Fleet"
+    REPOSITORY = "Repository"
 
 
 @dataclass
 class ApiResource:
-    api: Union[DeviceApi, FleetApi]
-    model: Union[Dev, Fl]
+    api: Union[DeviceApi, FleetApi, CertificatesigningrequestApi, EnrollmentrequestApi, RepositoryApi]
+    model: Union[Device, Fleet, CertificateSigningRequest, EnrollmentRequest, Repository]
 
     get: str
     create: str
@@ -45,7 +48,7 @@ class ApiResource:
 API_MAPPING = {
     ResourceType.DEVICE: ApiResource(
         api=DeviceApi,
-        model=Dev,
+        model=Device,
         get='read_device',
         create='create_device',
         list='list_devices',
@@ -55,7 +58,7 @@ API_MAPPING = {
     ),
     ResourceType.FLEET: ApiResource(
         api=FleetApi,
-        model=Fl,
+        model=Fleet,
         get='read_fleet',
         create='create_fleet',
         list='list_fleets',
@@ -65,7 +68,7 @@ API_MAPPING = {
     ),
     ResourceType.CSR: ApiResource(
         api=CertificatesigningrequestApi,
-        model=Cert,
+        model=CertificateSigningRequest,
         get='read_certificate_signing_request',
         create='create_certificate_signing_request',
         list='list_certificate_signing_request',
@@ -75,11 +78,20 @@ API_MAPPING = {
     ),
     ResourceType.ENROLLMENT: ApiResource(
         api=EnrollmentrequestApi,
-        model=Enroll,
+        model=EnrollmentRequest,
         get='read_enrollment_request',
         create='create_enrollment_request',
         list='list_enrollment_requests',
         delete='delete_enrollment_request',
         delete_all='delete_enrollment_requests',
+    ),
+    ResourceType.REPOSITORY: ApiResource(
+        api=RepositoryApi,
+        model=Repository,
+        get='read_repository',
+        create='create_repository',
+        list='list_repositories',
+        delete='delete_repository',
+        delete_all='delete_repositories',
     ),
 }

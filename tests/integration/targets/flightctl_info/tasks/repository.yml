@@ -1,0 +1,38 @@
+---
+- name: Test Get Repository Info
+  vars:
+    repository_name: ansible-integration-test-repository
+  block:
+  - name: Create a test repo
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Repository
+      name: "{{ repository_name }}"
+      resource_definition:
+        spec:
+          url: https://github.com/flightctl/flightctl.git
+          type: git
+
+  - name: Get test repo
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Repository
+      name: "{{ repository_name }}"
+    register: repo_result
+
+  - name: Assert that repo info was fetched
+    ansible.builtin.assert:
+      that:
+        - repo_result is success
+        - repo_result.result.metadata.name == "ansible-integration-test-repository"
+
+  always:
+    - name: Delete test repo
+      flightctl.edge.flightctl:
+        flightctl_host: "{{ flightctl_host }}"
+        flightctl_validate_certs: false
+        kind: Repository
+        name: "{{ repository_name }}"
+        state: absent

@@ -1091,9 +1091,9 @@ class DeviceApi:
             _path_params['name'] = name
         # process the query parameters
         if known_rendered_version is not None:
-
+            
             _query_params.append(('knownRenderedVersion', known_rendered_version))
-
+            
         # process the header parameters
         # process the form parameters
         # process the body parameter
@@ -1467,41 +1467,41 @@ class DeviceApi:
         # process the path parameters
         # process the query parameters
         if var_continue is not None:
-
+            
             _query_params.append(('continue', var_continue))
-
+            
         if label_selector is not None:
-
+            
             _query_params.append(('labelSelector', label_selector))
-
+            
         if field_selector is not None:
-
+            
             _query_params.append(('fieldSelector', field_selector))
-
+            
         if status_filter is not None:
-
+            
             _query_params.append(('statusFilter', status_filter))
-
+            
         if limit is not None:
-
+            
             _query_params.append(('limit', limit))
-
+            
         if owner is not None:
-
+            
             _query_params.append(('owner', owner))
-
+            
         if summary_only is not None:
-
+            
             _query_params.append(('summaryOnly', summary_only))
-
+            
         if sort_by is not None:
-
+            
             _query_params.append(('sortBy', sort_by))
-
+            
         if sort_order is not None:
-
+            
             _query_params.append(('sortOrder', sort_order.value))
-
+            
         # process the header parameters
         # process the form parameters
         # process the body parameter

@@ -6,7 +6,6 @@ from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
 
-from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Tuple
 
 from .constants import API_MAPPING, ResourceType

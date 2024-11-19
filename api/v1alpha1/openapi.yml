@@ -2473,7 +2473,6 @@ components:
         - apiVersion
         - kind
         - metadata
-        - spec
       description: Repository represents a Git repository or an HTTP endpoint
     HttpConfig:
       type: object

@@ -10,7 +10,7 @@ test-integration:
 test-sanity:
 	ansible-test sanity --docker -v --color --python $(PYTHON_VERSION) $(?TEST_ARGS)
 
-generate-api-client: build-client move-client-files
+generate-api-client: build-client replace-client-files
 
 build-client:
 	npx @openapitools/openapi-generator-cli generate \
@@ -26,7 +26,8 @@ build-client:
 #
 # If this GH issue is ever completed this could be changed https://github.com/OpenAPITools/openapi-generator/issues/1302,
 # or if the generated client code would be moved to a separate repository and imported as a single python dependency.
-move-client-files:
-	mv ./tmp-client/ansible_collections/flightctl/edge/plugins/module_utils/api_client ./plugins/module_utils
+replace-client-files:
+	rm -rf ./plugins/module_utils/api_client
+	mv ./tmp-client/ansible_collections/flightctl/edge/plugins/module_utils/api_client ./plugins/module_utils/api_client
 	mv ./tmp-client/ansible_collections/flightctl/edge/plugins/module_utils/*README.md ./plugins/module_utils/api_client
 	rm -rf ./tmp-client
