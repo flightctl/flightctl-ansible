@@ -220,7 +220,7 @@ class FlightctlAPIModule(FlightctlModule):
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to delete {resource.value} - {name}: {e}")
 
-        return response
+        return response.to_dict()
 
     def approve(self, input: ApprovalInput) -> None:
         """
