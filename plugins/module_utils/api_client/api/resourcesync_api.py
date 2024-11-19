@@ -1146,33 +1146,33 @@ class ResourcesyncApi:
         # process the path parameters
         # process the query parameters
         if var_continue is not None:
-            
+
             _query_params.append(('continue', var_continue))
-            
+
         if label_selector is not None:
-            
+
             _query_params.append(('labelSelector', label_selector))
-            
+
         if field_selector is not None:
-            
+
             _query_params.append(('fieldSelector', field_selector))
-            
+
         if limit is not None:
-            
+
             _query_params.append(('limit', limit))
-            
+
         if repository is not None:
-            
+
             _query_params.append(('repository', repository))
-            
+
         if sort_by is not None:
-            
+
             _query_params.append(('sortBy', sort_by))
-            
+
         if sort_order is not None:
-            
+
             _query_params.append(('sortOrder', sort_order.value))
-            
+
         # process the header parameters
         # process the form parameters
         # process the body parameter

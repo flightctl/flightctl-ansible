@@ -16,11 +16,13 @@ from .api_client.api.fleet_api import FleetApi
 from .api_client.api.certificatesigningrequest_api import CertificatesigningrequestApi
 from .api_client.api.enrollmentrequest_api import EnrollmentrequestApi
 from .api_client.api.repository_api import RepositoryApi
+from .api_client.api.resourcesync_api import ResourcesyncApi
 from .api_client.models.device import Device
 from .api_client.models.fleet import Fleet
 from .api_client.models.certificate_signing_request import CertificateSigningRequest
 from .api_client.models.enrollment_request import EnrollmentRequest
 from .api_client.models.repository import Repository
+from .api_client.models.resource_sync import ResourceSync
 
 
 class ResourceType(Enum):
@@ -29,6 +31,7 @@ class ResourceType(Enum):
     ENROLLMENT = "EnrollmentRequest"
     FLEET = "Fleet"
     REPOSITORY = "Repository"
+    RESOURCE_SYNC = "ResourceSync"
 
 
 @dataclass
@@ -93,5 +96,14 @@ API_MAPPING = {
         list='list_repositories',
         delete='delete_repository',
         delete_all='delete_repositories',
+    ),
+    ResourceType.RESOURCE_SYNC: ApiResource(
+        api=ResourcesyncApi,
+        model=ResourceSync,
+        get='read_resource_sync',
+        create='create_resource_sync',
+        list='list_resource_sync',
+        delete='delete_resource_sync',
+        delete_all='delete_resource_syncs',
     ),
 }

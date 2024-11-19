@@ -1,0 +1,39 @@
+---
+- name: Test Get Resource Sync Info
+  vars:
+    resource_sync_name: ansible-integration-test-resource-sync
+  block:
+  - name: Create a test resource sync
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: ResourceSync
+      name: "{{ resource_sync_name }}"
+      resource_definition:
+        spec:
+          repository: flightctl
+          path: /examples/fleet.yaml
+          targetRevision: main
+
+  - name: Get test resource sync
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: ResourceSync
+      name: "{{ resource_sync_name }}"
+    register: resource_sync_result
+
+  - name: Assert that resource sync info was fetched
+    ansible.builtin.assert:
+      that:
+        - resource_sync_result is success
+        - resource_sync_result.result.metadata.name == "ansible-integration-test-resource-sync"
+
+  always:
+    - name: Delete test resource sync
+      flightctl.edge.flightctl:
+        flightctl_host: "{{ flightctl_host }}"
+        flightctl_validate_certs: false
+        kind: ResourceSync
+        name: "{{ resource_sync_name }}"
+        state: absent
