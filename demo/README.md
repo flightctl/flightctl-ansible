@@ -20,7 +20,7 @@ ansible-galaxy collection install . --force
 
 3.  Run a playbook.
 ```
-ansible-playbook demo/create.yml --extra-vars "flightctl_config_file='~/.config/flightctl/client.yaml'"
+ansible-playbook demo/create.yml --extra-vars "flightctl_config_file='~/.config/flightctl/client.yaml'" --extra-vars "flightctl_validate_certs=False"
 ```
 
 The `--extra-vars` allows us to pass variables into the playbooks.  In this case the create playbook is dependent on the flightctl_config_file variable pointing towards the generated client.yaml used when deploying the local flightctl services.  Default values for this are:

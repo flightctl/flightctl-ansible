@@ -21,7 +21,11 @@ build-client:
 	--global-property=apiDocs=false,modelDocs=false,apiTests=false,modelTests=false \
 	-c ./openapiconfig.json
 
-# TODO add explanation for this shenanigans
+# The client is generated in a tmp directory with this file structure so that it will have
+# absolute import paths that work inside the ansible collection.
+#
+# If this GH issue is ever completed this could be changed https://github.com/OpenAPITools/openapi-generator/issues/1302,
+# or if the generated client code would be moved to a separate repository and imported as a single python dependency.
 move-client-files:
 	mv ./tmp-client/ansible_collections/flightctl/edge/plugins/module_utils/api_client ./plugins/module_utils
 	mv ./tmp-client/ansible_collections/flightctl/edge/plugins/module_utils/*README.md ./plugins/module_utils/api_client
