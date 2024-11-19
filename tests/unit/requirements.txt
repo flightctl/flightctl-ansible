@@ -1,3 +1,5 @@
 jsonschema
 openapi_schema_validator
 pytest
+pydantic
+python-dateutil
