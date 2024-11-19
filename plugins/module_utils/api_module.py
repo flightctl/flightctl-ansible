@@ -93,7 +93,7 @@ class FlightctlAPIModule(FlightctlModule):
             raise FlightctlApiException(f"Unable to fetch {resource.value} - {name}: {e}")
 
 
-    def list(self, resource: ResourceType, **kwargs: Any) -> List:
+    def list(self, resource: ResourceType, **kwargs: Any) -> Any:
         """
         Makes an list query via the API.
 
@@ -101,7 +101,7 @@ class FlightctlAPIModule(FlightctlModule):
             resource (ResourceType): The API Resource Type.
 
         Returns:
-            List: The list of resources or an empty list if no resources are found.
+            ListResponse: Response continaing the list of resources or an empty list if no resources are found.
 
         Raises:
             FlightctlException: If the approval request fails.
@@ -127,7 +127,7 @@ class FlightctlAPIModule(FlightctlModule):
             kwargs (Any): Additional query parameters for the request.
 
         Returns:
-            List: The list of resources or an empty list if not found.
+            Response: The resource or list response for the queried resources.
 
         Raises:
             FlightctlException: If the response status is not 200 or 404.
