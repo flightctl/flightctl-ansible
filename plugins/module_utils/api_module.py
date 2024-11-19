@@ -68,6 +68,19 @@ class FlightctlAPIModule(FlightctlModule):
     def get(
         self, resource: ResourceType, name: Optional[str] = None,
     ) -> Optional[Any]:
+        """
+        Makes an get query via the API.
+
+        Args:
+            resource (ResourceType): The API Resource Type.
+            name (str): The API Resource name identifier
+
+        Returns:
+            Any: The found resoruce.
+
+        Raises:
+            FlightctlException: If the approval request fails.
+        """
         api_type = API_MAPPING[resource]
         api_instance = api_type.api(self.client)
         get_call = getattr(api_instance, api_type.get)
@@ -81,6 +94,18 @@ class FlightctlAPIModule(FlightctlModule):
 
 
     def list(self, resource: ResourceType, **kwargs: Any) -> List:
+        """
+        Makes an list query via the API.
+
+        Args:
+            resource (ResourceType): The API Resource Type.
+
+        Returns:
+            List: The list of resources or an empty list if no resources are found.
+
+        Raises:
+            FlightctlException: If the approval request fails.
+        """
         api_type = API_MAPPING[resource]
         api_instance = api_type.api(self.client)
         list_call = getattr(api_instance, api_type.list)
@@ -97,7 +122,7 @@ class FlightctlAPIModule(FlightctlModule):
         Retrieves one or many resources from the API.
 
         Args:
-            endpoint (str): The API endpoint (resource type).
+            resource (ResourceType): The API Resource Type.
             name (Optional[str], optional): The resource name.
             kwargs (Any): Additional query parameters for the request.
 
@@ -124,7 +149,7 @@ class FlightctlAPIModule(FlightctlModule):
         """
         Creates a new resource in the API.
 
-        Args:s
+        Args:
             definition (Dict[str, Any]): The resource definition.
 
         Returns:
@@ -150,8 +175,6 @@ class FlightctlAPIModule(FlightctlModule):
         self, resource: ResourceType, existing: Dict[str, Any], definition: Dict[str, Any]
     ) -> Tuple[bool, Dict[str, Any]]:
         """
-        TODO - update the docstrings for modified methods
-
         Updates an existing resource in the API.
 
         Args:
@@ -183,16 +206,15 @@ class FlightctlAPIModule(FlightctlModule):
             try:
                 patch_params = [PatchRequestInner.from_dict(p) for p in patch]
                 response = patch_call(name, patch_params).to_dict()
+                changed |= True
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to create {resource.value}: {e}")
 
-        # TODO align on these methods returning changed or if it should just be handled by the caller?
-        # The others always returned changed = True but this one may not run based on the diffs between existing and definition
         return changed, (response if diffs else existing)
 
     def delete(self, resource: ResourceType, name: str) -> Optional[Any]:
         """
-        Deletes a resource from the API.
+        Deletes resources from the API.
 
         Args:
             endpoint (str): The API endpoint (resource type).
