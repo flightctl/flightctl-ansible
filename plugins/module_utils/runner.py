@@ -27,8 +27,8 @@ from .constants import ResourceType
 from .exceptions import FlightctlException, ValidationException
 from .inputs import ApprovalInput
 from .resources import create_definitions
-from .api_client.models.certificate_signing_request import CertificateSigningRequest as Cert
-from .api_client.models.enrollment_request import EnrollmentRequest as Enroll
+from .api_client.models.certificate_signing_request import CertificateSigningRequest
+from .api_client.models.enrollment_request import EnrollmentRequest
 
 
 def load_schema(file_path: str) -> Dict[str, Any]:
@@ -227,12 +227,12 @@ def perform_approval(module: FlightctlAPIModule) -> None:
     try:
         existing = module.get(resource, input.name)
         currently_approved = None
-        if isinstance(existing, Enroll):
+        if isinstance(existing, EnrollmentRequest):
             try:
                 currently_approved = existing.status.approval.approved
             except AttributeError:
                 pass
-        elif isinstance(existing, Cert):
+        elif isinstance(existing, CertificateSigningRequest):
             try:
                 conditions = existing.status.conditions
                 approval_condition = next((c for c in conditions if c.type == "Approved"), None)

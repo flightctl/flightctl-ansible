@@ -6,8 +6,11 @@ import pytest
 from unittest.mock import MagicMock
 
 from plugins.module_utils.constants import ResourceType
-from plugins.module_utils.exceptions import FlightctlException, FlightctlHTTPException, ValidationException
+from plugins.module_utils.exceptions import FlightctlException, FlightctlApiException, ValidationException
 from plugins.module_utils.runner import perform_approval
+
+from plugins.module_utils.api_client.models.certificate_signing_request import CertificateSigningRequest
+from plugins.module_utils.api_client.models.enrollment_request import EnrollmentRequest
 
 
 @pytest.fixture
@@ -29,7 +32,7 @@ def mock_module():
 
 
 def test_perform_approval__get_endpoint_failure(mock_module):
-    mock_module.get_endpoint.side_effect = FlightctlHTTPException("Oh No!")
+    mock_module.get.side_effect = FlightctlApiException("Oh No!")
     with pytest.raises(FlightctlException, match="Failed to get resource: .*"):
         perform_approval(mock_module)
         mock_module.approve.assert_not_called()
@@ -37,7 +40,7 @@ def test_perform_approval__get_endpoint_failure(mock_module):
 
 
 def test_perform_approval__approval_failure(mock_module):
-    mock_module.approve.side_effect = FlightctlHTTPException("Oh No!")
+    mock_module.approve.side_effect = FlightctlApiException("Oh No!")
     with pytest.raises(FlightctlException, match="Failed to approve resource: .*"):
         perform_approval(mock_module)
         mock_module.approve.assert_called()
@@ -45,24 +48,30 @@ def test_perform_approval__approval_failure(mock_module):
 
 
 def test_perform_approval__approval_of_already_approved_enrollment_returns_early(mock_module):
-    mock_approved_enrollment_response = MagicMock()
-    mock_approved_enrollment_response.json.get.return_value = {"approval": {"approved": True}}
-    mock_module.get_endpoint.return_value = mock_approved_enrollment_response
+    mock_approval = MagicMock()
+    mock_approval.approved = True
+    mock_status = MagicMock()
+    mock_status.approval = mock_approval
+    mock_approved_enrollment_response = MagicMock(spec=EnrollmentRequest)
+    mock_approved_enrollment_response.status = mock_status
+    mock_module.get.return_value = mock_approved_enrollment_response
 
     perform_approval(mock_module)
-    mock_module.get_endpoint.assert_called()
+    mock_module.get.assert_called()
     mock_module.approve.assert_not_called()
     mock_module.exit_json.assert_called_with(changed=False)
 
 
 def test_perform_approval__approval_of_already_approved_csr_returns_early(mock_module):
-    mock_approved_csr_response = MagicMock()
-    mock_approved_csr_response.json.get.return_value = {"conditions": [{"type": "Approved", "status": "True"}]}
-    mock_module.get_endpoint.return_value = mock_approved_csr_response
-    mock_module.params["kind"] = ResourceType.CSR.value
+    mock_conditions = [MagicMock(type="Approved", status="True")]
+    mock_status = MagicMock()
+    mock_status.conditions = mock_conditions
+    mock_csr_response = MagicMock(spec=CertificateSigningRequest)
+    mock_csr_response.status = mock_status
+    mock_module.get.return_value = mock_csr_response
 
     perform_approval(mock_module)
-    mock_module.get_endpoint.assert_called()
+    mock_module.get.assert_called()
     mock_module.approve.assert_not_called()
     mock_module.exit_json.assert_called_with(changed=False)
 
@@ -71,14 +80,14 @@ def test_perform_approval__check_mode_does_not_call_approve(mock_module):
     mock_module.check_mode = True
 
     perform_approval(mock_module)
-    mock_module.get_endpoint.assert_called()
+    mock_module.get.assert_called()
     mock_module.approve.assert_not_called()
     mock_module.exit_json.assert_called_with(changed=True)
 
 
 def test_perform_approval__successful_enrollment_approval(mock_module):
     perform_approval(mock_module)
-    mock_module.get_endpoint.assert_called()
+    mock_module.get.assert_called()
     mock_module.approve.assert_called()
     mock_module.exit_json.assert_called_with(changed=True)
 
@@ -86,7 +95,7 @@ def test_perform_approval__successful_enrollment_approval(mock_module):
 def test_perform_approval__successful_enrollment_approval_with_false_value(mock_module):
     mock_module.params["approved"] = False
     perform_approval(mock_module)
-    mock_module.get_endpoint.assert_called()
+    mock_module.get.assert_called()
     mock_module.approve.assert_called()
     mock_module.exit_json.assert_called_with(changed=True)
 
@@ -94,7 +103,7 @@ def test_perform_approval__successful_enrollment_approval_with_false_value(mock_
 def test_perform_approval__successful_csr_approval(mock_module):
     mock_module.params["kind"] = ResourceType.CSR.value
     perform_approval(mock_module)
-    mock_module.get_endpoint.assert_called()
+    mock_module.get.assert_called()
     mock_module.approve.assert_called()
     mock_module.exit_json.assert_called_with(changed=True)
 
