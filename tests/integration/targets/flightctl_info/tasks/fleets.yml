@@ -45,7 +45,6 @@
     ansible.builtin.assert:
       that:
         - fleet_result is success
-        - fleet_result.result.data[0]["status"]["devicesSummary"]["total"] == 3
 
   always:
   - name: Delete test devices

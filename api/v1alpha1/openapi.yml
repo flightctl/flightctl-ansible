@@ -63,7 +63,7 @@ paths:
             type: string
         - name: fieldSelector
           in: query
-          description: A selector to restrict the list of returned objects by their fields, supports '=', '==', and '!='.(e.g. key1=value1,key2!=value2).
+          description: A selector to restrict the list of returned objects by their fields, supporting operators like '=', '==', and '!=' (e.g., "key1=value1,key2!=value2"). For a full list of operators and examples, refer to the documentation.
           schema:
             type: string
         - name: limit
@@ -3808,9 +3808,6 @@ components:
       description: A summary of the devices in the fleet returned when fetching a single Fleet.
       required:
       - total
-      - applicationStatus
-      - summaryStatus
-      - updateStatus
       properties:
         total:
           type: integer
@@ -4047,12 +4044,10 @@ components:
     ConditionType:
       type: string
       enum:
-      - 'Approved'             # EnrollmentRequest
-      - 'Approved'             # CertificateSigningRequest
+      - 'Approved'             # EnrollmentRequest and CertificateSigningRequest
       - 'Denied'               # CertificateSigningRequest
       - 'Failed'               # CertificateSigningRequest
-      - 'Accessible'           # Repository
-      - 'Accessible'           # ResourceSync
+      - 'Accessible'           # Repository and ResourceSync
       - 'ResourceParsed'       # ResourceSync
       - 'Synced'               # ResourceSync
       - 'OverlappingSelectors' # Fleet
@@ -4060,7 +4055,6 @@ components:
       - 'Updating'             # Device
       - 'SpecValid'            # Device (service condition)
       - 'MultipleOwners'       # Device (service condition)
-      - 'Valid'                # TemplateVersion
       x-enum-varnames:
       - EnrollmentRequestApproved
       - CertificateSigningRequestApproved
@@ -4075,7 +4069,6 @@ components:
       - DeviceUpdating
       - DeviceSpecValid
       - DeviceMultipleOwners
-      - TemplateVersionValid
     ConditionStatus:
       type: string
       enum:
@@ -4162,7 +4155,6 @@ components:
           description: 'Name of the user that created the CSR, populated by the API server on creation and immutable'
           type: string
       required:
-        - request
         - signerName
       type: object
     CertificateSigningRequestStatus:

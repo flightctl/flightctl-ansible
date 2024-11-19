@@ -122,6 +122,6 @@ See [LICENSE](./LICENSE) to see the full text.
 
 ## Generating the api client
 
-1. Install the [openapi-python-client](https://github.com/openapi-generators/openapi-python-client) library
+1. Install the [openapi-generator](https://github.com/OpenAPITools/openapi-generator) library
 2. Update the /api/v1alpha1/openapi.yml to whatever version you want to use for generating the client
 3. Run `make generate-api-client`

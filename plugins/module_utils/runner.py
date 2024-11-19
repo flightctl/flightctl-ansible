@@ -27,9 +27,8 @@ from .constants import ResourceType
 from .exceptions import FlightctlException, ValidationException
 from .inputs import ApprovalInput
 from .resources import create_definitions
-from .flightctl_api_client.models.condition_type import ConditionType
-from .flightctl_api_client.models.certificate_signing_request import CertificateSigningRequest
-from .flightctl_api_client.models.enrollment_request import EnrollmentRequest
+from .api_client.models.certificate_signing_request import CertificateSigningRequest as Cert
+from .api_client.models.enrollment_request import EnrollmentRequest as Enroll
 
 
 def load_schema(file_path: str) -> Dict[str, Any]:
@@ -160,7 +159,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
         params["label_selector"] = module.params["label_selector"]
 
     try:
-        existing = module.get(resource, name)
+        existing = module.get_one_or_many(resource, name)
     except Exception as e:
         raise FlightctlException(f"Failed to get resource: {e}") from e
 
@@ -184,7 +183,8 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 module.exit_json(**{"changed": True})
 
             try:
-                changed, result = module.update(resource, existing.to_dict(), definition)
+                # TODO not this
+                changed, result = module.update(resource, existing.items[0].to_dict(), definition)
             except Exception as e:
                 raise FlightctlException(f"Failed to update resource: {e}") from e
         else:
@@ -228,12 +228,12 @@ def perform_approval(module: FlightctlAPIModule) -> None:
     try:
         existing = module.get(resource, input.name)
         currently_approved = None
-        if isinstance(existing, EnrollmentRequest):
+        if isinstance(existing, Enroll):
             try:
                 currently_approved = existing.status.approval.approved
             except AttributeError:
                 pass
-        elif isinstance(existing, CertificateSigningRequest):
+        elif isinstance(existing, Cert):
             try:
                 conditions = existing.status.conditions
                 approval_condition = next((c for c in conditions if c.type == "Approved"), None)

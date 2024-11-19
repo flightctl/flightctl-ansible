@@ -89,3 +89,8 @@ ansible-playbook demo/create.yml \
     --extra-vars "flightctl_ca_path=path/to/cert/ca.crt" \
     --extra-vars "flightctl_validate_certs=True"
 ```
+
+
+ansible-playbook demo/create.yml \
+    --extra-vars "flightctl_config_file='~/.config/flightctl/client.yaml'" \
+    --extra-vars "flightctl_validate_certs=True"

@@ -10,10 +10,19 @@ test-integration:
 test-sanity:
 	ansible-test sanity --docker -v --color --python $(PYTHON_VERSION) $(?TEST_ARGS)
 
-generate-api-client:
-	openapi-python-client generate \
-		--config client-gen-config.yaml \
-		--output-path plugins/module_utils/flightctl_api_client \
-		--meta none \
-		--path api/v1alpha1/openapi.yml \
-		--overwrite
+generate-api-client: build-client move-client-files
+
+build-client:
+	npx @openapitools/openapi-generator-cli generate \
+	-g python \
+	-i ./api/v1alpha1/openapi.yml \
+	-o ./tmp-client \
+	--additional-properties=generateSourceCodeOnly=true \
+	--global-property=apiDocs=false,modelDocs=false,apiTests=false,modelTests=false \
+	-c ./openapiconfig.json
+
+# TODO add explanation for this shenanigans
+move-client-files:
+	mv ./tmp-client/ansible_collections/flightctl/edge/plugins/module_utils/api_client ./plugins/module_utils
+	mv ./tmp-client/ansible_collections/flightctl/edge/plugins/module_utils/*README.md ./plugins/module_utils/api_client
+	rm -rf ./tmp-client
