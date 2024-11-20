@@ -12,8 +12,9 @@ from plugins.module_utils.constants import ResourceType
 from plugins.module_utils.exceptions import FlightctlException
 from plugins.module_utils.inputs import ApprovalInput
 
-from plugins.module_utils.api_client.exceptions import NotFoundException
-from plugins.module_utils.api_client.models.enrollment_request_approval import EnrollmentRequestApproval
+from plugins.module_utils.client_path_helper import *
+from openapi_client.exceptions import NotFoundException
+from openapi_client.models.enrollment_request_approval import EnrollmentRequestApproval
 
 
 @pytest.fixture

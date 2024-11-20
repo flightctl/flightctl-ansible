@@ -27,3 +27,4 @@ jobs:
           origin-python-version: ${{ matrix.versions.python }}
           target-python-version: ${{ matrix.versions.python }}
           testing-type: sanity
+          target: plugins/

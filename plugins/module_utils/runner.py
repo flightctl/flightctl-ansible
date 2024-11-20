@@ -27,8 +27,10 @@ from .constants import ResourceType
 from .exceptions import FlightctlException, ValidationException
 from .inputs import ApprovalInput
 from .resources import create_definitions
-from .api_client.models.certificate_signing_request import CertificateSigningRequest
-from .api_client.models.enrollment_request import EnrollmentRequest
+
+import ansible_collections.flightctl.edge.plugins.module_utils.client_path_helper  # pylint: disable=unused-import
+from openapi_client.models.enrollment_request import EnrollmentRequest
+from openapi_client.models.certificate_signing_request import CertificateSigningRequest
 
 
 def load_schema(file_path: str) -> Dict[str, Any]:

@@ -11,18 +11,19 @@ from enum import Enum
 from typing import Optional, Union
 
 
-from .api_client.api.device_api import DeviceApi
-from .api_client.api.fleet_api import FleetApi
-from .api_client.api.certificatesigningrequest_api import CertificatesigningrequestApi
-from .api_client.api.enrollmentrequest_api import EnrollmentrequestApi
-from .api_client.api.repository_api import RepositoryApi
-from .api_client.api.resourcesync_api import ResourcesyncApi
-from .api_client.models.device import Device
-from .api_client.models.fleet import Fleet
-from .api_client.models.certificate_signing_request import CertificateSigningRequest
-from .api_client.models.enrollment_request import EnrollmentRequest
-from .api_client.models.repository import Repository
-from .api_client.models.resource_sync import ResourceSync
+import ansible_collections.flightctl.edge.plugins.module_utils.client_path_helper  # pylint: disable=unused-import
+from openapi_client.api.device_api import DeviceApi
+from openapi_client.api.fleet_api import FleetApi
+from openapi_client.api.certificatesigningrequest_api import CertificatesigningrequestApi
+from openapi_client.api.enrollmentrequest_api import EnrollmentrequestApi
+from openapi_client.api.repository_api import RepositoryApi
+from openapi_client.api.resourcesync_api import ResourcesyncApi
+from openapi_client.models.device import Device
+from openapi_client.models.fleet import Fleet
+from openapi_client.models.certificate_signing_request import CertificateSigningRequest
+from openapi_client.models.enrollment_request import EnrollmentRequest
+from openapi_client.models.repository import Repository
+from openapi_client.models.resource_sync import ResourceSync
 
 
 class ResourceType(Enum):

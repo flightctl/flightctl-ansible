@@ -6,7 +6,7 @@ from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from .constants import API_MAPPING, ResourceType
 from .core import FlightctlModule
@@ -14,13 +14,14 @@ from .exceptions import FlightctlException, FlightctlApiException
 from .inputs import ApprovalInput
 from .utils import diff_dicts, get_patch, json_patch
 
-from .api_client.api_client import ApiClient
-from .api_client.configuration import Configuration
-from .api_client.api.enrollmentrequest_api import EnrollmentrequestApi
-from .api_client.api.default_api import DefaultApi
-from .api_client.exceptions import ApiException, NotFoundException
-from .api_client.models.patch_request_inner import PatchRequestInner
-from .api_client.models.enrollment_request_approval import EnrollmentRequestApproval
+import ansible_collections.flightctl.edge.plugins.module_utils.client_path_helper  # pylint: disable=unused-import
+from openapi_client import ApiClient
+from openapi_client.configuration import Configuration
+from openapi_client.api.enrollmentrequest_api import EnrollmentrequestApi
+from openapi_client.api.default_api import DefaultApi
+from openapi_client.exceptions import ApiException, NotFoundException
+from openapi_client.models.patch_request_inner import PatchRequestInner
+from openapi_client.models.enrollment_request_approval import EnrollmentRequestApproval
 
 
 class FlightctlAPIModule(FlightctlModule):
@@ -91,7 +92,6 @@ class FlightctlAPIModule(FlightctlModule):
             return None
         except ApiException as e:
             raise FlightctlApiException(f"Unable to fetch {resource.value} - {name}: {e}")
-
 
     def list(self, resource: ResourceType, **kwargs: Any) -> Any:
         """
