@@ -11,7 +11,8 @@ test-sanity:
 	ansible-test sanity --docker -v --color --python $(PYTHON_VERSION) $(?TEST_ARGS)
 
 generate-api-client:
-	npx @openapitools/openapi-generator-cli@7.9.0 generate \
+	npx @openapitools/openapi-generator-cli version-manager set 7.10.0
+	npx @openapitools/openapi-generator-cli generate \
 	-g python \
 	-i ./api/v1alpha1/openapi.yml \
 	-o ./lib/flightctl_api_client \

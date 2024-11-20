@@ -122,6 +122,6 @@ See [LICENSE](./LICENSE) to see the full text.
 
 ## Generating the api client
 
-1. Install the [openapi-generator](https://github.com/OpenAPITools/openapi-generator) library
+1. Install the [openapi-generator](https://github.com/OpenAPITools/openapi-generator) library (Makefile assumes via [npm](https://openapi-generator.tech/docs/installation#npm))
 2. Update the /api/v1alpha1/openapi.yml to whatever version you want to use for generating the client
 3. Run `make generate-api-client`
