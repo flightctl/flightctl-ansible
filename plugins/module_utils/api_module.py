@@ -7,6 +7,7 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 import json
+from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import ParseResult
 
@@ -19,7 +20,7 @@ from ansible.module_utils.urls import (ConnectionError, Request,
 from .constants import Kind
 from .core import FlightctlModule
 from .exceptions import FlightctlException, FlightctlHTTPException
-from .inputs import ApprovalInput
+from .options import ApprovalOptions, GetOptions
 from .utils import diff_dicts, get_patch, json_patch
 
 
@@ -72,6 +73,38 @@ class Response:
         return self._json
 
 
+@dataclass
+class Metadata:
+    """
+    Request metadata for requesting additional resources from list endpoints.
+
+    Attributes:
+        continue_token (str): Opaque token returned from the service.
+        remaining_item_count (int): Number of remaining items.
+    """
+    continue_token: str
+    remaining_item_count: int
+
+
+@dataclass
+class ListResponse:
+    """
+    Represents a list response object from the flightctl service.
+
+    Attributes:
+        data (List[Dict[str, Any]]): The response data
+        metadata (Optional[Metadata]): Related metadata for the response.
+        summary (Optional[Dict[str, Any]]): Summary data related to the response.
+    """
+    data: List[Dict[str, Any]]
+    metadata: Optional[Metadata] = None
+    summary: Optional[Dict[str, Any]] = None
+
+    @property
+    def dict(self) -> dict:
+        return asdict(self)
+
+
 class FlightctlAPIModule(FlightctlModule):
     """
     API module for interacting with the Flightctl API.
@@ -84,12 +117,14 @@ class FlightctlAPIModule(FlightctlModule):
     """
 
     API_ENDPOINTS: Dict[str, str] = {
-        "fleet": "/api/v1/fleets",
-        "resourcesync": "/api/v1/resourcesyncs",
+        "certificatesigningrequest": "api/v1/certificatesigningrequests",
         "device": "/api/v1/devices",
-        "repository": "/api/v1/repositories",
+        "fleet": "/api/v1/fleets",
+        "enrollmentconfig": "api/v1/enrollmentconfig",
         "enrollmentrequest": "api/v1/enrollmentrequests",
-        "certificatesigningrequest": "api/v1/certificatesigningrequests"
+        "resourcesync": "/api/v1/resourcesyncs",
+        "repository": "/api/v1/repositories",
+        "templateversion": "api/v1/fleets/{0}/templateversions"
     }
 
     def __init__(
@@ -137,9 +172,7 @@ class FlightctlAPIModule(FlightctlModule):
         """
         return endpoint.lower() if endpoint else None
 
-    def get_endpoint(
-        self, endpoint: str, name: Optional[str] = None, **kwargs: Any
-    ) -> Response:
+    def get_endpoint(self, options: GetOptions) -> Response:
         """
         Sends a GET request to the specified API endpoint.
 
@@ -150,8 +183,14 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        url = self.build_url(endpoint, name, query_params=kwargs)
-        return self.request("GET", url.geturl(), **kwargs)
+        params = options.request_params
+        url = self.build_url(options.kind.value, options.name, options.fleet_name, params)
+
+        if options.rendered:
+            rendered_path = url.path + "/rendered"
+            url = url._replace(path=rendered_path)
+
+        return self.request("GET", url.geturl(), params)
 
     def patch_endpoint(
         self, endpoint: str, name: str, patch: List[Dict[str, Any]]
@@ -184,7 +223,7 @@ class FlightctlAPIModule(FlightctlModule):
         url = self.build_url(endpoint, None)
         return self.request("POST", url.geturl(), **kwargs)
 
-    def delete_endpoint(self, endpoint: str, name: str, **kwargs: Any) -> Response:
+    def delete_endpoint(self, endpoint: str, name: str, fleet_name: str, **kwargs: Any) -> Response:
         """
         Sends a DELETE request to the specified API endpoint.
 
@@ -195,13 +234,14 @@ class FlightctlAPIModule(FlightctlModule):
         Returns:
             Response: The response object.
         """
-        url = self.build_url(endpoint, name)
+        url = self.build_url(endpoint, name, fleet_name)
         return self.request("DELETE", url.geturl(), **kwargs)
 
     def build_url(
         self,
         endpoint: str,
         name: Optional[str] = None,
+        fleet_name: Optional[str] = None,
         query_params: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -229,6 +269,9 @@ class FlightctlAPIModule(FlightctlModule):
             base_path = f"{self.url_prefix.rstrip('/')}{api_endpoint}/{name}"
         else:
             base_path = f"{self.url_prefix.rstrip('/')}{api_endpoint}"
+
+        if normalized_endpoint == Kind.TEMPLATE_VERSION.value.lower():
+            base_path = base_path.format(fleet_name)
 
         # Update the URL path with the base path
         url = self.url._replace(path=base_path)
@@ -369,9 +412,7 @@ class FlightctlAPIModule(FlightctlModule):
         # self.authenticated = True
         pass
 
-    def get_one_or_many(
-        self, endpoint: str, name: Optional[str] = None, **kwargs: Any
-    ) -> List:
+    def get_one_or_many(self, options: GetOptions) -> ListResponse:
         """
         Retrieves one or many resources from the API.
 
@@ -386,21 +427,34 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the response status is not 200 or 404.
         """
-        response = self.get_endpoint(endpoint, name, **kwargs)
+        response = self.get_endpoint(options)
         if response.status not in [200, 404]:
-            fail_msg = f"Got a {response.status} when trying to get {endpoint}"
+            fail_msg = f"Got a {response.status} when trying to get {options.kind.value}"
             if "message" in response.json:
                 fail_msg += f", message: {response.json['message']}"
             raise FlightctlException(fail_msg)
 
         if response.status == 404:
             # Resource not found
-            return []
+            return ListResponse(data=[])
 
         if response.json and response.json.get("items") is not None:
-            return response.json["items"] if len(response.json.get("items")) > 0 else []
+            metadata = None
+            if response.json.get("metadata"):
+                metadata = Metadata(
+                    continue_token=response.json.get("metadata").get("continue"),
+                    remaining_item_count=response.json.get("metadata").get("remainingItemCount"),
+                )
 
-        return [response.json]
+            return ListResponse(
+                data=response.json.get("items"),
+                metadata=metadata,
+                summary=response.json.get("summary")
+            )
+
+        return ListResponse(
+            data=[response.json]
+        )
 
     def create(
         self, definition: Dict[str, Any]
@@ -470,7 +524,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         return changed, (response.json if diffs else existing)
 
-    def delete(self, endpoint: str, name: str) -> Tuple[bool, Dict[str, Any]]:
+    def delete(self, endpoint: str, name: str, fleet_name: str) -> Tuple[bool, Dict[str, Any]]:
         """
         Deletes a resource from the API.
 
@@ -488,7 +542,7 @@ class FlightctlAPIModule(FlightctlModule):
             FlightctlException: If the deletion fails.
         """
         changed: bool = False
-        response = self.delete_endpoint(endpoint, name)
+        response = self.delete_endpoint(endpoint, name, fleet_name)
         if response.status == 200:
             changed |= True
         else:
@@ -497,12 +551,12 @@ class FlightctlAPIModule(FlightctlModule):
 
         return changed, response.json
 
-    def approve(self, input: ApprovalInput) -> None:
+    def approve(self, input: ApprovalOptions) -> None:
         """
         Makes an approval request via the API.
 
         Args:
-            input (ApprovalInput): Input containing the necessary approval data
+            input (ApprovalOptions): Input containing the necessary approval data
 
         Raises:
             FlightctlException: If the approval request fails.

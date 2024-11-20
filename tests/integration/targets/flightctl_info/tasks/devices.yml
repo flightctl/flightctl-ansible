@@ -1,0 +1,218 @@
+---
+- name: Test Get Device Info
+  vars:
+    deivce_name: ansible-integration-test-device
+    deivce_name_with_label_1: ansible-integration-test-device-label-1
+    deivce_name_with_label_2: ansible-integration-test-device-label-2
+    fleet_name: ansible-integration-test-fleet
+  block:
+  - name: Create a test fleet
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Fleet
+      name: "{{ fleet_name }}"
+      resource_definition:
+        spec:
+          selector:
+            matchLabels:
+              fleet: "{{ fleet_name }}"
+          template:
+            spec:
+              os:
+                image: quay.io/redhat/rhde:9.2
+
+  - name: Create a test device
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      name: "{{ deivce_name }}"
+      resource_definition:
+        metadata:
+          labels:
+            fleet: "{{ fleet_name }}"
+
+  - name: Get test device
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      name: "{{ deivce_name }}"
+    register: device_result
+
+  - name: Assert that device info was fetched
+    ansible.builtin.assert:
+      that:
+        - device_result is success
+        - device_result.result.data[0].metadata.name == "ansible-integration-test-device"
+
+  - name: Get rendered spec for the test device
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      name: "{{ deivce_name }}"
+      rendered: True
+    register: rendered_result
+
+  - name: Assert that the rendered device info was fetched
+    ansible.builtin.assert:
+      that:
+        - rendered_result is success
+        - rendered_result.result.data[0].os.image == "quay.io/redhat/rhde:9.2"
+
+  - name: Create a test device with a label
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      name: "{{ deivce_name_with_label_1 }}"
+      api_version: v1alpha1
+      resource_definition:
+        metadata:
+          labels:
+            machine_type: forklift
+
+  - name: Create a second test device with a label
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      name: "{{ deivce_name_with_label_2 }}"
+      api_version: v1alpha1
+      resource_definition:
+        metadata:
+          labels:
+            machine_type: forklift
+
+  - name: Query for all devices by label
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      label_selector: machine_type=forklift
+    register: device_with_label_result
+
+  - name: Assert that the device info was fetched by label
+    ansible.builtin.assert:
+      that:
+        - device_with_label_result is success
+        - device_with_label_result.result.data | length == 2
+        - device_with_label_result.result.data[0].metadata.name is match("ansible-integration-test-device-label-*")
+        - device_with_label_result.result.data[1].metadata.name is match("ansible-integration-test-device-label-*")
+
+  - name: Query for all devices by owner
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      owner: "Fleet/{{ fleet_name }}"
+    register: device_with_owner_result
+
+  - name: Assert that the device info was filtered by owner
+    ansible.builtin.assert:
+      that:
+        - device_with_owner_result is success
+        - device_with_owner_result.result.data | length == 1
+        - device_with_owner_result.result.data[0].metadata.name == "ansible-integration-test-device"
+
+  - name: Query for all devices
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+    register: all_devices_result
+
+  - name: Assert that the device info was fetched by label
+    ansible.builtin.assert:
+      that:
+        - all_devices_result is success
+        - all_devices_result.result.data | length == 3
+
+  - name: Query for all devices with summary_only
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      summary_only: True
+    register: summary_only_result
+
+  - name: Assert that the device summary info was fetched
+    ansible.builtin.assert:
+      that:
+        - summary_only_result is success
+        - summary_only_result.result.data | length == 0
+        - summary_only_result.result["summary"]["total"] == 3
+
+  - name: Query for all devices with a limit
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      limit: 2
+    register: limit_result
+
+  - name: Assert that the limited info was fetched
+    ansible.builtin.assert:
+      that:
+        - limit_result is success
+        - limit_result.result.data | length == 2
+
+  - name: Use the continue token to query for remaining devices
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      limit: 2
+      continue_token: "{{ limit_result.result['metadata']['continue_token'] }}"
+    register: second_limit_result
+
+  - name: Assert that the limited info was fetched
+    ansible.builtin.assert:
+      that:
+        - second_limit_result is success
+
+  - name: Query for all devices with a status filter
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      status_filter: ['updated.status=OutOfDate']
+    register: status_filter_result
+
+  - name: Assert that the status filtered data was fetched
+    ansible.builtin.assert:
+      that:
+        - status_filter_result is success
+        - status_filter_result.result.data | length == 0
+
+  - name: Query for devices with a filter selector
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      field_selector: "metadata.name!={{ deivce_name }}"
+    register: field_selector_result
+
+  - name: Assert that the status filtered data was fetched
+    ansible.builtin.assert:
+      that:
+        - field_selector_result is success
+        - field_selector_result.result.data | length == 2
+
+  always:
+    - name: Delete test devices
+      flightctl.edge.flightctl:
+        flightctl_host: "{{ flightctl_host }}"
+        flightctl_validate_certs: false
+        kind: Device
+        state: absent
+
+    - name: Delete test fleet
+      flightctl.edge.flightctl:
+        flightctl_host: "{{ flightctl_host }}"
+        flightctl_validate_certs: false
+        kind: Fleet
+        name: "{{ fleet_name }}"
+        state: absent

@@ -1,7 +1,7 @@
 ---
-- name: Test approve certificate signing request
+- name: Test fetching enrollment config
   vars:
-    csr_name: ansible-integration-test-denial-csr
+    csr_name: ansible-integration-test-enrollment-config-csr
   block:
   - name: Create a csr
     flightctl.edge.flightctl:
@@ -16,52 +16,27 @@
           signerName: enrollment
           usages: ["clientAuth", "CA:false"]
 
-  - name: Deny the csr
+  - name: Approve the csr
     flightctl.edge.flightctl_certificate:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
-      approved: false
-      labels:
-        testing_label: is_set_during_testing
-    register: approve_result
+      approved: true
 
-  - name: Assert that approval request succeeded
-    ansible.builtin.assert:
-      that:
-        - approve_result is success
-
-  - name: Get the csr
-    flightctl.edge.flightctl_info:
+  - name: Fetch enrollment config for the csr
+    flightctl.edge.flightctl_enrollment_config_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
-      kind: CertificateSigningRequest
       name: "{{ csr_name }}"
-    register: csr_result
+    register: enrollment_config_result
 
-  - name: Assert that the csr is now denied
+  - name: Assert that the request was successful
     ansible.builtin.assert:
       that:
-        - csr_result is success
-        - csr_result.result[0].status.conditions[0].type == "Approved"
-        - csr_result.result[0].status.conditions[0].message == "Denied"
-        - csr_result.result[0].status.conditions[0].status == "False"
-
-  - name: Try to approve the csr again (idempotency)
-    flightctl.edge.flightctl_certificate:
-      flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: false
-      kind: CertificateSigningRequest
-      name: "{{ csr_name }}"
-      approved: false
-    register: idempotency_result
-
-  - name: Assert that the result was not changed
-    ansible.builtin.assert:
-      that:
-        - idempotency_result is success
-        - idempotency_result.changed == False
+        - enrollment_config_result is success
+        - enrollment_config_result["result"]["enrollment-service"]["authentication"]["client-certificate-data"] != ""
+        - enrollment_config_result["result"]["enrollment-service"]["service"]["certificate-authority-data"] != ""
 
   always:
     - name: Delete csr

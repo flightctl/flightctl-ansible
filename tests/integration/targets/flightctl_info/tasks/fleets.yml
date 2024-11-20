@@ -1,0 +1,67 @@
+---
+- name: Test Get Fleet Info
+  vars:
+    fleet_name: ansible-integration-test-fleet
+  block:
+  - name: Create a test fleet
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Fleet
+      name: "{{ fleet_name }}"
+      resource_definition:
+        spec:
+          selector:
+            matchLabels:
+              fleet: "{{ fleet_name }}"
+          template:
+            spec:
+              os:
+                image: quay.io/redhat/rhde:9.2
+
+  - name: Create test devices
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      name: "{{ item }}"
+      resource_definition:
+        metadata:
+          labels:
+            fleet: "{{ fleet_name }}"
+    loop:
+      - test-device-1
+      - test-device-2
+      - test-device-3
+
+  - name: Fetch fleet
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Fleet
+      name: "{{ fleet_name }}"
+      summary: True
+    register:
+      fleet_result
+
+  - name: Assert that the fleet info was fetched
+    ansible.builtin.assert:
+      that:
+        - fleet_result is success
+        - fleet_result.result.data[0]["status"]["devicesSummary"]["total"] == 3
+
+  always:
+  - name: Delete test devices
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Device
+      state: absent
+
+  - name: Delete test fleet
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Fleet
+      name: "{{ fleet_name }}"
+      state: absent

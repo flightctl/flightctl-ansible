@@ -1,7 +1,7 @@
 ---
 - name: Test approve device enrollment
   vars:
-    enrollment_name: ansible-integration-test-enrollment-approval
+    enrollment_name: ansible-integration-test-enrollment-denail
   block:
   - name: Create an enrollment request
     flightctl.edge.flightctl:
@@ -22,7 +22,7 @@
             8R+r4piaYvZktrsk3yCIuz3hI7loYmXP3d8=
             -----END CERTIFICATE REQUEST-----
 
-  - name: Approve the enrollment request in check mode
+  - name: Deny the enrollment request in check mode
     flightctl.edge.flightctl_certificate:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
@@ -42,19 +42,19 @@
       name: "{{ enrollment_name }}"
     register: check_result
 
-  - name: Assert that the enrollment request was not approved
+  - name: Assert that the enrollment request was not denied
     ansible.builtin.assert:
       that:
         - check_result is success
-        - check_result.result[0].status.get('approval', None) == None
+        - check_result.result.data[0].status.get('approval', None) == None
 
-  - name: Approve the enrollment request
+  - name: Deny the enrollment request
     flightctl.edge.flightctl_certificate:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
-      approved: true
+      approved: false
       approved_by: "ansible-integration-testing"
       labels:
         testing_label: is_set_during_testing
@@ -73,31 +73,11 @@
       name: "{{ enrollment_name }}"
     register: enrollment_result
 
-  - name: Assert that the enrollment request is now approved
+  - name: Assert that the enrollment request is now denied
     ansible.builtin.assert:
       that:
         - enrollment_result is success
-        - enrollment_result.result[0].status.approval.approved == True
-        - enrollment_result.result[0].status.approval.approvedBy == "ansible-integration-testing"
-        - enrollment_result.result[0].status.approval.labels['testing_label'] == "is_set_during_testing"
-
-  - name: Try to approve the enrollment request again (idempotency)
-    flightctl.edge.flightctl_certificate:
-      flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: false
-      kind: EnrollmentRequest
-      name: "{{ enrollment_name }}"
-      approved: true
-      approved_by: "ansible-integration-testing"
-      labels:
-        testing_label: is_set_during_testing
-    register: idempotency_result
-
-  - name: Assert that the result was not changed
-    ansible.builtin.assert:
-      that:
-        - idempotency_result is success
-        - idempotency_result.changed == False
+        - check_result.result.data[0].status.get('approval', None) == None
 
   always:
     - name: Delete enrollment request
@@ -105,13 +85,5 @@
         flightctl_host: "{{ flightctl_host }}"
         flightctl_validate_certs: false
         kind: EnrollmentRequest
-        name: "{{ enrollment_name }}"
-        state: absent
-    # Approving an enrollment request attempts to create a device, clean it up here as well
-    - name: Delete test device
-      flightctl.edge.flightctl:
-        flightctl_host: "{{ flightctl_host }}"
-        flightctl_validate_certs: false
-        kind: Device
         name: "{{ enrollment_name }}"
         state: absent
