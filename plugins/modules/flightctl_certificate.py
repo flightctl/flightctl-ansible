@@ -43,7 +43,10 @@ extends_documentation_fragment:
 requirements:
   - jsonschema
   - PyYAML
-  - pydantic
+  - "urllib3 >= 1.25.3, < 3.0.0"
+  - "python-dateutil >= 2.8.2"
+  - "pydantic >= 2"
+  - "typing-extensions >= 4.7.1"
 """
 
 
