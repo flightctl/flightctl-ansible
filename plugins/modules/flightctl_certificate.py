@@ -40,6 +40,10 @@ options:
     type: dict
 extends_documentation_fragment:
   - flightctl.edge.auth
+requirements:
+  - jsonschema
+  - PyYAML
+  - pydantic
 """
 
 

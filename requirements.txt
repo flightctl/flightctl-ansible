@@ -4,4 +4,3 @@ openapi_schema_validator
 jsonpatch
 jsonschema
 pydantic
-python-dateutil

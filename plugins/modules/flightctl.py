@@ -52,6 +52,7 @@ notes:
 requirements:
   - jsonschema
   - PyYAML
+  - pydantic
 """
 
 EXAMPLES = r"""

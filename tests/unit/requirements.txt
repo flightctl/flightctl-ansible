@@ -2,4 +2,3 @@ jsonschema
 openapi_schema_validator
 pydantic
 pytest
-python-dateutil
