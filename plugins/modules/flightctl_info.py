@@ -27,7 +27,7 @@ options:
     type: str
   fleet_name:
     description:
-      - Use to specify a fleet name that owns the associated resources. Only applicable when kind is TemplateVersions.
+      - Use to specify a fleet name that owns the associated resources. Only applicable when O(kind=TemplateVersions).
     type: str
   label_selector:
     description:
@@ -35,7 +35,7 @@ options:
     type: str
   field_selector:
     description:
-      - A selector to filter based on object fields.  Accepts a a comma-separated list of key1=value1,key2=value2
+      - A selector to filter based on object fields.  Accepts a a comma-separated list of V(key1=value1,key2=value2)
     type: str
   owner:
     description:
@@ -43,19 +43,19 @@ options:
     type: str
   rendered:
     description:
-      - Return the rendered device configuration that is presented to the device.  Only applicable when kind is Device.
+      - Return the rendered device configuration that is presented to the device.  Only applicable when O(kind=Device).
     type: bool
   summary:
     description:
-      - Return aggregate summary info for devices within a fleet.  Only applicable when kind is Fleet.
+      - Return aggregate summary info for devices within a fleet.  Only applicable when O(kind=Fleet).
     type: bool
   summary_only:
     description:
-      - Return only the summary info for devices.  Only the 'owner' and 'label_selector' parameters are supported. Only applicable when kind is Device.
+      - Return only the summary info for devices.  Only the O(owner) and O(label_selector) parameters are supported. Only applicable when O(kind=Device).
     type: bool
   status_filter:
     description:
-      - A filter to restrict the list of devices by the value of the filtered status key.  Only applicable when kind is Device.
+      - A filter to restrict the list of devices by the value of the filtered status key.  Only applicable when O(kind=Device).
     type: list
     elements: str
     default: []
@@ -119,13 +119,13 @@ EXAMPLES = r"""
 RETURN = r"""
 result:
   description:
-    - The list response containing the object(s) that exist and relevant metadata
+    - The list response containing the object(s) that exist and relevant metadata.
   returned: sucess
   type: complex
   contains:
     data:
       description:
-        - The object(s) that exists
+        - The object(s) that exists.
       returned: success
       type: list
       elements: dict
@@ -167,7 +167,7 @@ result:
     summary:
       description:
         - A summary rollup of queried objects
-      returned: When C(summary_only) is true
+      returned: When O(summary_only=true)
       type: dict
 """
 
