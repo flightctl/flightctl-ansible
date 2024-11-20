@@ -41,7 +41,7 @@ class TemplateVersionStatus(BaseModel):
     systemd: Optional[DeviceSpecSystemd] = None
     resources: Optional[List[ResourceMonitor]] = Field(default=None, description="Array of resource monitor configurations.")
     updated_at: Optional[datetime] = Field(default=None, alias="updatedAt")
-    conditions: List[Condition] = Field(description="Current state of the device.")
+    conditions: Optional[List[Condition]] = Field(default=None, description="Current state of the device.")
     __properties: ClassVar[List[str]] = ["os", "config", "hooks", "applications", "systemd", "resources", "updatedAt", "conditions"]
 
     model_config = ConfigDict(

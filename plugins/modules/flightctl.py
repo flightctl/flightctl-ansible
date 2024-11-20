@@ -38,6 +38,10 @@ options:
       - If O(resource_definition) is provided, the C(metadata.name) value from the O(resource_definition)
         will override this option.
     type: str
+  fleet_name:
+    description:
+      - Use to specify a fleet that owns the assocated resource(s).
+    type: str
   resource_definition:
     description:
       - Provide a valid YAML template definition file for an object when creating or updating.
@@ -123,6 +127,7 @@ def main():
     argument_spec = dict(
         kind=dict(type="str"),
         name=dict(type="str"),
+        fleet_name=dict(type="str"),
         api_version=dict(type="str", default="v1alpha1"),
         resource_definition=dict(type="raw"),
         **STATE_ARG_SPEC

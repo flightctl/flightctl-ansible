@@ -107,6 +107,7 @@
         kind: EnrollmentRequest
         name: "{{ enrollment_name }}"
         state: absent
+
     # Approving an enrollment request attempts to create a device, clean it up here as well
     - name: Delete test device
       flightctl.edge.flightctl:

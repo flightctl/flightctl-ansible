@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional, Tuple
 from .constants import API_MAPPING, ResourceType
 from .core import FlightctlModule
 from .exceptions import FlightctlException, FlightctlApiException
-from .inputs import ApprovalInput
+from .options import ApprovalOptions, GetOptions
 from .utils import diff_dicts, get_patch, json_patch
 
 try:
@@ -75,7 +75,7 @@ class FlightctlAPIModule(FlightctlModule):
         self.client = ApiClient(client_config)
 
     def get(
-        self, resource: ResourceType, name: Optional[str] = None,
+        self, options: GetOptions,
     ) -> Optional[Any]:
         """
         Makes an get query via the API.
@@ -90,18 +90,25 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the approval request fails.
         """
-        api_type = API_MAPPING[resource]
+        api_type = API_MAPPING[options.resource]
         api_instance = api_type.api(self.client)
-        get_call = getattr(api_instance, api_type.get)
+
+        if options.resource is ResourceType.DEVICE and options.rendered:
+            get_call = getattr(api_instance, api_type.rendered)
+        else:
+            get_call = getattr(api_instance, api_type.get)
 
         try:
-            return get_call(name)
+            if options.resource is ResourceType.TEMPLATE_VERSION:
+                return get_call(options.fleet_name, options.name)
+            else:
+                return get_call(options.name)
         except NotFoundException:
             return None
         except ApiException as e:
-            raise FlightctlApiException(f"Unable to fetch {resource.value} - {name}: {e}")
+            raise FlightctlApiException(f"Unable to fetch {options.resource.value} - {options.name}: {e}")
 
-    def list(self, resource: ResourceType, **kwargs: Any) -> Any:
+    def list(self, options: GetOptions) -> Any:
         """
         Makes an list query via the API.
 
@@ -114,17 +121,20 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the approval request fails.
         """
-        api_type = API_MAPPING[resource]
+        api_type = API_MAPPING[options.resource]
         api_instance = api_type.api(self.client)
         list_call = getattr(api_instance, api_type.list)
 
         try:
-            return list_call(**kwargs)
+            if options.resource is ResourceType.TEMPLATE_VERSION:
+                list_call(options.fleet_name, **options.request_params)
+            else:
+                return list_call(**options.request_params)
         except ApiException as e:
-            raise FlightctlApiException(f"Unable to list {resource.value}: {e}")
+            raise FlightctlApiException(f"Unable to list {options.resource.value}: {e}")
 
     def get_one_or_many(
-        self, resource: ResourceType, name: Optional[str] = None, **kwargs: Any
+        self, options: GetOptions,
     ) -> Any:
         """
         Retrieves one or many resources from the API.
@@ -140,13 +150,13 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the response status is not 200 or 404.
         """
-        if name:
-            response = self.get(resource, name)
+        if options.name:
+            response = self.get(options)
             if not response:
                 return []
             return response.to_dict()
         else:
-            res = self.list(resource, **kwargs)
+            res = self.list(options)
             if res:
                 return res.to_dict()
             return {}
@@ -220,7 +230,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         return changed, (response if diffs else existing)
 
-    def delete(self, resource: ResourceType, name: str) -> Optional[Any]:
+    def delete(self, resource: ResourceType, name: str, fleet_name: str) -> Optional[Any]:
         """
         Deletes resources from the API.
 
@@ -240,7 +250,10 @@ class FlightctlAPIModule(FlightctlModule):
         if name:
             delete_call = getattr(api_instance, api_type.delete)
             try:
-                response = delete_call(name)
+                if resource is ResourceType.TEMPLATE_VERSION:
+                    response = delete_call(fleet_name, name)
+                else:
+                    response = delete_call(name)
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to delete {resource.value} - {name}: {e}")
         else:
@@ -252,12 +265,12 @@ class FlightctlAPIModule(FlightctlModule):
 
         return response.to_dict()
 
-    def approve(self, input: ApprovalInput) -> None:
+    def approve(self, input: ApprovalOptions) -> None:
         """
         Makes an approval request via the API.
 
         Args:
-            input (ApprovalInput): Input containing the necessary approval data
+            input (ApprovalOptions): Input containing the necessary approval data
 
         Raises:
             FlightctlException: If the approval request fails.

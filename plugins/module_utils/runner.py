@@ -25,7 +25,7 @@ else:
 from .api_module import FlightctlAPIModule
 from .constants import ResourceType
 from .exceptions import FlightctlException, ValidationException
-from .inputs import ApprovalInput
+from .options import ApprovalOptions, GetOptions
 from .resources import create_definitions
 
 try:
@@ -157,40 +157,43 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
         raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
 
     name = definition["metadata"].get("name")
+    fleet_name = module.params.get("fleet_name")
+    label_selector = module.params.get("label_selector")
     state = module.params.get("state")
-    params = {}
-    result: Dict[str, Any] = {}
     changed: bool = False
 
-    if module.params.get("label_selector"):
-        params["label_selector"] = module.params["label_selector"]
-
     try:
-        existing = module.get_one_or_many(resource, name)
+        get_options = GetOptions(
+            resource=resource,
+            name=name,
+            fleet_name=fleet_name,
+            label_selector=label_selector,
+        )
+        existing_result = module.get_one_or_many(get_options)
     except Exception as e:
         raise FlightctlException(f"Failed to get resource: {e}") from e
 
     if state == "absent":
-        if existing:
+        if existing_result:
             if module.check_mode:
                 module.exit_json(**{"changed": True})
 
             try:
-                result = module.delete(resource, name)
+                result = module.delete(resource, name, fleet_name)
                 changed |= True
             except Exception as e:
                 raise FlightctlException(f"Failed to delete resource: {e}") from e
 
-    elif module.params["state"] == "present":
+    elif state == "present":
         # validate(definition)
 
-        if existing:
+        if existing_result:
             # Update resource
             if module.check_mode:
                 module.exit_json(**{"changed": True})
 
             try:
-                changed, result = module.update(resource, existing, definition)
+                changed, result = module.update(resource, existing_result, definition)
             except Exception as e:
                 raise FlightctlException(f"Failed to update resource: {e}") from e
         else:
@@ -226,7 +229,7 @@ def perform_approval(module: FlightctlAPIModule) -> None:
     except (TypeError, ValueError):
         raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
 
-    input = ApprovalInput(
+    approval_options = ApprovalOptions(
         resource=resource,
         name=module.params.get("name"),
         approved=module.params.get("approved"),
@@ -235,7 +238,11 @@ def perform_approval(module: FlightctlAPIModule) -> None:
     )
 
     try:
-        existing = module.get(resource, input.name)
+        get_options = GetOptions(
+            resource=resource,
+            name=approval_options.name,
+        )
+        existing = module.get(get_options)
         currently_approved = None
         if isinstance(existing, EnrollmentRequest):
             try:
@@ -255,7 +262,7 @@ def perform_approval(module: FlightctlAPIModule) -> None:
             except AttributeError:
                 pass
 
-        if input.approved == currently_approved:
+        if approval_options.approved == currently_approved:
             module.exit_json(**{"changed": False})
             return
     except Exception as e:
@@ -266,7 +273,7 @@ def perform_approval(module: FlightctlAPIModule) -> None:
         return
 
     try:
-        module.approve(input)
+        module.approve(approval_options)
     except Exception as e:
         raise FlightctlException(f"Failed to approve resource: {e}") from e
 

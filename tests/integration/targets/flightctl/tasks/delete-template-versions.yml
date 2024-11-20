@@ -1,0 +1,123 @@
+---
+- name: Test Delete Template Versions
+  vars:
+    fleet_name: ansible-integration-fleet
+  block:
+  - name: Create a test fleet
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Fleet
+      name: "{{ fleet_name }}"
+      resource_definition:
+        spec:
+          template:
+            spec:
+              os:
+                image: quay.io/redhat/rhde:9.2
+
+  - name: Update the test fleet
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Fleet
+      name: "{{ fleet_name }}"
+      resource_definition:
+        spec:
+          template:
+            spec:
+              os:
+                image: quay.io/redhat/rhde:9.3
+
+  - name: Update the test fleet again
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: Fleet
+      name: "{{ fleet_name }}"
+      resource_definition:
+        spec:
+          template:
+            spec:
+              os:
+                image: quay.io/redhat/rhde:9.4
+
+  - name: Get all template versions
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: TemplateVersion
+      fleet_name: "{{ fleet_name }}"
+    register: template_version_result
+
+  - name: Assert that three temlate versions were created
+    ansible.builtin.assert:
+      that:
+        - template_version_result is success
+        - template_version_result.result | length == 3
+
+  - name: Delete a template version by name
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: TemplateVersion
+      fleet_name: "{{ fleet_name }}"
+      name: "{{ template_version_result.result.['items'][0]['metadata']['name'] }}"
+      state: absent
+    register: delete_single_template_version_result
+
+  - name: Assert that the deletion request succeeded
+    ansible.builtin.assert:
+      that:
+        - delete_single_template_version_result is success
+        - delete_single_template_version_result.changed
+
+  - name: Get all template versions
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: TemplateVersion
+      fleet_name: "{{ fleet_name }}"
+    register: template_version_result
+
+  - name: Assert that there are now two that exist
+    ansible.builtin.assert:
+      that:
+        - template_version_result is success
+        - template_version_result.result["items"] | length == 2
+
+  - name: Delete all template versions owned by a fleet
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: TemplateVersion
+      fleet_name: "{{ fleet_name }}"
+      state: absent
+    register: delete_all_template_version_result
+
+  - name: Assert that there are now zero that exist
+    ansible.builtin.assert:
+      that:
+        - delete_all_template_version_result is success
+        - delete_all_template_version_result.changed
+
+  - name: Get all template versions
+    flightctl.edge.flightctl_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: TemplateVersion
+      fleet_name: "{{ fleet_name }}"
+    register: template_version_result
+
+  - name: Assert that there are now zero that exist
+    ansible.builtin.assert:
+      that:
+        - template_version_result is success
+        - template_version_result.result["items"] | length == 0
+  always:
+    - flightctl.edge.flightctl:
+        flightctl_host: "{{ flightctl_host }}"
+        flightctl_validate_certs: false
+        kind: Fleet
+        name: "{{ fleet_name }}"
+        state: absent

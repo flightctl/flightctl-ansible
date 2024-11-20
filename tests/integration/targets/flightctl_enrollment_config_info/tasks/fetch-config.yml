@@ -1,0 +1,48 @@
+---
+- name: Test fetching enrollment config
+  vars:
+    csr_name: ansible-integration-test-enrollment-config-csr
+  block:
+  - name: Create a csr
+    flightctl.edge.flightctl:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: CertificateSigningRequest
+      name: "{{ csr_name }}"
+      api_version: v1alpha1
+      resource_definition:
+        spec:
+          request: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQkJqQ0JyUUlCQURCTE1Va3dSd1lEVlFRREUwQXhNMlEyTXpKa09EWXpOek5qWVdGbFpHRTJOR1JoTkRBMQpNbVk1TlRkbVlXRTNOREptWXpjd05UQXdNalkzTkRoaVl6YzVNRFkxWXpnNE1UbGtNV0l3TUZrd0V3WUhLb1pJCnpqMENBUVlJS29aSXpqMERBUWNEUWdBRUhCTUMzME5SSlRKM05XT2xlaTlZV2tCTS9Nem9OREd5TVJLdXpFMC8KY0treVhWSmV4SHEweEluMjJZQ05OM1pETnh4d1c2TGxRZzNpakdudlN0UU9iNkFBTUFvR0NDcUdTTTQ5QkFNQwpBMGdBTUVVQ0lRRFNyeGk2a3JkQ0tjTENoZE1CM3c3SXFtRGxaaFJFR2JITUNFU1ZuNnNzUEFJZ1pMK1FySnR3CjhSK3I0cGlhWXZaa3Ryc2szeUNJdXozaEk3bG9ZbVhQM2Q4PQotLS0tLUVORCBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0=
+          signerName: enrollment
+          usages: ["clientAuth", "CA:false"]
+
+  - name: Approve the csr
+    flightctl.edge.flightctl_certificate:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      kind: CertificateSigningRequest
+      name: "{{ csr_name }}"
+      approved: true
+
+  - name: Fetch enrollment config for the csr
+    flightctl.edge.flightctl_enrollment_config_info:
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+      name: "{{ csr_name }}"
+    register: enrollment_config_result
+
+  - name: Assert that the request was successful
+    ansible.builtin.assert:
+      that:
+        - enrollment_config_result is success
+        - enrollment_config_result["result"]["enrollment-service"]["authentication"]["client-certificate-data"] != ""
+        - enrollment_config_result["result"]["enrollment-service"]["service"]["certificate-authority-data"] != ""
+
+  always:
+    - name: Delete csr
+      flightctl.edge.flightctl:
+        flightctl_host: "{{ flightctl_host }}"
+        flightctl_validate_certs: false
+        kind: CertificateSigningRequest
+        name: "{{ csr_name }}"
+        state: absent

@@ -3875,8 +3875,6 @@ components:
               description: 'Current state of the device.'
               items:
                 $ref: '#/components/schemas/Condition'
-          required:
-            - conditions
           description: TemplateVersionStatus represents information about the status of a template version.
     TemplateVersionList:
       type: object

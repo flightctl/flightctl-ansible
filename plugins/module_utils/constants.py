@@ -18,6 +18,9 @@ class ResourceType(Enum):
     FLEET = "Fleet"
     REPOSITORY = "Repository"
     RESOURCE_SYNC = "ResourceSync"
+    TEMPLATE_VERSION = "TemplateVersion"
+
+    ENROLLMENT_CONFIG = "EnrollmentConfig"
 
 
 API_MAPPING = {}
@@ -25,31 +28,40 @@ API_MAPPING = {}
 
 try:
     import ansible_collections.flightctl.edge.plugins.module_utils.client_path_helper  # pylint: disable=unused-import
+
+    # Apis
     from openapi_client.api.device_api import DeviceApi
     from openapi_client.api.fleet_api import FleetApi
     from openapi_client.api.certificatesigningrequest_api import CertificatesigningrequestApi
     from openapi_client.api.enrollmentrequest_api import EnrollmentrequestApi
     from openapi_client.api.repository_api import RepositoryApi
     from openapi_client.api.resourcesync_api import ResourcesyncApi
+    from openapi_client.api.templateversion_api import TemplateversionApi
+    from openapi_client.api.enrollmentconfig_api import EnrollmentconfigApi
+
+    # Models
     from openapi_client.models.device import Device
     from openapi_client.models.fleet import Fleet
     from openapi_client.models.certificate_signing_request import CertificateSigningRequest
     from openapi_client.models.enrollment_request import EnrollmentRequest
     from openapi_client.models.repository import Repository
     from openapi_client.models.resource_sync import ResourceSync
+    from openapi_client.models.template_version import TemplateVersion
+    from openapi_client.models.enrollment_config import EnrollmentConfig
 
     @dataclass
     class ApiResource:
-        api: Union[DeviceApi, FleetApi, CertificatesigningrequestApi, EnrollmentrequestApi, RepositoryApi]
-        model: Union[Device, Fleet, CertificateSigningRequest, EnrollmentRequest, Repository]
+        api: Union[DeviceApi, FleetApi, CertificatesigningrequestApi, EnrollmentrequestApi, RepositoryApi, ResourcesyncApi, EnrollmentconfigApi]
+        model: Union[Device, Fleet, CertificateSigningRequest, EnrollmentRequest, Repository, ResourceSync, EnrollmentConfig]
 
         get: str
-        create: str
-        list: str
-        delete: str
-        delete_all: str
 
+        create: Optional[str] = None
+        list: Optional[str] = None
+        delete: Optional[str] = None
+        delete_all: Optional[str] = None
         patch: Optional[str] = None
+        rendered: Optional[str] = None
 
     API_MAPPING = {
         ResourceType.DEVICE: ApiResource(
@@ -61,6 +73,7 @@ try:
             patch='patch_device',
             delete='delete_device',
             delete_all='delete_devices',
+            rendered='get_rendered_device_spec'
         ),
         ResourceType.FLEET: ApiResource(
             api=FleetApi,
@@ -109,6 +122,19 @@ try:
             delete='delete_resource_sync',
             delete_all='delete_resource_syncs',
         ),
+        ResourceType.TEMPLATE_VERSION: ApiResource(
+            api=TemplateversionApi,
+            model=TemplateVersion,
+            get='read_template_version',
+            list='list_template_versions',
+            delete='delete_template_version',
+            delete_all='delete_template_versions',
+        ),
+        ResourceType.ENROLLMENT_CONFIG: ApiResource(
+            api=EnrollmentconfigApi,
+            model=EnrollmentConfig,
+            get='enrollment_config'
+        )
     }
 except ImportError as imp_exc:
     # Handled elsewhere

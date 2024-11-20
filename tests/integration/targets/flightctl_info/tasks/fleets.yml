@@ -3,7 +3,6 @@
   vars:
     fleet_name: ansible-integration-test-fleet
   block:
-
   - name: Create a test fleet
     flightctl.edge.flightctl:
       flightctl_host: "{{ flightctl_host }}"
@@ -12,6 +11,9 @@
       name: "{{ fleet_name }}"
       resource_definition:
         spec:
+          selector:
+            matchLabels:
+              fleet: "{{ fleet_name }}"
           template:
             spec:
               os:
@@ -38,6 +40,7 @@
       flightctl_validate_certs: false
       kind: Fleet
       name: "{{ fleet_name }}"
+      summary: True
     register:
       fleet_result
 
@@ -45,6 +48,7 @@
     ansible.builtin.assert:
       that:
         - fleet_result is success
+        - fleet_result.result.status.devicesSummary.total == 3
 
   always:
   - name: Delete test devices
