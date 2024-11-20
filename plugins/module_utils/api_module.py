@@ -14,14 +14,19 @@ from .exceptions import FlightctlException, FlightctlApiException
 from .inputs import ApprovalInput
 from .utils import diff_dicts, get_patch, json_patch
 
-import ansible_collections.flightctl.edge.plugins.module_utils.client_path_helper  # pylint: disable=unused-import
-from openapi_client import ApiClient
-from openapi_client.configuration import Configuration
-from openapi_client.api.enrollmentrequest_api import EnrollmentrequestApi
-from openapi_client.api.default_api import DefaultApi
-from openapi_client.exceptions import ApiException, NotFoundException
-from openapi_client.models.patch_request_inner import PatchRequestInner
-from openapi_client.models.enrollment_request_approval import EnrollmentRequestApproval
+try:
+    import ansible_collections.flightctl.edge.plugins.module_utils.client_path_helper  # pylint: disable=unused-import
+    from openapi_client import ApiClient
+    from openapi_client.configuration import Configuration
+    from openapi_client.api.enrollmentrequest_api import EnrollmentrequestApi
+    from openapi_client.api.default_api import DefaultApi
+    from openapi_client.exceptions import ApiException, NotFoundException
+    from openapi_client.models.patch_request_inner import PatchRequestInner
+    from openapi_client.models.enrollment_request_approval import EnrollmentRequestApproval
+except ImportError as imp_exc:
+    CLIENT_IMPORT_ERROR = imp_exc
+else:
+    CLIENT_IMPORT_ERROR = None
 
 
 class FlightctlAPIModule(FlightctlModule):
@@ -56,6 +61,9 @@ class FlightctlAPIModule(FlightctlModule):
             warn_callback=warn_callback,
             **kwargs,
         )
+
+        if CLIENT_IMPORT_ERROR:
+            raise CLIENT_IMPORT_ERROR
 
         client_config = Configuration(
             host=self.url.geturl(),

@@ -11,21 +11,6 @@ from enum import Enum
 from typing import Optional, Union
 
 
-import ansible_collections.flightctl.edge.plugins.module_utils.client_path_helper  # pylint: disable=unused-import
-from openapi_client.api.device_api import DeviceApi
-from openapi_client.api.fleet_api import FleetApi
-from openapi_client.api.certificatesigningrequest_api import CertificatesigningrequestApi
-from openapi_client.api.enrollmentrequest_api import EnrollmentrequestApi
-from openapi_client.api.repository_api import RepositoryApi
-from openapi_client.api.resourcesync_api import ResourcesyncApi
-from openapi_client.models.device import Device
-from openapi_client.models.fleet import Fleet
-from openapi_client.models.certificate_signing_request import CertificateSigningRequest
-from openapi_client.models.enrollment_request import EnrollmentRequest
-from openapi_client.models.repository import Repository
-from openapi_client.models.resource_sync import ResourceSync
-
-
 class ResourceType(Enum):
     CSR = "CertificateSigningRequest"
     DEVICE = "Device"
@@ -35,76 +20,96 @@ class ResourceType(Enum):
     RESOURCE_SYNC = "ResourceSync"
 
 
-@dataclass
-class ApiResource:
-    api: Union[DeviceApi, FleetApi, CertificatesigningrequestApi, EnrollmentrequestApi, RepositoryApi]
-    model: Union[Device, Fleet, CertificateSigningRequest, EnrollmentRequest, Repository]
-
-    get: str
-    create: str
-    list: str
-    delete: str
-    delete_all: str
-
-    patch: Optional[str] = None
+API_MAPPING = {}
 
 
-API_MAPPING = {
-    ResourceType.DEVICE: ApiResource(
-        api=DeviceApi,
-        model=Device,
-        get='read_device',
-        create='create_device',
-        list='list_devices',
-        patch='patch_device',
-        delete='delete_device',
-        delete_all='delete_devices',
-    ),
-    ResourceType.FLEET: ApiResource(
-        api=FleetApi,
-        model=Fleet,
-        get='read_fleet',
-        create='create_fleet',
-        list='list_fleets',
-        patch='patch_fleet',
-        delete='delete_fleet',
-        delete_all='delete_fleets'
-    ),
-    ResourceType.CSR: ApiResource(
-        api=CertificatesigningrequestApi,
-        model=CertificateSigningRequest,
-        get='read_certificate_signing_request',
-        create='create_certificate_signing_request',
-        list='list_certificate_signing_request',
-        patch='patch_certificate_signing_request',
-        delete='delete_certificate_signing_request',
-        delete_all='delete_certificate_signing_requests',
-    ),
-    ResourceType.ENROLLMENT: ApiResource(
-        api=EnrollmentrequestApi,
-        model=EnrollmentRequest,
-        get='read_enrollment_request',
-        create='create_enrollment_request',
-        list='list_enrollment_requests',
-        delete='delete_enrollment_request',
-        delete_all='delete_enrollment_requests',
-    ),
-    ResourceType.REPOSITORY: ApiResource(
-        api=RepositoryApi,
-        model=Repository,
-        get='read_repository',
-        create='create_repository',
-        list='list_repositories',
-        delete='delete_repository',
-        delete_all='delete_repositories',
-    ),
-    ResourceType.RESOURCE_SYNC: ApiResource(
-        api=ResourcesyncApi,
-        model=ResourceSync,
-        get='read_resource_sync',
-        create='create_resource_sync',
-        list='list_resource_sync',
-        delete='delete_resource_sync',
-        delete_all='delete_resource_syncs',
-    ),
-}
+try:
+    import ansible_collections.flightctl.edge.plugins.module_utils.client_path_helper  # pylint: disable=unused-import
+    from openapi_client.api.device_api import DeviceApi
+    from openapi_client.api.fleet_api import FleetApi
+    from openapi_client.api.certificatesigningrequest_api import CertificatesigningrequestApi
+    from openapi_client.api.enrollmentrequest_api import EnrollmentrequestApi
+    from openapi_client.api.repository_api import RepositoryApi
+    from openapi_client.api.resourcesync_api import ResourcesyncApi
+    from openapi_client.models.device import Device
+    from openapi_client.models.fleet import Fleet
+    from openapi_client.models.certificate_signing_request import CertificateSigningRequest
+    from openapi_client.models.enrollment_request import EnrollmentRequest
+    from openapi_client.models.repository import Repository
+    from openapi_client.models.resource_sync import ResourceSync
+
+    @dataclass
+    class ApiResource:
+        api: Union[DeviceApi, FleetApi, CertificatesigningrequestApi, EnrollmentrequestApi, RepositoryApi]
+        model: Union[Device, Fleet, CertificateSigningRequest, EnrollmentRequest, Repository]
+
+        get: str
+        create: str
+        list: str
+        delete: str
+        delete_all: str
+
+        patch: Optional[str] = None
+
+    API_MAPPING = {
+        ResourceType.DEVICE: ApiResource(
+            api=DeviceApi,
+            model=Device,
+            get='read_device',
+            create='create_device',
+            list='list_devices',
+            patch='patch_device',
+            delete='delete_device',
+            delete_all='delete_devices',
+        ),
+        ResourceType.FLEET: ApiResource(
+            api=FleetApi,
+            model=Fleet,
+            get='read_fleet',
+            create='create_fleet',
+            list='list_fleets',
+            patch='patch_fleet',
+            delete='delete_fleet',
+            delete_all='delete_fleets'
+        ),
+        ResourceType.CSR: ApiResource(
+            api=CertificatesigningrequestApi,
+            model=CertificateSigningRequest,
+            get='read_certificate_signing_request',
+            create='create_certificate_signing_request',
+            list='list_certificate_signing_request',
+            patch='patch_certificate_signing_request',
+            delete='delete_certificate_signing_request',
+            delete_all='delete_certificate_signing_requests',
+        ),
+        ResourceType.ENROLLMENT: ApiResource(
+            api=EnrollmentrequestApi,
+            model=EnrollmentRequest,
+            get='read_enrollment_request',
+            create='create_enrollment_request',
+            list='list_enrollment_requests',
+            delete='delete_enrollment_request',
+            delete_all='delete_enrollment_requests',
+        ),
+        ResourceType.REPOSITORY: ApiResource(
+            api=RepositoryApi,
+            model=Repository,
+            get='read_repository',
+            create='create_repository',
+            list='list_repositories',
+            delete='delete_repository',
+            delete_all='delete_repositories',
+        ),
+        ResourceType.RESOURCE_SYNC: ApiResource(
+            api=ResourcesyncApi,
+            model=ResourceSync,
+            get='read_resource_sync',
+            create='create_resource_sync',
+            list='list_resource_sync',
+            delete='delete_resource_sync',
+            delete_all='delete_resource_syncs',
+        ),
+    }
+except ImportError as imp_exc:
+    # Handled elsewhere
+    pass

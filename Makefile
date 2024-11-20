@@ -8,7 +8,7 @@ test-integration:
 	ansible-test integration --diff --no-temp-workdir --color --python $(PYTHON_VERSION) -v $(?TEST_ARGS)
 
 test-sanity:
-	ansible-test sanity plugins/ --docker -v --color --python $(PYTHON_VERSION) $(?TEST_ARGS)
+	ansible-test sanity --docker -v --color --python $(PYTHON_VERSION) $(?TEST_ARGS)
 
 generate-api-client:
 	npx @openapitools/openapi-generator-cli generate \
@@ -17,3 +17,12 @@ generate-api-client:
 	-o ./lib/flightctl_api_client \
 	--global-property=apiDocs=false,modelDocs=false,apiTests=false,modelTests=false \
 	--additional-properties=generateSourceCodeOnly=true
+
+generate-sanity-ignore-file:
+	rm tests/sanity/ignore-2.16.txt
+	cp tests/sanity/ignore-base.txt tests/sanity/ignore-2.16.txt
+	find lib/flightctl_api_client/openapi_client -type f -name "*.py" | \
+	while read filepath; do \
+		echo "$$filepath pep8!skip" >> tests/sanity/ignore-2.16.txt; \
+		echo "$$filepath pylint!skip" >> tests/sanity/ignore-2.16.txt; \
+	done

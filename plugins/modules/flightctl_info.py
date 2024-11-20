@@ -34,6 +34,7 @@ extends_documentation_fragment:
 requirements:
   - jsonschema
   - PyYAML
+  - pydantic
 """
 
 

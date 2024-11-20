@@ -28,9 +28,14 @@ from .exceptions import FlightctlException, ValidationException
 from .inputs import ApprovalInput
 from .resources import create_definitions
 
-import ansible_collections.flightctl.edge.plugins.module_utils.client_path_helper  # pylint: disable=unused-import
-from openapi_client.models.enrollment_request import EnrollmentRequest
-from openapi_client.models.certificate_signing_request import CertificateSigningRequest
+try:
+    import ansible_collections.flightctl.edge.plugins.module_utils.client_path_helper  # pylint: disable=unused-import
+    from openapi_client.models.enrollment_request import EnrollmentRequest
+    from openapi_client.models.certificate_signing_request import CertificateSigningRequest
+except ImportError as imp_exc:
+    CLIENT_IMPORT_ERROR = imp_exc
+else:
+    CLIENT_IMPORT_ERROR = None
 
 
 def load_schema(file_path: str) -> Dict[str, Any]:
@@ -213,6 +218,9 @@ def perform_approval(module: FlightctlAPIModule) -> None:
         ValidationException: If necessary definition parameters do not exist.
         FlightctlException: If performing the action fails.
     """
+    if CLIENT_IMPORT_ERROR:
+        raise CLIENT_IMPORT_ERROR
+
     try:
         resource = ResourceType(module.params.get("kind"))
     except (TypeError, ValueError):
