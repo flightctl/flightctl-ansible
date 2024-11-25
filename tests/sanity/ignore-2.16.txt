@@ -1,1 +1,0 @@
-api/v1alpha1/openapi.yml no-smart-quotes!skip
