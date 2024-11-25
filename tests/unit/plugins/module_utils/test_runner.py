@@ -9,8 +9,8 @@ from plugins.module_utils.constants import ResourceType
 from plugins.module_utils.exceptions import FlightctlException, FlightctlApiException, ValidationException
 from plugins.module_utils.runner import perform_approval
 
-from openapi_client.models.enrollment_request import EnrollmentRequest
-from openapi_client.models.certificate_signing_request import CertificateSigningRequest
+from flightctl.models.enrollment_request import EnrollmentRequest
+from flightctl.models.certificate_signing_request import CertificateSigningRequest
 
 
 @pytest.fixture
