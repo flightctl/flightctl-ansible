@@ -59,6 +59,7 @@ try:
         delete: Optional[str] = None
         delete_all: Optional[str] = None
         patch: Optional[str] = None
+        replace: Optional[str] = None
         rendered: Optional[str] = None
 
     API_MAPPING = {
@@ -69,6 +70,7 @@ try:
             create='create_device',
             list='list_devices',
             patch='patch_device',
+            replace='replace_device',
             delete='delete_device',
             delete_all='delete_devices',
             rendered='get_rendered_device_spec'
@@ -80,6 +82,7 @@ try:
             create='create_fleet',
             list='list_fleets',
             patch='patch_fleet',
+            replace='replace_fleet',
             delete='delete_fleet',
             delete_all='delete_fleets'
         ),
@@ -90,6 +93,7 @@ try:
             create='create_certificate_signing_request',
             list='list_certificate_signing_request',
             patch='patch_certificate_signing_request',
+            replace='replace_certificate_signing_request',
             delete='delete_certificate_signing_request',
             delete_all='delete_certificate_signing_requests',
         ),
@@ -99,6 +103,7 @@ try:
             get='read_enrollment_request',
             create='create_enrollment_request',
             list='list_enrollment_requests',
+            replace='replace_enrollment_request',
             delete='delete_enrollment_request',
             delete_all='delete_enrollment_requests',
         ),
@@ -108,6 +113,8 @@ try:
             get='read_repository',
             create='create_repository',
             list='list_repositories',
+            patch='patch_repository',
+            replace='replace_repository',
             delete='delete_repository',
             delete_all='delete_repositories',
         ),
@@ -117,6 +124,8 @@ try:
             get='read_resource_sync',
             create='create_resource_sync',
             list='list_resource_sync',
+            patch='patch_resource_sync',
+            replace='replace_resource_sync',
             delete='delete_resource_sync',
             delete_all='delete_resource_syncs',
         ),

@@ -192,9 +192,14 @@ class FlightctlAPIModule(FlightctlModule):
         self, resource: ResourceType, existing: Dict[str, Any], definition: Dict[str, Any]
     ) -> Tuple[bool, Dict[str, Any]]:
         """
-        Updates an existing resource in the API.
+        Updates an existing resource.
+
+        The update is equivalent to a PATCH that merges the existing representation of the
+        object with the new definition.  If no differences are found between the existing
+        representation and new definition no request is made.
 
         Args:
+            resource(ResourceType): The type of resource to update.
             existing (Dict[str, Any]): The current state of the resource.
             definition (Dict[str, Any]): The desired state of the resource.
 
@@ -228,6 +233,32 @@ class FlightctlAPIModule(FlightctlModule):
                 raise FlightctlApiException(f"Unable to create {resource.value}: {e}")
 
         return changed, (response if diffs else existing)
+
+    def replace(
+            self, resource: ResourceType, definition: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Replaces an existing resource.
+
+        The replacement is equivalent to a PUT.
+
+        Args:
+            resource(ResourceType): The type of resource to replace
+            definition(Dict[str, Any]): The desired state of the resource.
+
+        Returns:
+            Dict[str, Any]: The result of the replace operation.
+        """
+        name = definition["metadata"]["name"]
+        api_type = API_MAPPING[resource]
+        api_instance = api_type.api(self.client)
+        replace_call = getattr(api_instance, api_type.replace)
+
+        try:
+            request_obj = api_type.model.from_dict(definition)
+            return replace_call(name, request_obj).to_dict()
+        except ApiException as e:
+            raise FlightctlApiException(f"Unable to replace {resource.value}: {e}")
 
     def delete(self, resource: ResourceType, name: str, fleet_name: str) -> Optional[Any]:
         """

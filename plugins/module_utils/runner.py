@@ -184,15 +184,17 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 raise FlightctlException(f"Failed to delete resource: {e}") from e
 
     elif state == "present":
-        # validate(definition)
-
         if existing_result:
             # Update resource
             if module.check_mode:
                 module.exit_json(**{"changed": True})
 
             try:
-                changed, result = module.update(resource, existing_result, definition)
+                if module.params.get("force_update"):
+                    result = module.replace(resource, definition)
+                    changed |= True
+                else:
+                    changed, result = module.update(resource, existing_result, definition)
             except Exception as e:
                 raise FlightctlException(f"Failed to update resource: {e}") from e
         else:
