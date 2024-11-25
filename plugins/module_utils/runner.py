@@ -29,9 +29,8 @@ from .options import ApprovalOptions, GetOptions
 from .resources import create_definitions
 
 try:
-    import ansible_collections.flightctl.edge.plugins.module_utils.client_path_helper  # pylint: disable=unused-import
-    from openapi_client.models.enrollment_request import EnrollmentRequest
-    from openapi_client.models.certificate_signing_request import CertificateSigningRequest
+    from flightctl.models.enrollment_request import EnrollmentRequest
+    from flightctl.models.certificate_signing_request import CertificateSigningRequest
 except ImportError as imp_exc:
     CLIENT_IMPORT_ERROR = imp_exc
 else:

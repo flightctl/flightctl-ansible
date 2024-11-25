@@ -50,11 +50,11 @@
       fleet_name: "{{ fleet_name }}"
     register: template_version_result
 
-  - name: Assert that three temlate versions were created
+  - name: Assert that three template versions were created
     ansible.builtin.assert:
       that:
         - template_version_result is success
-        - template_version_result.result | length == 3
+        - template_version_result.result['items'] | length == 3
 
   - name: Delete a template version by name
     flightctl.edge.flightctl:
@@ -62,7 +62,7 @@
       flightctl_validate_certs: false
       kind: TemplateVersion
       fleet_name: "{{ fleet_name }}"
-      name: "{{ template_version_result.result.['items'][0]['metadata']['name'] }}"
+      name: "{{ template_version_result.result['items'][0]['metadata']['name'] }}"
       state: absent
     register: delete_single_template_version_result
 
@@ -120,4 +120,11 @@
         flightctl_validate_certs: false
         kind: Fleet
         name: "{{ fleet_name }}"
+        state: absent
+
+    - flightctl.edge.flightctl:
+        flightctl_host: "{{ flightctl_host }}"
+        flightctl_validate_certs: false
+        kind: TemplateVersion
+        fleet_name: "{{ fleet_name }}"
         state: absent

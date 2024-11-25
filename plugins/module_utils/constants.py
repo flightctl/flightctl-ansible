@@ -27,27 +27,25 @@ API_MAPPING = {}
 
 
 try:
-    import ansible_collections.flightctl.edge.plugins.module_utils.client_path_helper  # pylint: disable=unused-import
-
     # Apis
-    from openapi_client.api.device_api import DeviceApi
-    from openapi_client.api.fleet_api import FleetApi
-    from openapi_client.api.certificatesigningrequest_api import CertificatesigningrequestApi
-    from openapi_client.api.enrollmentrequest_api import EnrollmentrequestApi
-    from openapi_client.api.repository_api import RepositoryApi
-    from openapi_client.api.resourcesync_api import ResourcesyncApi
-    from openapi_client.api.templateversion_api import TemplateversionApi
-    from openapi_client.api.enrollmentconfig_api import EnrollmentconfigApi
+    from flightctl.api.device_api import DeviceApi
+    from flightctl.api.fleet_api import FleetApi
+    from flightctl.api.certificatesigningrequest_api import CertificatesigningrequestApi
+    from flightctl.api.enrollmentrequest_api import EnrollmentrequestApi
+    from flightctl.api.repository_api import RepositoryApi
+    from flightctl.api.resourcesync_api import ResourcesyncApi
+    from flightctl.api.templateversion_api import TemplateversionApi
+    from flightctl.api.enrollmentconfig_api import EnrollmentconfigApi
 
     # Models
-    from openapi_client.models.device import Device
-    from openapi_client.models.fleet import Fleet
-    from openapi_client.models.certificate_signing_request import CertificateSigningRequest
-    from openapi_client.models.enrollment_request import EnrollmentRequest
-    from openapi_client.models.repository import Repository
-    from openapi_client.models.resource_sync import ResourceSync
-    from openapi_client.models.template_version import TemplateVersion
-    from openapi_client.models.enrollment_config import EnrollmentConfig
+    from flightctl.models.device import Device
+    from flightctl.models.fleet import Fleet
+    from flightctl.models.certificate_signing_request import CertificateSigningRequest
+    from flightctl.models.enrollment_request import EnrollmentRequest
+    from flightctl.models.repository import Repository
+    from flightctl.models.resource_sync import ResourceSync
+    from flightctl.models.template_version import TemplateVersion
+    from flightctl.models.enrollment_config import EnrollmentConfig
 
     @dataclass
     class ApiResource:

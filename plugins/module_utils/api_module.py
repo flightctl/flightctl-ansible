@@ -15,14 +15,13 @@ from .options import ApprovalOptions, GetOptions
 from .utils import diff_dicts, get_patch, json_patch
 
 try:
-    import ansible_collections.flightctl.edge.plugins.module_utils.client_path_helper  # pylint: disable=unused-import
-    from openapi_client import ApiClient
-    from openapi_client.configuration import Configuration
-    from openapi_client.api.enrollmentrequest_api import EnrollmentrequestApi
-    from openapi_client.api.default_api import DefaultApi
-    from openapi_client.exceptions import ApiException, NotFoundException
-    from openapi_client.models.patch_request_inner import PatchRequestInner
-    from openapi_client.models.enrollment_request_approval import EnrollmentRequestApproval
+    from flightctl import ApiClient
+    from flightctl.configuration import Configuration
+    from flightctl.api.enrollmentrequest_api import EnrollmentrequestApi
+    from flightctl.api.default_api import DefaultApi
+    from flightctl.exceptions import ApiException, NotFoundException
+    from flightctl.models.patch_request_inner import PatchRequestInner
+    from flightctl.models.enrollment_request_approval import EnrollmentRequestApproval
 except ImportError as imp_exc:
     CLIENT_IMPORT_ERROR = imp_exc
 else:
@@ -127,7 +126,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         try:
             if options.resource is ResourceType.TEMPLATE_VERSION:
-                list_call(options.fleet_name, **options.request_params)
+                return list_call(options.fleet_name, **options.request_params)
             else:
                 return list_call(**options.request_params)
         except ApiException as e:
@@ -259,7 +258,10 @@ class FlightctlAPIModule(FlightctlModule):
         else:
             delete_call = getattr(api_instance, api_type.delete_all)
             try:
-                response = delete_call()
+                if resource is ResourceType.TEMPLATE_VERSION:
+                    response = delete_call(fleet_name)
+                else:
+                    response = delete_call()
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to delete {resource.value} - {name}: {e}")
 

@@ -1,2 +1,0 @@
-api/v1alpha1/openapi.yml no-smart-quotes!skip
-lib/flightctl_api_client/openapi_client/models/file_spec.py no-smart-quotes!skip
