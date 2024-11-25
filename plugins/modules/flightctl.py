@@ -48,7 +48,7 @@ options:
       - Value can be provided as string or dictionary.
     type: raw
 extends_documentation_fragment:
-  - flightctl.edge.auth
+  - flightctl.edge.auths
   - flightctl.edge.state
 notes:
   - For resources other than O(kind=Device), O(resource_definition) must be specified when creating or
@@ -56,10 +56,7 @@ notes:
 requirements:
   - jsonschema
   - PyYAML
-  - "urllib3 >= 1.25.3, < 3.0.0"
-  - "python-dateutil >= 2.8.2"
-  - "pydantic >= 2"
-  - "typing-extensions >= 4.7.1"
+  - "flightctl (git+https://github.com/flightctl/python-client.git)"
 """
 
 EXAMPLES = r"""
