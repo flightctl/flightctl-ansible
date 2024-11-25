@@ -48,7 +48,7 @@ options:
       - Value can be provided as string or dictionary.
     type: raw
 extends_documentation_fragment:
-  - flightctl.edge.auths
+  - flightctl.edge.auth
   - flightctl.edge.state
 notes:
   - For resources other than O(kind=Device), O(resource_definition) must be specified when creating or
