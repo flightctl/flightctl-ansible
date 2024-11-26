@@ -6,8 +6,6 @@ This Ansible Collection includes Ansible content to help automate the management
 
 This collection enables organizations to automate time-consuming, error-prone tasks, enhancing efficiency and reducing manual effort. By leveraging it, teams can quickly adapt to shifting conditions across diverse IT environments, improving both operational agility and resilience. Its primary goal is to streamline mission-critical workflows for better overall performance.
 
-More information about Flight Control can be found in the [main repo](https://github.com/flightctl/flightctl/).  The [user docs](https://github.com/flightctl/flightctl/blob/main/docs/user/README.md) in particular are helpful for understanding the concepts and capabilities of Flight Control.
-
 ## Requirements
 
 ### Ansible version compatibility
@@ -148,6 +146,19 @@ Integration tests are dependent on:
 - The flightctl_host var inside integration_config.yml set to the running flightctl api service
 
 Run locally via `make test-integration`
+
+## Support
+
+If you encounter issues or have questions, you can submit a support request through the following channels:
+ - GitHub Issues: Report bugs, request features, or ask questions by opening an issue in the [GitHub repository](https://github.com/flightctl/flightctl-ansible/issues).
+
+## Release notes
+
+See the [changelog](https://github.com/flightctl/flightctl-ansible/blob/main/CHANGELOG.md).
+
+## Related Information
+
+More information about Flight Control can be found in the [main repo](https://github.com/flightctl/flightctl). The [user docs](https://github.com/flightctl/flightctl/blob/main/docs/user/README.md) in particular are helpful for understanding the concepts and capabilities of Flight Control.
 
 ## License Information
 
