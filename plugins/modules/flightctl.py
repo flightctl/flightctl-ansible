@@ -56,7 +56,7 @@ notes:
 requirements:
   - jsonschema
   - PyYAML
-  - "flightctl (git+https://github.com/flightctl/python-client.git)"
+  - "flightctl (git+https://github.com/flightctl/flightctl-python-client.git)"
 """
 
 EXAMPLES = r"""

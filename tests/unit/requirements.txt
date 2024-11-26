@@ -1,4 +1,4 @@
 jsonschema
 openapi_schema_validator
 pytest
-git+https://github.com/flightctl/python-client.git
+git+https://github.com/flightctl/flightctl-python-client.git
