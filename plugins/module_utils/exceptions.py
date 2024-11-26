@@ -11,7 +11,7 @@ class FlightctlException(Exception):
     pass
 
 
-class FlightctlHTTPException(FlightctlException):
+class FlightctlApiException(FlightctlException):
     pass
 
 

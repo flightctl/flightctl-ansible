@@ -9,21 +9,21 @@ __metaclass__ = type
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from .constants import Kind
+from .constants import ResourceType
 from .exceptions import ValidationException
 
 
 @dataclass
 class ApprovalOptions:
-    kind: Kind
+    resource: ResourceType
     name: str
     approved: bool
     approved_by: Optional[str] = None
     labels: Optional[dict] = None
 
     def __post_init__(self):
-        if self.kind not in [Kind.CSR, Kind.ENROLLMENT]:
-            raise ValidationException(f"Kind {self.kind.value} does not support approval")
+        if self.resource not in [ResourceType.CSR, ResourceType.ENROLLMENT]:
+            raise ValidationException(f"Kind {self.resource.value} does not support approval")
         if not self.name:
             raise ValidationException("Name must be specified")
         if self.approved is None:
@@ -42,7 +42,7 @@ class ApprovalOptions:
 
 @dataclass
 class GetOptions:
-    kind: Kind
+    resource: ResourceType
     name: Optional[str] = None
     label_selector: Optional[str] = None
     field_selector: Optional[str] = None
@@ -56,26 +56,26 @@ class GetOptions:
     continue_token: Optional[str] = None
 
     def __post_init__(self):
-        if not self.kind:
-            raise ValidationException("Kind must be specified")
-        if self.owner and self.kind not in [Kind.DEVICE, Kind.FLEET]:
+        if not self.resource:
+            raise ValidationException("Resource must be specified")
+        if self.owner and self.resource not in [ResourceType.DEVICE, ResourceType.FLEET]:
             raise ValidationException("Owner field is only valid for Device and Fleet kinds")
-        if self.rendered and self.kind is not Kind.DEVICE:
+        if self.rendered and self.resource is not ResourceType.DEVICE:
             raise ValidationException("Rendered field is only valid for Device kind")
-        if self.fleet_name and self.kind is not Kind.TEMPLATE_VERSION:
+        if self.fleet_name and self.resource is not ResourceType.TEMPLATE_VERSION:
             raise ValidationException("Fleet name field is only valid for TemplateVersion kind")
         if self.summary_only:
-            if self.kind is not Kind.DEVICE:
+            if self.resource is not ResourceType.DEVICE:
                 raise ValidationException("Summary Only field is only valid for Device kind")
             if self.name:
                 raise ValidationException("Summary Only field is not valid when fetching one Device")
         if self.summary:
-            if self.kind is not Kind.FLEET:
+            if self.resource is not ResourceType.FLEET:
                 raise ValidationException("Summary field is only valid for Fleet kind")
             if not self.name:
                 raise ValidationException("Summary field is only valid when fetching one Fleet")
         if self.status_filter:
-            if self.kind is not Kind.DEVICE:
+            if self.resource is not ResourceType.DEVICE:
                 raise ValidationException("Status filter field is only valid for Device kind")
             if self.name:
                 raise ValidationException("Status filter field is not valid when fetching one Device")
@@ -88,19 +88,19 @@ class GetOptions:
     def request_params(self) -> dict:
         params = dict()
         if self.label_selector:
-            params['labelSelector'] = self.label_selector
+            params['label_selector'] = self.label_selector
         if self.field_selector:
-            params['fieldSelector'] = self.field_selector
+            params['field_selector'] = self.field_selector
         if self.owner:
             params['owner'] = self.owner
         if self.summary:
-            params['addDevicesSummary'] = self.summary
+            params['add_devices_summary'] = self.summary
         if self.summary_only:
-            params['summaryOnly'] = self.summary_only
+            params['summary_only'] = self.summary_only
         if self.limit:
             params['limit'] = self.limit
         if self.continue_token:
-            params['continue'] = self.continue_token
+            params['var_continue'] = self.continue_token
         if self.status_filter:
-            params['statusFilter'] = self.status_filter
+            params['status_filter'] = self.status_filter
         return params

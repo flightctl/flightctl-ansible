@@ -72,6 +72,7 @@ extends_documentation_fragment:
 requirements:
   - jsonschema
   - PyYAML
+  - "flightctl (git+https://github.com/flightctl/flightctl-python-client.git)"
 """
 
 
@@ -174,8 +175,8 @@ result:
 
 from ..module_utils.api_module import FlightctlAPIModule
 from ..module_utils.exceptions import FlightctlException, ValidationException
+from ..module_utils.constants import ResourceType
 from ..module_utils.options import GetOptions
-from ..module_utils.constants import Kind
 
 
 def main():
@@ -200,12 +201,12 @@ def main():
     )
 
     try:
-        kind = Kind(module.params.get("kind"))
+        resource = ResourceType(module.params.get("kind"))
     except (TypeError, ValueError):
         raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
 
     options = GetOptions(
-        kind=kind,
+        resource=resource,
         name=module.params.get("name"),
         label_selector=module.params.get("label_selector"),
         field_selector=module.params.get("field_selector"),
@@ -225,7 +226,7 @@ def main():
     except FlightctlException as e:
         module.fail_json(msg=f"Failed to get resource: {e}")
 
-    module.exit_json(result=result.dict)
+    module.exit_json(result=result)
 
 
 if __name__ == "__main__":

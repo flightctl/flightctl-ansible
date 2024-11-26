@@ -46,7 +46,7 @@
     ansible.builtin.assert:
       that:
         - check_result is success
-        - check_result.result.data[0].status.get('approval', None) == None
+        - check_result.result.status.get('approval', None) == None
 
   - name: Approve the enrollment request
     flightctl.edge.flightctl_certificate:
@@ -77,9 +77,9 @@
     ansible.builtin.assert:
       that:
         - enrollment_result is success
-        - enrollment_result.result.data[0].status.approval.approved == True
-        - enrollment_result.result.data[0].status.approval.approvedBy == "ansible-integration-testing"
-        - enrollment_result.result.data[0].status.approval.labels['testing_label'] == "is_set_during_testing"
+        - enrollment_result.result.status.approval.approved == True
+        - enrollment_result.result.status.approval.approvedBy == "ansible-integration-testing"
+        - enrollment_result.result.status.approval.labels['testing_label'] == "is_set_during_testing"
 
   - name: Try to approve the enrollment request again (idempotency)
     flightctl.edge.flightctl_certificate:

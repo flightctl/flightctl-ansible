@@ -20,7 +20,7 @@ ansible-galaxy collection install . --force
 
 3.  Run a playbook.
 ```
-ansible-playbook demo/create.yml --extra-vars "flightctl_config_file='~/.config/flightctl/client.yaml'"
+ansible-playbook demo/create.yml --extra-vars "flightctl_config_file='~/.config/flightctl/client.yaml'" --extra-vars "flightctl_validate_certs=False"
 ```
 
 The `--extra-vars` allows us to pass variables into the playbooks.  In this case the create playbook is dependent on the flightctl_config_file variable pointing towards the generated client.yaml used when deploying the local flightctl services.  Default values for this are:
@@ -50,7 +50,7 @@ cat ~/.config/flightctl/client.yaml | grep server | awk '{print $2}'
 ```
 3.  Enter your username (demouser) and password retrieved from step 1 in the browser window.
 
-Note: The default access tokens provisioned have a ttl of and you will need to refresh them by re-running the login step every couple of hours.
+Note: The default access tokens provisioned have a ttl and you will need to refresh them by re-running the login step every couple of hours.
 
 
 If you followed the above steps the `client.yaml` file can now be used for authentication with the flightctl services.
@@ -86,5 +86,11 @@ Alternatively, a filepath to the cert file can also be directly passed via the `
 ```
 ansible-playbook demo/create.yml \
     --extra-vars "flightctl_host='your-service-address-here'" \
-    --extra-vars "flightctl_ca_path=path/to/cert/ca.crt"
+    --extra-vars "flightctl_ca_path=path/to/cert/ca.crt" \
+    --extra-vars "flightctl_validate_certs=True"
 ```
+
+
+ansible-playbook demo/create.yml \
+    --extra-vars "flightctl_config_file='~/.config/flightctl/client.yaml'" \
+    --extra-vars "flightctl_validate_certs=True"

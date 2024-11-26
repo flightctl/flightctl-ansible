@@ -3,3 +3,4 @@ pyyaml>=6.0.1
 openapi_schema_validator
 jsonpatch
 jsonschema
+git+https://github.com/flightctl/flightctl-python-client.git

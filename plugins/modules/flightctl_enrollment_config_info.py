@@ -27,6 +27,7 @@ extends_documentation_fragment:
 requirements:
   - jsonschema
   - PyYAML
+  - "flightctl (git+https://github.com/flightctl/flightctl-python-client.git)"
 """
 
 
@@ -87,7 +88,7 @@ result:
 
 
 from ..module_utils.api_module import FlightctlAPIModule
-from ..module_utils.constants import Kind
+from ..module_utils.constants import ResourceType
 from ..module_utils.exceptions import FlightctlException
 from ..module_utils.options import GetOptions
 
@@ -101,18 +102,14 @@ def main():
         argument_spec=argument_spec,
     )
 
-    kind = Kind.ENROLLMENT_CONFIG
+    resource = ResourceType.ENROLLMENT_CONFIG
     options = GetOptions(
-        kind=kind,
+        resource=resource,
         name=module.params.get("name")
     )
 
     try:
-        one_or_many_result = module.get_one_or_many(options)
-        if one_or_many_result.data:
-            result = one_or_many_result.data[0]
-        else:
-            result = {}
+        result = module.get_one_or_many(options)
     except FlightctlException as e:
         module.fail_json(msg=f"Failed to get resource: {e}")
 

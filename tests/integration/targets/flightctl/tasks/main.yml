@@ -1,2 +1,4 @@
 ---
-- include_tasks: template-versions.yml
+- include_tasks: update-device.yml
+# TODO - re-enable the delete template versions when the service stops returning a 500
+# - include_tasks: delete-template-versions.yml
