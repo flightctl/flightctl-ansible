@@ -173,7 +173,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
         raise FlightctlException(f"Failed to get resource: {e}") from e
 
     if state == "absent":
-        if existing_result:
+        if existing_result.data:
             if module.check_mode:
                 module.exit_json(**{"changed": True})
 
@@ -184,7 +184,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 raise FlightctlException(f"Failed to delete resource: {e}") from e
 
     elif state == "present":
-        if existing_result:
+        if existing_result.data:
             # Update resource
             if module.check_mode:
                 module.exit_json(**{"changed": True})
@@ -194,7 +194,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                     result = module.replace(resource, definition)
                     changed |= True
                 else:
-                    changed, result = module.update(resource, existing_result, definition)
+                    changed, result = module.update(resource, existing_result.data[0], definition)
             except Exception as e:
                 raise FlightctlException(f"Failed to update resource: {e}") from e
         else:
@@ -208,7 +208,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
             except Exception as e:
                 raise FlightctlException(f"Failed to create resource: {e}") from e
 
-    return changed, result
+    return changed, result.to_dict()
 
 
 def perform_approval(module: FlightctlAPIModule) -> None:

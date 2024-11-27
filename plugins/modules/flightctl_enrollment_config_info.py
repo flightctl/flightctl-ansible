@@ -109,11 +109,11 @@ def main():
     )
 
     try:
-        result = module.get_one_or_many(options)
+        result = module.get(options)
     except FlightctlException as e:
         module.fail_json(msg=f"Failed to get resource: {e}")
 
-    module.exit_json(result=result)
+    module.exit_json(result=result.to_dict())
 
 
 if __name__ == "__main__":
