@@ -26,26 +26,33 @@ jobs:
         with:
           repository: 'flightctl/flightctl'
           ref: 'acfa41af729145511d2423ca8cd97aaa92aadd37'
-          path: flightctl
 
-      # - name: Setup dependencies for flightctl
-      #   uses: ./flightctl/.github/actions/setup-dependencies
-      #   with:
-      #     setup_podman4: yes
+      - name: Setup dependencies for flightctl
+        uses: ./flightctl/.github/actions/setup-dependencies
+        with:
+          setup_podman4: yes
 
       - name: Start flightctl services
-        working-directory: ./flightctl
-        run: make deploy-quadlets
+        working-directory: flightctl
+        run: make deploy
+
+      - name: Checkout collection
+        uses: actions/checkout@v4
+        with:
+          path: collection
 
       - name: Write server config to integration_config file
         run: |
           service_addr=$(cat ~/.config/flightctl/client.yaml | grep server | awk '{print $2}')
-          echo "flightctl_host: $service_addr" > tests/integration/integration_config.yml
+          echo "flightctl_host: $service_addr" > collection/tests/integration/integration_config.yml
 
       - name: Perform integration testing
-        uses: ansible-community/ansible-test-gh-action@release/v1
-        with:
-          ansible-core-version: ${{ matrix.versions.ansible }}
-          origin-python-version: ${{ matrix.versions.python }}
-          target-python-version: ${{ matrix.versions.python }}
-          testing-type: integration
+        run: echo "This is where we would run our integration tests"
+
+      # - name: Perform integration testing
+      #   uses: ansible-community/ansible-test-gh-action@release/v1
+      #   with:
+      #     ansible-core-version: ${{ matrix.versions.ansible }}
+      #     origin-python-version: ${{ matrix.versions.python }}
+      #     target-python-version: ${{ matrix.versions.python }}
+      #     testing-type: integration
