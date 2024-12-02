@@ -33,7 +33,6 @@ jobs:
           setup_podman4: yes
 
       - name: Start flightctl services
-        working-directory: flightctl
         run: make deploy
 
       - name: Checkout collection
@@ -44,7 +43,7 @@ jobs:
       - name: Write server config to integration_config file
         run: |
           service_addr=$(cat ~/.config/flightctl/client.yaml | grep server | awk '{print $2}')
-          echo "flightctl_host: $service_addr" > collection/tests/integration/integration_config.yml
+          echo "flightctl_host: $service_addr" > ./collection/tests/integration/integration_config.yml
 
       - name: Perform integration testing
         run: echo "This is where we would run our integration tests"
