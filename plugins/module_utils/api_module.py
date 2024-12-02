@@ -193,7 +193,7 @@ class FlightctlAPIModule(FlightctlModule):
             return ListResult(
                 data=response.items,
                 metadata=response.metadata,
-                summary=response.summary
+                summary=getattr(response, 'summary', None)
             )
 
     def create(
