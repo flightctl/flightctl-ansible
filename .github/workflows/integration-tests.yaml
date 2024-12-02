@@ -1,0 +1,50 @@
+---
+name: Integration tests
+
+# TODO modify to only run on PRs to main
+on: push
+# on:
+#   pull_request:
+#     branches:
+#       - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration-tests:
+    runs-on: "ubuntu-latest"
+    strategy:
+      matrix:
+        versions:
+          - ansible: stable-2.16
+            python: "3.10"
+    steps:
+      - name: Checkout flightctl
+        uses: actions/checkout@v4
+        with:
+          repository: 'flightctl/flightctl'
+          ref: 'acfa41af729145511d2423ca8cd97aaa92aadd37'
+          path: flightctl
+
+      - name: Setup dependencies for flightctl
+        uses: ./flightctl/.github/actions/setup-dependencies
+        with:
+          setup_podman4: yes
+
+      - name: Start flightctl services
+        run: (cd ./flightctl && make deploy)
+
+      - name: Write server config to integration_config file
+        run: |
+          service_addr=$(cat ~/.config/flightctl/client.yaml | grep server | awk '{print $2}')
+          echo "flightctl_host: $service_addr" > tests/integration/integration_config.yml
+
+      - name: Perform integration testing
+        uses: ansible-community/ansible-test-gh-action@release/v1
+        with:
+          ansible-core-version: ${{ matrix.versions.ansible }}
+          origin-python-version: ${{ matrix.versions.python }}
+          target-python-version: ${{ matrix.versions.python }}
+          testing-type: integration
