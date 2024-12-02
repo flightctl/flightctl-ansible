@@ -28,7 +28,7 @@ jobs:
           ref: 'acfa41af729145511d2423ca8cd97aaa92aadd37'
 
       - name: Setup dependencies for flightctl
-        uses: .github/actions/setup-dependencies
+        uses: ./.github/actions/setup-dependencies
         with:
           setup_podman4: yes
 
