@@ -39,8 +39,8 @@
     ansible.builtin.assert:
       that:
         - device_result is success
-        - device_result.result.spec.os.image == "quay.io/redhat/rhde:9.3"
-        - device_result.result.spec.systemd.matchPatterns[0] == "chronyd.service"
+        - device_result.result.data[0].spec.os.image == "quay.io/redhat/rhde:9.3"
+        - device_result.result.data[0].spec.systemd.matchPatterns[0] == "chronyd.service"
 
   - name: Update the test device with force_update
     flightctl.edge.flightctl:
@@ -66,8 +66,8 @@
     ansible.builtin.assert:
       that:
         - device_result is success
-        - device_result.result.spec.os.image == "quay.io/redhat/rhde:9.4"
-        - "'systemd' not in device_result.result.spec"
+        - device_result.result.data[0].spec.os.image == "quay.io/redhat/rhde:9.4"
+        - "'systemd' not in device_result.result.data[0].spec"
 
   always:
     - name: Delete test device

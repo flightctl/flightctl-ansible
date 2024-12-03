@@ -157,7 +157,7 @@ result:
       type: dict
       returned: When C(name) is not used and a list of objects is fetched
       contains:
-        continue_token:
+        continue:
           description: An opaque token used to issue another request to the endpoint that served a list to retrieve the next set of available objects.
           returned: When the total number of items queried is greater than C(limit) or the default limit.
           type: str
@@ -226,7 +226,7 @@ def main():
     except FlightctlException as e:
         module.fail_json(msg=f"Failed to get resource: {e}")
 
-    module.exit_json(result=result)
+    module.exit_json(result=result.to_dict())
 
 
 if __name__ == "__main__":

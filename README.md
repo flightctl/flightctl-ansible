@@ -114,7 +114,51 @@ You can either call modules, rulebooks and playbooks by their Fully Qualified Co
   - name: Get all fleets
     flightctl.edge.flightctl_info:
       kind: Fleet
+
+  - name: Update the resource definition for a fleet
+    flightctl.edge.flightctl:
+      kind: Fleet
+      name: "asible-test-fleet"
+      resource_definition:
+        spec:
+          os:
+            image: quay.io/redhat/rhde:9.3
 ```
+
+## Testing
+
+There are unit, sanity, and integration tests configured to run for this repository.
+Currently only sanity and unit tests are run in CI via gihub workflows.
+
+### Unit Tests
+
+Run locally via `make test-unit`
+
+### Sanity Tests
+
+Run locally via `make test-sanity`
+
+### Integration Tests
+
+Integration tests are dependent on:
+- A flightctl instance the tests can hit
+  - Locally the easiest way is to run `make deploy` from the main flightctl repository
+- The flightctl_host var inside integration_config.yml set to the running flightctl api service
+
+Run locally via `make test-integration`
+
+## Support
+
+If you encounter issues or have questions, you can submit a support request through the following channels:
+ - GitHub Issues: Report bugs, request features, or ask questions by opening an issue in the [GitHub repository](https://github.com/flightctl/flightctl-ansible/issues).
+
+## Release notes
+
+See the [changelog](https://github.com/flightctl/flightctl-ansible/blob/main/CHANGELOG.md).
+
+## Related Information
+
+More information about Flight Control can be found in the [main repo](https://github.com/flightctl/flightctl). The [user docs](https://github.com/flightctl/flightctl/blob/main/docs/user/README.md) in particular are helpful for understanding the concepts and capabilities of Flight Control.
 
 ## License Information
 

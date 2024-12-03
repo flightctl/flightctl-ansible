@@ -6,7 +6,8 @@ from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
 
-from typing import Any, Dict, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Protocol, Tuple
 
 from .constants import API_MAPPING, ResourceType
 from .core import FlightctlModule
@@ -22,10 +23,43 @@ try:
     from flightctl.exceptions import ApiException, NotFoundException
     from flightctl.models.patch_request_inner import PatchRequestInner
     from flightctl.models.enrollment_request_approval import EnrollmentRequestApproval
+    from flightctl.models.list_meta import ListMeta
 except ImportError as imp_exc:
+    ListMeta = None
     CLIENT_IMPORT_ERROR = imp_exc
 else:
     CLIENT_IMPORT_ERROR = None
+
+
+class ResourceProtocol(Protocol):
+    def to_dict(self) -> Dict[str, Any]:
+        return {}
+
+
+class ListProtocol(Protocol):
+    items: List[ResourceProtocol]
+    metadata: ListMeta
+    summary: Optional[Any] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {}
+
+
+@dataclass
+class ListResult:
+    data: List[ResourceProtocol]
+    metadata: Optional[ListMeta] = None
+    summary: Optional[Any] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        res = dict(
+            data=[d.to_dict() for d in self.data],
+        )
+        if self.metadata:
+            res['metadata'] = self.metadata.to_dict()
+        if self.summary:
+            res['summary'] = self.summary.to_dict()
+        return res
 
 
 class FlightctlAPIModule(FlightctlModule):
@@ -75,7 +109,7 @@ class FlightctlAPIModule(FlightctlModule):
 
     def get(
         self, options: GetOptions,
-    ) -> Optional[Any]:
+    ) -> ResourceProtocol:
         """
         Makes an get query via the API.
 
@@ -107,7 +141,7 @@ class FlightctlAPIModule(FlightctlModule):
         except ApiException as e:
             raise FlightctlApiException(f"Unable to fetch {options.resource.value} - {options.name}: {e}")
 
-    def list(self, options: GetOptions) -> Any:
+    def list(self, options: GetOptions) -> ListProtocol:
         """
         Makes an list query via the API.
 
@@ -134,7 +168,7 @@ class FlightctlAPIModule(FlightctlModule):
 
     def get_one_or_many(
         self, options: GetOptions,
-    ) -> Any:
+    ) -> ListResult:
         """
         Retrieves one or many resources from the API.
 
@@ -152,17 +186,19 @@ class FlightctlAPIModule(FlightctlModule):
         if options.name:
             response = self.get(options)
             if not response:
-                return []
-            return response.to_dict()
+                return ListResult(data=[])
+            return ListResult(data=[response])
         else:
-            res = self.list(options)
-            if res:
-                return res.to_dict()
-            return {}
+            response = self.list(options)
+            return ListResult(
+                data=response.items,
+                metadata=response.metadata,
+                summary=getattr(response, 'summary', None)
+            )
 
     def create(
         self, resource: ResourceType, definition: Dict[str, Any]
-    ) -> Any:
+    ) -> ResourceProtocol:
         """
         Creates a new resource in the API.
 
@@ -184,12 +220,12 @@ class FlightctlAPIModule(FlightctlModule):
 
         try:
             request_obj = api_type.model.from_dict(definition)
-            return create_call(request_obj).to_dict()
+            return create_call(request_obj)
         except ApiException as e:
             raise FlightctlApiException(f"Unable to create {resource.value}: {e}")
 
     def update(
-        self, resource: ResourceType, existing: Dict[str, Any], definition: Dict[str, Any]
+        self, resource: ResourceType, existing_obj: ResourceProtocol, definition: Dict[str, Any]
     ) -> Tuple[bool, Dict[str, Any]]:
         """
         Updates an existing resource.
@@ -212,6 +248,7 @@ class FlightctlAPIModule(FlightctlModule):
             FlightctlException: If the update fails or there are errors with the patch.
         """
         changed: bool = False
+        existing = existing_obj.to_dict()
         name = existing["metadata"]["name"]
 
         patch = get_patch(existing, definition)
@@ -227,16 +264,16 @@ class FlightctlAPIModule(FlightctlModule):
 
             try:
                 patch_params = [PatchRequestInner.from_dict(p) for p in patch]
-                response = patch_call(name, patch_params).to_dict()
+                response = patch_call(name, patch_params)
                 changed |= True
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to create {resource.value}: {e}")
 
-        return changed, (response if diffs else existing)
+        return changed, (response if diffs else existing_obj)
 
     def replace(
             self, resource: ResourceType, definition: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    ) -> ResourceProtocol:
         """
         Replaces an existing resource.
 
@@ -256,11 +293,11 @@ class FlightctlAPIModule(FlightctlModule):
 
         try:
             request_obj = api_type.model.from_dict(definition)
-            return replace_call(name, request_obj).to_dict()
+            return replace_call(name, request_obj)
         except ApiException as e:
             raise FlightctlApiException(f"Unable to replace {resource.value}: {e}")
 
-    def delete(self, resource: ResourceType, name: str, fleet_name: str) -> Optional[Any]:
+    def delete(self, resource: ResourceType, name: str, fleet_name: str) -> Optional[ResourceProtocol]:
         """
         Deletes resources from the API.
 
@@ -296,7 +333,7 @@ class FlightctlAPIModule(FlightctlModule):
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to delete {resource.value} - {name}: {e}")
 
-        return response.to_dict()
+        return response
 
     def approve(self, input: ApprovalOptions) -> None:
         """

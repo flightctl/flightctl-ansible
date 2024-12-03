@@ -27,7 +27,7 @@
     ansible.builtin.assert:
       that:
         - resource_sync_result is success
-        - resource_sync_result.result.metadata.name == "ansible-integration-test-resource-sync"
+        - resource_sync_result.result.data[0].metadata.name == "ansible-integration-test-resource-sync"
 
   always:
     - name: Delete test resource sync

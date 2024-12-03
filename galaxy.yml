@@ -17,6 +17,7 @@ readme: README.md
 # @nicks:irc/im.site#channel'
 authors:
 - Alina Buzachis <abuzachis@redhat.com>
+- Dakota Crowder <dcrowder@redhat.com>
 
 
 ### OPTIONAL but strongly recommended
@@ -50,10 +51,10 @@ dependencies: {}
 repository: github.com/flightctl/flightctl-ansible
 
 # The URL to any online docs
-documentation: http://docs.example.com
+documentation: https://github.com/flightctl/flightctl/blob/main/docs/user/README.md
 
 # The URL to the homepage of the collection/project
-homepage: http://example.com
+homepage: github.com/flightctl/flightctl-ansible
 
 # The URL to the collection issue tracker
 issues: github.com/flightctl/flightctl-ansible/issues
