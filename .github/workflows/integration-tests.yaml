@@ -45,6 +45,11 @@ jobs:
       #     service_addr=$(cat ~/.config/flightctl/client.yaml | grep server | awk '{print $2}')
       #     echo "flightctl_host: $service_addr" > ./collection/tests/integration/integration_config.yml
 
+      - name: Write server config to integration_config file
+        run: |
+          service_addr=https://api.flightctl.192.168.86.27.nip.io:3443
+          echo "flightctl_host: $service_addr" > ./collection/tests/integration/integration_config.yml
+
       - name: Perform integration testing
         uses: ansible-community/ansible-test-gh-action@release/v1
         with:
