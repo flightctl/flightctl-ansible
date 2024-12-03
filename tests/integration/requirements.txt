@@ -1,0 +1,4 @@
+jsonschema
+jsonpatch
+openapi_schema_validator
+git+https://github.com/flightctl/flightctl-python-client.git

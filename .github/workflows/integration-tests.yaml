@@ -35,20 +35,19 @@ jobs:
       # - name: Start flightctl services
       #   run: make deploy
 
+      # TODO delete me
+      - name: Fill fake config file
+        run: |
+          echo "server: https://api.192.168.86.27.nip.io:3443" > ~/.config/flightctl/client.yaml
+
       - name: Checkout collection
         uses: actions/checkout@v4
         with:
           path: collection
 
-      # - name: Write server config to integration_config file
-      #   run: |
-      #     service_addr=$(cat ~/.config/flightctl/client.yaml | grep server | awk '{print $2}')
-      #     echo "flightctl_host: $service_addr" > ./collection/tests/integration/integration_config.yml
-
-      - name: Write server config to integration_config file
-        run: |
-          service_addr=https://api.flightctl.192.168.86.27.nip.io:3443
-          echo "flightctl_host: $service_addr" > ./collection/tests/integration/integration_config.yml
+      - name: Write integration config
+        run: make write-integration-config
+        working-directory: ./collection
 
       - name: Perform integration testing
         uses: ansible-community/ansible-test-gh-action@release/v1
