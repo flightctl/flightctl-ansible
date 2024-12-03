@@ -21,25 +21,19 @@ jobs:
           - ansible: stable-2.16
             python: "3.10"
     steps:
-      # - name: Checkout flightctl
-      #   uses: actions/checkout@v4
-      #   with:
-      #     repository: 'flightctl/flightctl'
-      #     ref: 'acfa41af729145511d2423ca8cd97aaa92aadd37'
+      - name: Checkout flightctl
+        uses: actions/checkout@v4
+        with:
+          repository: 'flightctl/flightctl'
+          ref: 'acfa41af729145511d2423ca8cd97aaa92aadd37'
 
-      # - name: Setup dependencies for flightctl
-      #   uses: ./.github/actions/setup-dependencies
-      #   with:
-      #     setup_podman4: yes
+      - name: Setup dependencies for flightctl
+        uses: ./.github/actions/setup-dependencies
+        with:
+          setup_podman4: yes
 
-      # - name: Start flightctl services
-      #   run: make deploy
-
-      # TODO delete me
-      - name: Fill fake config file
-        run: |
-          mkdir ~/.config/flightctl
-          echo "server: https://api.192.168.86.27.nip.io:3443" > ~/.config/flightctl/client.yaml
+      - name: Start flightctl services
+        run: make deploy
 
       - name: Checkout collection
         uses: actions/checkout@v4
