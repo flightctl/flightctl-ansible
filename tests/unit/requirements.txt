@@ -1,3 +1,4 @@
+jsonpatch
 jsonschema
 openapi_schema_validator
 pytest
