@@ -38,6 +38,7 @@ jobs:
       # TODO delete me
       - name: Fill fake config file
         run: |
+          mkdir ~/.config/flightctl
           echo "server: https://api.192.168.86.27.nip.io:3443" > ~/.config/flightctl/client.yaml
 
       - name: Checkout collection
