@@ -1,0 +1,55 @@
+---
+name: Integration tests
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration-tests:
+    runs-on: "ubuntu-latest"
+    strategy:
+      matrix:
+        versions:
+          - ansible: stable-2.16
+            python: "3.10"
+    steps:
+      - name: Checkout flightctl
+        uses: actions/checkout@v4
+        with:
+          repository: 'flightctl/flightctl'
+          # This ref is an arbitrary value from a recent commit relative to workflow being written
+          # Once we begin to pin the collection against specific flightctl versions this should be updated
+          # to reference a specific release
+          ref: 'acfa41af729145511d2423ca8cd97aaa92aadd37'
+
+      - name: Setup dependencies for flightctl
+        uses: ./.github/actions/setup-dependencies
+        with:
+          setup_podman4: yes
+
+      - name: Start flightctl services
+        run: make deploy
+
+      - name: Checkout collection
+        uses: actions/checkout@v4
+        with:
+          path: collection
+
+      - name: Write integration config
+        run: make write-integration-config
+        working-directory: ./collection
+
+      - name: Perform integration testing
+        uses: ansible-community/ansible-test-gh-action@release/v1
+        with:
+          ansible-core-version: ${{ matrix.versions.ansible }}
+          origin-python-version: ${{ matrix.versions.python }}
+          target-python-version: ${{ matrix.versions.python }}
+          testing-type: integration
+          collection-src-directory: ./collection

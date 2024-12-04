@@ -54,6 +54,7 @@ notes:
   - For resources other than O(kind=Device), O(resource_definition) must be specified when creating or
     updating a resource.
 requirements:
+  - jsonpatch
   - jsonschema
   - PyYAML
   - "flightctl (git+https://github.com/flightctl/flightctl-python-client.git)"

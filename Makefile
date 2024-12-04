@@ -5,7 +5,11 @@ test-unit:
 	ansible-test units --docker -v --color --python $(PYTHON_VERSION) $(?TEST_ARGS)
 
 test-integration:
-	ansible-test integration --diff --no-temp-workdir --color --python $(PYTHON_VERSION) -v $(?TEST_ARGS)
+	ansible-test integration --docker --diff --color --python $(PYTHON_VERSION) -v $(?TEST_ARGS)
 
 test-sanity:
 	ansible-test sanity --docker -v --color --python $(PYTHON_VERSION) $(?TEST_ARGS)
+
+write-integration-config:
+	@service_addr="$(shell cat ~/.config/flightctl/client.yaml | grep server | awk '{print $$2}')"; \
+    echo "flightctl_host: $$service_addr" > ./tests/integration/integration_config.yml
