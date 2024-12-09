@@ -127,8 +127,11 @@ You can either call modules, rulebooks and playbooks by their Fully Qualified Co
 
 ## Testing
 
-There are unit, sanity, and integration tests configured to run for this repository.
-Currently only sanity and unit tests are run in CI via gihub workflows.
+There are unit, sanity, and integration tests configured to run for this repository.  Tests are configured to run via github actions on pull requests and can also be run locally.
+
+`ansible-test` is used to run each of the test types.  For `ansible-test` to properly work the collection must be present in the following directory structure on your local machine:
+
+{...}/ansible_collections/flightctl/edge/{code_from_this_repo}
 
 ### Unit Tests
 
@@ -142,10 +145,12 @@ Run locally via `make test-sanity`
 
 Integration tests are dependent on:
 - A flightctl instance the tests can hit
-  - Locally the easiest way is to run `make deploy` from the main flightctl repository
 - The flightctl_host var inside integration_config.yml set to the running flightctl api service
 
-Run locally via `make test-integration`
+The easiest way to run tests locally is to:
+- Run `make deploy` from the main flightctl repository
+- Run `make write-integration-config` from this repository to create the proper integration config from your running services
+- Run locally via `make test-integration`
 
 ## Support
 
