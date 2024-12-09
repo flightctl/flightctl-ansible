@@ -1,13 +1,13 @@
 TEST_ARGS ?= ""
 PYTHON_VERSION ?= `python -c 'import platform; print(".".join(platform.python_version_tuple()[0:2]))'`
 
-test-unit:
+unit-test:
 	ansible-test units --docker -v --color --python $(PYTHON_VERSION) $(?TEST_ARGS)
 
-test-integration:
+integration-test: write-integration-config
 	ansible-test integration --docker --diff --color --python $(PYTHON_VERSION) -v $(?TEST_ARGS)
 
-test-sanity:
+sanity-test:
 	ansible-test sanity --docker -v --color --python $(PYTHON_VERSION) $(?TEST_ARGS)
 
 write-integration-config:
