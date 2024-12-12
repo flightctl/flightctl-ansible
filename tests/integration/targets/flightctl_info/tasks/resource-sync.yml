@@ -4,7 +4,7 @@
     resource_sync_name: ansible-integration-test-resource-sync
   block:
   - name: Create a test resource sync
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: ResourceSync
@@ -16,7 +16,7 @@
           targetRevision: main
 
   - name: Get test resource sync
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: ResourceSync
@@ -31,7 +31,7 @@
 
   always:
     - name: Delete test resource sync
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl:
         flightctl_host: "{{ flightctl_host }}"
         flightctl_validate_certs: false
         kind: ResourceSync

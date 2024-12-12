@@ -4,7 +4,7 @@
     csr_name: ansible-integration-test-denial-csr
   block:
   - name: Create a csr
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: CertificateSigningRequest
@@ -17,7 +17,7 @@
           usages: ["clientAuth", "CA:false"]
 
   - name: Deny the csr
-    flightctl.edge.flightctl_certificate:
+    flightctl.core.flightctl_certificate:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: CertificateSigningRequest
@@ -33,7 +33,7 @@
         - approve_result is success
 
   - name: Get the csr
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: CertificateSigningRequest
@@ -49,7 +49,7 @@
         - csr_result.result.data[0].status.conditions[0].status == "False"
 
   - name: Try to approve the csr again (idempotency)
-    flightctl.edge.flightctl_certificate:
+    flightctl.core.flightctl_certificate:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: CertificateSigningRequest
@@ -65,7 +65,7 @@
 
   always:
     - name: Delete csr
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl:
         flightctl_host: "{{ flightctl_host }}"
         flightctl_validate_certs: false
         kind: CertificateSigningRequest

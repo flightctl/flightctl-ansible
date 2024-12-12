@@ -3,7 +3,7 @@
     deivce_name: ansible-integration-test-device
   block:
   - name: Create a test device
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -17,7 +17,7 @@
               - chronyd.service
 
   - name: Update the test device
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -28,7 +28,7 @@
             image: quay.io/redhat/rhde:9.3
 
   - name: Get test device
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -43,7 +43,7 @@
         - device_result.result.data[0].spec.systemd.matchPatterns[0] == "chronyd.service"
 
   - name: Update the test device with force_update
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -55,7 +55,7 @@
             image: quay.io/redhat/rhde:9.4
 
   - name: Get test device
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -71,7 +71,7 @@
 
   always:
     - name: Delete test device
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl:
         flightctl_host: "{{ flightctl_host }}"
         flightctl_validate_certs: false
         kind: Device

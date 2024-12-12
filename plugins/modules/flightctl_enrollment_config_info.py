@@ -23,7 +23,7 @@ options:
     type: str
     required: True
 extends_documentation_fragment:
-  - flightctl.edge.auth
+  - flightctl.core.auth
 requirements:
   - jsonschema
   - PyYAML
@@ -33,7 +33,7 @@ requirements:
 
 EXAMPLES = r"""
 - name: Get enrollment config for an approved csr
-  flightctl.edge.flightctl_enrollment_config_info:
+  flightctl.core.flightctl_enrollment_config_info:
     name: some-csr-name
 """
 

@@ -7,7 +7,7 @@
     fleet_name: ansible-integration-test-fleet
   block:
   - name: Create a test fleet
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Fleet
@@ -23,7 +23,7 @@
                 image: quay.io/redhat/rhde:9.2
 
   - name: Create a test device
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -34,7 +34,7 @@
             fleet: "{{ fleet_name }}"
 
   - name: Get test device
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -48,7 +48,7 @@
         - device_result.result.data[0].metadata.name == "ansible-integration-test-device"
 
   - name: Get rendered spec for the test device
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -63,7 +63,7 @@
         - rendered_result.result.data[0].os.image == "quay.io/redhat/rhde:9.2"
 
   - name: Create a test device with a label
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -75,7 +75,7 @@
             machine_type: forklift
 
   - name: Create a second test device with a label
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -87,7 +87,7 @@
             machine_type: forklift
 
   - name: Query for all devices by label
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -103,7 +103,7 @@
         - device_with_label_result.result.data[1].metadata.name is match("ansible-integration-test-device-label-*")
 
   - name: Query for all devices by owner
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -118,7 +118,7 @@
         - device_with_owner_result.result.data[0].metadata.name == "ansible-integration-test-device"
 
   - name: Query for all devices
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -131,7 +131,7 @@
         - all_devices_result.result.data | length == 3
 
   - name: Query for all devices with summary_only
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -146,7 +146,7 @@
         - summary_only_result.result.summary.total == 3
 
   - name: Query for all devices with a limit
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -160,7 +160,7 @@
         - limit_result.result.data | length == 2
 
   - name: Use the continue token to query for remaining devices
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -174,7 +174,7 @@
         - second_limit_result is success
 
   - name: Query for all devices with a status filter
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -188,7 +188,7 @@
         - status_filter_result.result.data | length == 0
 
   - name: Query for devices with a filter selector
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -203,14 +203,14 @@
 
   always:
     - name: Delete test devices
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl:
         flightctl_host: "{{ flightctl_host }}"
         flightctl_validate_certs: false
         kind: Device
         state: absent
 
     - name: Delete test fleet
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl:
         flightctl_host: "{{ flightctl_host }}"
         flightctl_validate_certs: false
         kind: Fleet

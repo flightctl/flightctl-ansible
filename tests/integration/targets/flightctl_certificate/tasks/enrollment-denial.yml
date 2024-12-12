@@ -4,7 +4,7 @@
     enrollment_name: ansible-integration-test-enrollment-denail
   block:
   - name: Create an enrollment request
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: EnrollmentRequest
@@ -23,7 +23,7 @@
             -----END CERTIFICATE REQUEST-----
 
   - name: Deny the enrollment request in check mode
-    flightctl.edge.flightctl_certificate:
+    flightctl.core.flightctl_certificate:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: EnrollmentRequest
@@ -35,7 +35,7 @@
     check_mode: true
 
   - name: Get the enrollment request
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: EnrollmentRequest
@@ -49,7 +49,7 @@
         - check_result.result.data[0].status.get('approval', None) == None
 
   - name: Deny the enrollment request
-    flightctl.edge.flightctl_certificate:
+    flightctl.core.flightctl_certificate:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: EnrollmentRequest
@@ -66,7 +66,7 @@
         - approve_result is success
 
   - name: Get the enrollment request
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: EnrollmentRequest
@@ -81,7 +81,7 @@
 
   always:
     - name: Delete enrollment request
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl:
         flightctl_host: "{{ flightctl_host }}"
         flightctl_validate_certs: false
         kind: EnrollmentRequest

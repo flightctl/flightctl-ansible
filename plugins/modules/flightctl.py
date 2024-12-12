@@ -48,8 +48,8 @@ options:
       - Value can be provided as string or dictionary.
     type: raw
 extends_documentation_fragment:
-  - flightctl.edge.auth
-  - flightctl.edge.state
+  - flightctl.core.auth
+  - flightctl.core.state
 notes:
   - For resources other than O(kind=Device), O(resource_definition) must be specified when creating or
     updating a resource.
@@ -62,13 +62,13 @@ requirements:
 
 EXAMPLES = r"""
 - name: Create a device
-  flightctl.edge.flightctl:
+  flightctl.core.flightctl:
     kind: Device
     name: "Example"
     api_version: v1alpha1
 
 - name: Create a device
-  flightctl.edge.flightctl:
+  flightctl.core.flightctl:
     kind: Device
     resource_definition:
       apiVersion: v1alpha1
@@ -80,7 +80,7 @@ EXAMPLES = r"""
           novalue: ""
 
 - name: Delete a device
-  flightctl.edge.flightctl:
+  flightctl.core.flightctl:
     kind: Device
     name: "Example"
 """

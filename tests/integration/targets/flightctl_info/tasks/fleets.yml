@@ -4,7 +4,7 @@
     fleet_name: ansible-integration-test-fleet
   block:
   - name: Create a test fleet
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Fleet
@@ -20,7 +20,7 @@
                 image: quay.io/redhat/rhde:9.2
 
   - name: Create test devices
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
@@ -35,7 +35,7 @@
       - test-device-3
 
   - name: Fetch fleet
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Fleet
@@ -52,14 +52,14 @@
 
   always:
   - name: Delete test devices
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Device
       state: absent
 
   - name: Delete test fleet
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Fleet
