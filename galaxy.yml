@@ -22,7 +22,7 @@ authors:
 
 ### OPTIONAL but strongly recommended
 # A short summary description of the collection
-description: Flight Control Collection
+description: Collection for management of Flight Control resources
 
 # Either a single license or a list of licenses for content inside of a collection. Ansible Galaxy currently only
 # accepts L(SPDX,https://spdx.org/licenses/) licenses. This key is mutually exclusive with 'license_file'
@@ -39,7 +39,6 @@ tags:
  - infrastructure
  - tools
  - edge
-
 
 # Collections that this collection requires to be installed for it to be usable. The key of the dict is the
 # collection label 'namespace.name'. The value is a version range
@@ -67,6 +66,10 @@ build_ignore:
   - "demo"
   - ".venv"
   - "venv"
+  - ".github"
+  - ".config"
+  - ".ruff*"
+  - ".tox*"
 
 # A dict controlling use of manifest directives used in building the collection artifact. The key 'directives' is a
 # list of MANIFEST.in style
