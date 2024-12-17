@@ -116,6 +116,14 @@ class FlightctlAPIModule(FlightctlModule):
 
         self.client = ApiClient(client_config)
 
+    def call_api(self, api_call, *args, **kwargs) -> Any:
+        return api_call(
+            *args,
+            **kwargs,
+            _headers=self.headers,
+            _request_timeout=self.request_timeout,
+        )
+
     def get(
         self, options: GetOptions,
     ) -> ResourceProtocol:
@@ -142,9 +150,9 @@ class FlightctlAPIModule(FlightctlModule):
 
         try:
             if options.resource is ResourceType.TEMPLATE_VERSION:
-                return get_call(options.fleet_name, options.name, _headers=self.headers)
+                return self.call_api(get_call, options.fleet_name, options.name)
             else:
-                return get_call(options.name, _headers=self.headers)
+                return self.call_api(get_call, options.name)
         except NotFoundException:
             return None
         except ApiException as e:
@@ -169,9 +177,9 @@ class FlightctlAPIModule(FlightctlModule):
 
         try:
             if options.resource is ResourceType.TEMPLATE_VERSION:
-                return list_call(options.fleet_name, **options.request_params, _headers=self.headers)
+                return self.call_api(list_call, options.fleet_name, **options.request_params)
             else:
-                return list_call(**options.request_params, _headers=self.headers)
+                return self.call_api(list_call, **options.request_params)
         except ApiException as e:
             raise FlightctlApiException(f"Unable to list {options.resource.value}: {e}")
 
@@ -229,7 +237,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         try:
             request_obj = api_type.model.from_dict(definition)
-            return create_call(request_obj, _headers=self.headers)
+            return self.call_api(create_call, request_obj)
         except ApiException as e:
             raise FlightctlApiException(f"Unable to create {resource.value}: {e}")
 
@@ -273,7 +281,7 @@ class FlightctlAPIModule(FlightctlModule):
 
             try:
                 patch_params = [PatchRequestInner.from_dict(p) for p in patch]
-                response = patch_call(name, patch_params, _headers=self.headers)
+                response = self.call_api(patch_call, name, patch_params)
                 changed |= True
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to create {resource.value}: {e}")
@@ -302,7 +310,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         try:
             request_obj = api_type.model.from_dict(definition)
-            return replace_call(name, request_obj, _headers=self.headers)
+            return self.call_api(replace_call, name, request_obj)
         except ApiException as e:
             raise FlightctlApiException(f"Unable to replace {resource.value}: {e}")
 
@@ -327,18 +335,18 @@ class FlightctlAPIModule(FlightctlModule):
             delete_call = getattr(api_instance, api_type.delete)
             try:
                 if resource is ResourceType.TEMPLATE_VERSION:
-                    response = delete_call(fleet_name, name, _headers=self.headers)
+                    response = self.call_api(delete_call, fleet_name, name)
                 else:
-                    response = delete_call(name, _headers=self.headers)
+                    response = self.call_api(delete_call, name)
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to delete {resource.value} - {name}: {e}")
         else:
             delete_call = getattr(api_instance, api_type.delete_all)
             try:
                 if resource is ResourceType.TEMPLATE_VERSION:
-                    response = delete_call(fleet_name, _headers=self.headers)
+                    response = self.call_api(delete_call, fleet_name)
                 else:
-                    response = delete_call(_headers=self.headers)
+                    response = self.call_api(delete_call)
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to delete {resource.value} - {name}: {e}")
 
@@ -360,15 +368,15 @@ class FlightctlAPIModule(FlightctlModule):
             api_instance = EnrollmentrequestApi(self.client)
             body = EnrollmentRequestApproval.from_dict(input.to_request_params())
             try:
-                api_instance.approve_enrollment_request(input.name, body, _headers=self.headers)
+                self.call_api(api_instance.approve_enrollment_request, input.name, body)
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to approve {input.resource.value} - {input.name}: {e}")
         else:
             api_instance = DefaultApi(self.client)
             try:
                 if input.approved:
-                    api_instance.approve_certificate_signing_request(input.name, _headers=self.headers)
+                    self.call_api(api_instance.approve_certificate_signing_request, input.name)
                 else:
-                    api_instance.deny_certificate_signing_request(input.name, _headers=self.headers)
+                    self.call_api(api_instance.deny_certificate_signing_request, input.name)
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to approve {input.resource.value} - {input.name}: {e}")

@@ -52,7 +52,7 @@ def test_approve_enrollment_success(mock_api, api_module):
     input = ApprovalOptions(ResourceType.ENROLLMENT, "test-enrollment", True)
     body = EnrollmentRequestApproval.from_dict(input.to_request_params())
     api_module.approve(input)
-    mock_api_instance.approve_enrollment_request.assert_called_with(input.name, body, _headers=None)
+    mock_api_instance.approve_enrollment_request.assert_called_with(input.name, body, _headers=None, _request_timeout=10)
 
 
 @patch('plugins.module_utils.api_module.EnrollmentrequestApi')
@@ -63,7 +63,7 @@ def test_deny_enrollment_success(mock_api, api_module):
     input = ApprovalOptions(ResourceType.ENROLLMENT, "test-enrollment", False)
     body = EnrollmentRequestApproval.from_dict(input.to_request_params())
     api_module.approve(input)
-    mock_api_instance.approve_enrollment_request.assert_called_with(input.name, body, _headers=None)
+    mock_api_instance.approve_enrollment_request.assert_called_with(input.name, body, _headers=None, _request_timeout=10)
 
 
 @patch('plugins.module_utils.api_module.EnrollmentrequestApi')
@@ -84,7 +84,7 @@ def test_approve_csr(mock_api, api_module):
 
     input = ApprovalOptions(ResourceType.CSR, "test-csr", True)
     api_module.approve(input)
-    mock_api_instance.approve_certificate_signing_request.assert_called_with(input.name, _headers=None)
+    mock_api_instance.approve_certificate_signing_request.assert_called_with(input.name, _headers=None, _request_timeout=10)
 
 
 @patch('plugins.module_utils.api_module.DefaultApi')
@@ -94,7 +94,7 @@ def test_approve_csr(mock_api, api_module):
 
     input = ApprovalOptions(ResourceType.CSR, "test-csr", False)
     api_module.approve(input)
-    mock_api_instance.deny_certificate_signing_request.assert_called_with(input.name, _headers=None)
+    mock_api_instance.deny_certificate_signing_request.assert_called_with(input.name, _headers=None, _request_timeout=10)
 
 
 @patch('plugins.module_utils.api_module.DefaultApi')
@@ -106,7 +106,8 @@ def test_token_auth(mock_api, api_module_with_token):
     api_module_with_token.approve(input)
     mock_api_instance.approve_certificate_signing_request.assert_called_with(
         input.name,
-        _headers={'Authorization': 'Bearer test-token'}
+        _headers={'Authorization': 'Bearer test-token'},
+        _request_timeout=10
     )
 
 
@@ -119,5 +120,6 @@ def test_basic_auth(mock_api, api_module_with_user_pass):
     api_module_with_user_pass.approve(input)
     mock_api_instance.approve_certificate_signing_request.assert_called_with(
         input.name,
-        _headers={'Authorization': 'Basic dGVzdC11c2VyOnRlc3QtcGFzcw=='}
+        _headers={'Authorization': 'Basic dGVzdC11c2VyOnRlc3QtcGFzcw=='},
+        _request_timeout=10
     )
