@@ -10,11 +10,11 @@ __metaclass__ = type
 
 DOCUMENTATION = r"""
 module: flightctl
-short_description: Describe Flight Control Resources
+short_description: Manage Flight Control resources
 author:
   - "Alina Buzachis (@alinabuzachis)"
 description:
-  - Describe Flight Control Resources.
+  - Manage Flight Control resources.
 options:
   api_version:
     description:
