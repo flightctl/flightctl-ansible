@@ -4,7 +4,7 @@
     repository_name: ansible-integration-test-repository
   block:
   - name: Create a test repo
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Repository
@@ -15,7 +15,7 @@
           type: git
 
   - name: Get test repo
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Repository
@@ -30,7 +30,7 @@
 
   always:
     - name: Delete test repo
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl:
         flightctl_host: "{{ flightctl_host }}"
         flightctl_validate_certs: false
         kind: Repository

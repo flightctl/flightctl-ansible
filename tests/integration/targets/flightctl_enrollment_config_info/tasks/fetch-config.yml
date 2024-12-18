@@ -4,7 +4,7 @@
     csr_name: ansible-integration-test-enrollment-config-csr
   block:
   - name: Create a csr
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: CertificateSigningRequest
@@ -17,7 +17,7 @@
           usages: ["clientAuth", "CA:false"]
 
   - name: Approve the csr
-    flightctl.edge.flightctl_certificate:
+    flightctl.core.flightctl_certificate:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: CertificateSigningRequest
@@ -25,7 +25,7 @@
       approved: true
 
   - name: Fetch enrollment config for the csr
-    flightctl.edge.flightctl_enrollment_config_info:
+    flightctl.core.flightctl_enrollment_config_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       name: "{{ csr_name }}"
@@ -40,7 +40,7 @@
 
   always:
     - name: Delete csr
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl:
         flightctl_host: "{{ flightctl_host }}"
         flightctl_validate_certs: false
         kind: CertificateSigningRequest
