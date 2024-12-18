@@ -176,7 +176,6 @@ Currently the publishing to Ansible Galaxy is manual and requires the following 
     2. Fetch or configure your [Galaxy Token](https://galaxy.ansible.com/ui/token/) if you have not done so already.
     3. Publish the collection `ansible-galaxy collection publish path/to/built/collection.tar.gz --token=your_token_here`
 8. Verify the new version exists on the [Flightctl Galaxy page](https://galaxy.ansible.com/flightctl/core)
-9. In GitHub add a new release for the
 
 ## Support
 
