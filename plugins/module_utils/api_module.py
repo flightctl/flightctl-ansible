@@ -6,8 +6,9 @@ from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
 
+from base64 import b64encode
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 
 from .constants import API_MAPPING, ResourceType
 from .core import FlightctlModule
@@ -101,11 +102,46 @@ class FlightctlAPIModule(FlightctlModule):
         client_config = Configuration(
             host=self.url.geturl(),
             ssl_ca_cert=self.ca_path,
-            access_token=self.token,
         )
         client_config.verify_ssl = self.verify_ssl
 
+        self.set_auth()
+
         self.client = ApiClient(client_config)
+
+    def set_auth(self) -> None:
+        """
+        Sets auth headers for the underlying client based on set parameters.
+
+        Prioritizes a set token if present on the module.
+        """
+        if self.token:
+            self.headers = {'Authorization': f'Bearer {self.token}'}
+        elif self.username and self.password:
+            basic_credentials = f"{self.username}:{self.password}"
+            encoded_credentials = b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
+            self.headers = {'Authorization': f'Basic {encoded_credentials}'}
+        else:
+            self.headers = None
+
+    def call_api(self, api_call: Callable, *args: tuple[Any, ...], **kwargs: dict[str, Any]) -> Any:
+        """
+        Makes a request to the api with shared args.
+
+        Args:
+            api_call (Callable): The callable function making the api request
+            *args: The positional arguments that will be forwarded to api_call
+            **kwargs: The keyword arguments that will be forwarded to api_call
+
+        Returns:
+            Any: The result of api_call
+        """
+        return api_call(
+            *args,
+            **kwargs,
+            _headers=self.headers,
+            _request_timeout=self.request_timeout,
+        )
 
     def get(
         self, options: GetOptions,
@@ -133,9 +169,9 @@ class FlightctlAPIModule(FlightctlModule):
 
         try:
             if options.resource is ResourceType.TEMPLATE_VERSION:
-                return get_call(options.fleet_name, options.name)
+                return self.call_api(get_call, options.fleet_name, options.name)
             else:
-                return get_call(options.name)
+                return self.call_api(get_call, options.name)
         except NotFoundException:
             return None
         except ApiException as e:
@@ -160,9 +196,9 @@ class FlightctlAPIModule(FlightctlModule):
 
         try:
             if options.resource is ResourceType.TEMPLATE_VERSION:
-                return list_call(options.fleet_name, **options.request_params)
+                return self.call_api(list_call, options.fleet_name, **options.request_params)
             else:
-                return list_call(**options.request_params)
+                return self.call_api(list_call, **options.request_params)
         except ApiException as e:
             raise FlightctlApiException(f"Unable to list {options.resource.value}: {e}")
 
@@ -220,7 +256,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         try:
             request_obj = api_type.model.from_dict(definition)
-            return create_call(request_obj)
+            return self.call_api(create_call, request_obj)
         except ApiException as e:
             raise FlightctlApiException(f"Unable to create {resource.value}: {e}")
 
@@ -264,7 +300,7 @@ class FlightctlAPIModule(FlightctlModule):
 
             try:
                 patch_params = [PatchRequestInner.from_dict(p) for p in patch]
-                response = patch_call(name, patch_params)
+                response = self.call_api(patch_call, name, patch_params)
                 changed |= True
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to create {resource.value}: {e}")
@@ -293,7 +329,7 @@ class FlightctlAPIModule(FlightctlModule):
 
         try:
             request_obj = api_type.model.from_dict(definition)
-            return replace_call(name, request_obj)
+            return self.call_api(replace_call, name, request_obj)
         except ApiException as e:
             raise FlightctlApiException(f"Unable to replace {resource.value}: {e}")
 
@@ -318,18 +354,18 @@ class FlightctlAPIModule(FlightctlModule):
             delete_call = getattr(api_instance, api_type.delete)
             try:
                 if resource is ResourceType.TEMPLATE_VERSION:
-                    response = delete_call(fleet_name, name)
+                    response = self.call_api(delete_call, fleet_name, name)
                 else:
-                    response = delete_call(name)
+                    response = self.call_api(delete_call, name)
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to delete {resource.value} - {name}: {e}")
         else:
             delete_call = getattr(api_instance, api_type.delete_all)
             try:
                 if resource is ResourceType.TEMPLATE_VERSION:
-                    response = delete_call(fleet_name)
+                    response = self.call_api(delete_call, fleet_name)
                 else:
-                    response = delete_call()
+                    response = self.call_api(delete_call)
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to delete {resource.value} - {name}: {e}")
 
@@ -351,15 +387,15 @@ class FlightctlAPIModule(FlightctlModule):
             api_instance = EnrollmentrequestApi(self.client)
             body = EnrollmentRequestApproval.from_dict(input.to_request_params())
             try:
-                api_instance.approve_enrollment_request(input.name, body)
+                self.call_api(api_instance.approve_enrollment_request, input.name, body)
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to approve {input.resource.value} - {input.name}: {e}")
         else:
             api_instance = DefaultApi(self.client)
             try:
                 if input.approved:
-                    api_instance.approve_certificate_signing_request(input.name)
+                    self.call_api(api_instance.approve_certificate_signing_request, input.name)
                 else:
-                    api_instance.deny_certificate_signing_request(input.name)
+                    self.call_api(api_instance.deny_certificate_signing_request, input.name)
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to approve {input.resource.value} - {input.name}: {e}")

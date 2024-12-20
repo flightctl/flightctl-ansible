@@ -15,11 +15,14 @@ options:
     description:
     - Username for your Flight Control service.
     - If value not set, will try environment variable C(FLIGHTCTL_USERNAME)
+    - Please note that this only works with proxies configured to use HTTP Basic Auth.
     type: str
   flightctl_password:
     description:
     - Password for your Flight Control service.
     - If value not set, will try environment variable C(FLIGHTCTL_PASSWORD)
+    - Please read the description of the C(flightctl_username) option for a discussion of
+      when this option is applicable.
     type: str
   flightctl_token:
     description:

@@ -25,6 +25,25 @@ def api_module():
     return FlightctlAPIModule(argument_spec={})
 
 
+@pytest.fixture
+def api_module_with_token():
+    set_module_args(dict(
+        flightctl_host='https://test-flightctl-url.com/',
+        flightctl_token='test-token'
+    ))
+    return FlightctlAPIModule(argument_spec={})
+
+
+@pytest.fixture
+def api_module_with_user_pass():
+    set_module_args(dict(
+        flightctl_host='https://test-flightctl-url.com/',
+        flightctl_username='test-user',
+        flightctl_password='test-pass'
+    ))
+    return FlightctlAPIModule(argument_spec={})
+
+
 @patch('plugins.module_utils.api_module.EnrollmentrequestApi')
 def test_approve_enrollment_success(mock_api, api_module):
     mock_api_instance = MagicMock()
@@ -33,7 +52,7 @@ def test_approve_enrollment_success(mock_api, api_module):
     input = ApprovalOptions(ResourceType.ENROLLMENT, "test-enrollment", True)
     body = EnrollmentRequestApproval.from_dict(input.to_request_params())
     api_module.approve(input)
-    mock_api_instance.approve_enrollment_request.assert_called_with(input.name, body)
+    mock_api_instance.approve_enrollment_request.assert_called_with(input.name, body, _headers=None, _request_timeout=10)
 
 
 @patch('plugins.module_utils.api_module.EnrollmentrequestApi')
@@ -44,7 +63,7 @@ def test_deny_enrollment_success(mock_api, api_module):
     input = ApprovalOptions(ResourceType.ENROLLMENT, "test-enrollment", False)
     body = EnrollmentRequestApproval.from_dict(input.to_request_params())
     api_module.approve(input)
-    mock_api_instance.approve_enrollment_request.assert_called_with(input.name, body)
+    mock_api_instance.approve_enrollment_request.assert_called_with(input.name, body, _headers=None, _request_timeout=10)
 
 
 @patch('plugins.module_utils.api_module.EnrollmentrequestApi')
@@ -65,7 +84,7 @@ def test_approve_csr(mock_api, api_module):
 
     input = ApprovalOptions(ResourceType.CSR, "test-csr", True)
     api_module.approve(input)
-    mock_api_instance.approve_certificate_signing_request.assert_called_with(input.name)
+    mock_api_instance.approve_certificate_signing_request.assert_called_with(input.name, _headers=None, _request_timeout=10)
 
 
 @patch('plugins.module_utils.api_module.DefaultApi')
@@ -75,4 +94,32 @@ def test_approve_csr(mock_api, api_module):
 
     input = ApprovalOptions(ResourceType.CSR, "test-csr", False)
     api_module.approve(input)
-    mock_api_instance.deny_certificate_signing_request.assert_called_with(input.name)
+    mock_api_instance.deny_certificate_signing_request.assert_called_with(input.name, _headers=None, _request_timeout=10)
+
+
+@patch('plugins.module_utils.api_module.DefaultApi')
+def test_token_auth(mock_api, api_module_with_token):
+    mock_api_instance = MagicMock()
+    mock_api.return_value = mock_api_instance
+
+    input = ApprovalOptions(ResourceType.CSR, "test-csr", True)
+    api_module_with_token.approve(input)
+    mock_api_instance.approve_certificate_signing_request.assert_called_with(
+        input.name,
+        _headers={'Authorization': 'Bearer test-token'},
+        _request_timeout=10
+    )
+
+
+@patch('plugins.module_utils.api_module.DefaultApi')
+def test_basic_auth(mock_api, api_module_with_user_pass):
+    mock_api_instance = MagicMock()
+    mock_api.return_value = mock_api_instance
+
+    input = ApprovalOptions(ResourceType.CSR, "test-csr", True)
+    api_module_with_user_pass.approve(input)
+    mock_api_instance.approve_certificate_signing_request.assert_called_with(
+        input.name,
+        _headers={'Authorization': 'Basic dGVzdC11c2VyOnRlc3QtcGFzcw=='},
+        _request_timeout=10
+    )
