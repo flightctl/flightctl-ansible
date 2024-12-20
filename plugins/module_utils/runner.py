@@ -8,20 +8,6 @@ __metaclass__ = type
 
 from typing import Any, Dict, List, Tuple
 
-try:
-    import yaml
-except ImportError as imp_exc:
-    PYYAML_IMPORT_ERROR = imp_exc
-else:
-    PYYAML_IMPORT_ERROR = None
-
-try:
-    from openapi_schema_validator import OAS30Validator
-except ImportError as imp_exc:
-    OPENAPI_SCHEMA_IMPORT_ERROR = imp_exc
-else:
-    OPENAPI_SCHEMA_IMPORT_ERROR = None
-
 from .api_module import FlightctlAPIModule
 from .constants import ResourceType
 from .exceptions import FlightctlException, ValidationException
@@ -35,52 +21,6 @@ except ImportError as imp_exc:
     CLIENT_IMPORT_ERROR = imp_exc
 else:
     CLIENT_IMPORT_ERROR = None
-
-
-def load_schema(file_path: str) -> Dict[str, Any]:
-    """
-    Loads an OpenAPI schema from a YAML file.
-
-    Args:
-        file_path (str): The path to the schema YAML file.
-
-    Returns:
-        Dict[str, Any]: The loaded schema as a dictionary.
-    """
-    if PYYAML_IMPORT_ERROR:
-        raise PYYAML_IMPORT_ERROR
-    with open(file_path, "r") as file:
-        schema = yaml.safe_load(file)
-    return schema
-
-
-def validate(definition: Dict[str, Any]) -> None:
-    """
-    Validates a resource definition against an OpenAPI schema.
-
-    Args:
-        definition (Dict[str, Any]): The resource definition to validate.
-
-    Raises:
-        ValueError: If the resource kind is not found in the schema.
-        ValidationException: If the validation fails.
-    """
-    if OPENAPI_SCHEMA_IMPORT_ERROR:
-        raise OPENAPI_SCHEMA_IMPORT_ERROR
-
-    kind = definition["kind"]
-    openapi_schema = load_schema("../../api/v1alpha1/openapi.yml")
-    components = openapi_schema.get("components", {}).get("schemas", {})
-    if kind not in components:
-        raise ValueError(f"Component {kind} not found in the schema")
-
-    component_schema = components[kind]
-    validator = OAS30Validator(openapi_schema)
-
-    try:
-        validator.validate(definition, component_schema)
-    except Exception as e:
-        raise ValidationException(f"Validation error: {e}") from e
 
 
 def get_definitions(params: Dict[str, Any]) -> List:
