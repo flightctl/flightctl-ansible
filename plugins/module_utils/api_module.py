@@ -8,7 +8,7 @@ __metaclass__ = type
 
 from base64 import b64encode
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 
 from .constants import API_MAPPING, ResourceType
 from .core import FlightctlModule
@@ -105,6 +105,16 @@ class FlightctlAPIModule(FlightctlModule):
         )
         client_config.verify_ssl = self.verify_ssl
 
+        self.set_auth()
+
+        self.client = ApiClient(client_config)
+
+    def set_auth(self) -> None:
+        """
+        Sets auth headers for the underlying client based on set parameters.
+
+        Prioritizes a set token if present on the module.
+        """
         if self.token:
             self.headers = {'Authorization': f'Bearer {self.token}'}
         elif self.username and self.password:
@@ -114,9 +124,18 @@ class FlightctlAPIModule(FlightctlModule):
         else:
             self.headers = None
 
-        self.client = ApiClient(client_config)
+    def call_api(self, api_call: Callable, *args: tuple[Any, ...], **kwargs: dict[str, Any]) -> Any:
+        """
+        Makes a request to the api with shared args.
 
-    def call_api(self, api_call, *args, **kwargs) -> Any:
+        Args:
+            api_call (Callable): The callable function making the api request
+            *args: The positional arguments that will be forwarded to api_call
+            **kwargs: The keyword arguments that will be forwarded to api_call
+
+        Returns:
+            Any: The result of api_call
+        """
         return api_call(
             *args,
             **kwargs,
