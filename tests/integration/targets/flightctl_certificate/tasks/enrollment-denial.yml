@@ -30,7 +30,7 @@
       <<: *connection_info
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
-      approved: true
+      approved: false
       approved_by: "ansible-integration-testing"
       labels:
         testing_label: is_set_during_testing
@@ -76,7 +76,7 @@
     ansible.builtin.assert:
       that:
         - enrollment_result is success
-        - check_result.result.data[0].status.get('approval', None) == None
+        - enrollment_result.result.data[0].status.get('approval', None) == None
 
   always:
     - name: Delete enrollment request
