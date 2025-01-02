@@ -118,7 +118,7 @@ You can either call modules, rulebooks and playbooks by their Fully Qualified Co
   - name: Update the resource definition for a fleet
     flightctl.core.flightctl:
       kind: Fleet
-      name: "asible-test-fleet"
+      name: "ansible-test-fleet"
       resource_definition:
         spec:
           os:
@@ -154,7 +154,7 @@ The easiest way to run tests locally is to:
 
 ## Publishing New Versions
 
-Currently the publishing to Ansible Galaxy is manual and requires the following steps:
+Currently, the publishing to Ansible Galaxy is manual and requires the following steps:
 
 1. Update the version in the following places:
     1. The `version` in `galaxy.yml`
@@ -163,19 +163,19 @@ Currently the publishing to Ansible Galaxy is manual and requires the following 
     1. Make sure you have [`antsibull-changelog`](https://pypi.org/project/antsibull-changelog/) installed.
     2. Make sure there are fragments for all known changes in `changelogs/fragments`.
     3. Run `antsibull-changelog release`.
-3. Ensre the colleciton tarball builds properly
+3. Ensure the colleciton tarball builds properly:
     1. Run `ansible-galaxy collection build`
 4. Commit the changes and create a PR with the changes. Ensure CI tests pass and merge to main.
-5. Pull and checkout latest main
-6. Use git to tag the release appropriately
+5. Pull and checkout the latest code from the main branch.
+6. Use git to tag the release appropriately:
     1. `git tag -n`    # see current tags and their comments
     2. `git tag -a NEW_VERSION -m "comment here"` # the comment can be, for example,  "flightctl.core: 1.0.0"
     3. `git push upstream NEW_VERSION`
-7. Build and push the collection to Galaxy
+7. Build and push the collection to Galaxy:
     1. Run `ansible-galaxy collection build`
     2. Fetch or configure your [Galaxy Token](https://galaxy.ansible.com/ui/token/) if you have not done so already.
     3. Publish the collection `ansible-galaxy collection publish path/to/built/collection.tar.gz --token=your_token_here`
-8. Verify the new version exists on the [Flightctl Galaxy page](https://galaxy.ansible.com/flightctl/core)
+8. Verify the new version exists on the [Flightctl Galaxy page](https://galaxy.ansible.com/flightctl/core).
 
 ## Support
 
