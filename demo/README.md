@@ -9,7 +9,7 @@ The following steps assume that you have a locally running flightctl cluster via
 1.  Begin by creating a python virtual environment with the necessary dependencies.
 
 ```
-python -m venv env
+python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
