@@ -1,4 +1,4 @@
 jsonpatch
 jsonschema
 pytest
-git+https://github.com/flightctl/flightctl-python-client.git@update-spec
+git+https://github.com/flightctl/flightctl-python-client.git
