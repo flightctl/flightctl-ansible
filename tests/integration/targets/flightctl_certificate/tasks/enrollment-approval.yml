@@ -8,7 +8,7 @@
       flightctl_validate_certs: False
   block:
   - name: Create an enrollment request
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       <<: *connection_info
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
@@ -26,7 +26,7 @@
             -----END CERTIFICATE REQUEST-----
 
   - name: Approve the enrollment request in check mode
-    flightctl.edge.flightctl_certificate:
+    flightctl.core.flightctl_certificate:
       <<: *connection_info
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
@@ -37,7 +37,7 @@
     check_mode: true
 
   - name: Get the enrollment request
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
@@ -50,7 +50,7 @@
         - check_result.result.data[0].status.get('approval', None) == None
 
   - name: Approve the enrollment request
-    flightctl.edge.flightctl_certificate:
+    flightctl.core.flightctl_certificate:
       <<: *connection_info
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
@@ -66,7 +66,7 @@
         - approve_result is success
 
   - name: Get the enrollment request
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
@@ -81,7 +81,7 @@
         - enrollment_result.result.data[0].status.approval.labels['testing_label'] == "is_set_during_testing"
 
   - name: Try to approve the enrollment request again (idempotency)
-    flightctl.edge.flightctl_certificate:
+    flightctl.core.flightctl_certificate:
       <<: *connection_info
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
@@ -99,7 +99,7 @@
 
   always:
     - name: Delete enrollment request
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl:
         <<: *connection_info
         kind: EnrollmentRequest
         name: "{{ enrollment_name }}"
@@ -107,7 +107,7 @@
 
     # Approving an enrollment request attempts to create a device, clean it up here as well
     - name: Delete test device
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl:
         <<: *connection_info
         kind: Device
         name: "{{ enrollment_name }}"

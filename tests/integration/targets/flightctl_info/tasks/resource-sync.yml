@@ -8,7 +8,7 @@
       flightctl_validate_certs: False
   block:
   - name: Create a test resource sync
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       <<: *connection_info
       kind: ResourceSync
       name: "{{ resource_sync_name }}"
@@ -19,7 +19,7 @@
           targetRevision: main
 
   - name: Get test resource sync
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: ResourceSync
       name: "{{ resource_sync_name }}"
@@ -33,7 +33,7 @@
 
   always:
     - name: Delete test resource sync
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl:
         <<: *connection_info
         kind: ResourceSync
         name: "{{ resource_sync_name }}"

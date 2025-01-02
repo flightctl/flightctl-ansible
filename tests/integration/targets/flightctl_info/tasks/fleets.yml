@@ -8,7 +8,7 @@
       flightctl_validate_certs: False
   block:
   - name: Create a test fleet
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       <<: *connection_info
       kind: Fleet
       name: "{{ fleet_name }}"
@@ -23,7 +23,7 @@
                 image: quay.io/redhat/rhde:9.2
 
   - name: Create test devices
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       <<: *connection_info
       kind: Device
       name: "{{ item }}"
@@ -37,7 +37,7 @@
       - test-device-3
 
   - name: Fetch fleet
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Fleet
       name: "{{ fleet_name }}"
@@ -53,13 +53,13 @@
 
   always:
   - name: Delete test devices
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       <<: *connection_info
       kind: Device
       state: absent
 
   - name: Delete test fleet
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       <<: *connection_info
       kind: Fleet
       name: "{{ fleet_name }}"

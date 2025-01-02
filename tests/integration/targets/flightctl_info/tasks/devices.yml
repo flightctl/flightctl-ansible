@@ -11,7 +11,7 @@
       flightctl_validate_certs: False
   block:
   - name: Create a test fleet
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       <<: *connection_info
       kind: Fleet
       name: "{{ fleet_name }}"
@@ -26,7 +26,7 @@
                 image: quay.io/redhat/rhde:9.2
 
   - name: Create a test device
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       <<: *connection_info
       kind: Device
       name: "{{ deivce_name }}"
@@ -36,7 +36,7 @@
             fleet: "{{ fleet_name }}"
 
   - name: Get test device
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
       name: "{{ deivce_name }}"
@@ -49,7 +49,7 @@
         - device_result.result.data[0].metadata.name == "ansible-integration-test-device"
 
   - name: Get rendered spec for the test device
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
       name: "{{ deivce_name }}"
@@ -63,7 +63,7 @@
         - rendered_result.result.data[0].os.image == "quay.io/redhat/rhde:9.2"
 
   - name: Create a test device with a label
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       <<: *connection_info
       kind: Device
       name: "{{ deivce_name_with_label_1 }}"
@@ -74,7 +74,7 @@
             machine_type: forklift
 
   - name: Create a second test device with a label
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       <<: *connection_info
       kind: Device
       name: "{{ deivce_name_with_label_2 }}"
@@ -85,7 +85,7 @@
             machine_type: forklift
 
   - name: Query for all devices by label
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
       label_selector: machine_type=forklift
@@ -100,7 +100,7 @@
         - device_with_label_result.result.data[1].metadata.name is match("ansible-integration-test-device-label-*")
 
   - name: Query for all devices by owner
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
       owner: "Fleet/{{ fleet_name }}"
@@ -114,7 +114,7 @@
         - device_with_owner_result.result.data[0].metadata.name == "ansible-integration-test-device"
 
   - name: Query for all devices
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
     register: all_devices_result
@@ -126,7 +126,7 @@
         - all_devices_result.result.data | length == 3
 
   - name: Query for all devices with summary_only
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
       summary_only: True
@@ -140,7 +140,7 @@
         - summary_only_result.result.summary.total == 3
 
   - name: Query for all devices with a limit
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
       limit: 2
@@ -153,7 +153,7 @@
         - limit_result.result.data | length == 2
 
   - name: Use the continue token to query for remaining devices
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
       limit: 2
@@ -166,7 +166,7 @@
         - second_limit_result is success
 
   - name: Query for all devices with a status filter
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
       status_filter: ['updated.status=OutOfDate']
@@ -179,7 +179,7 @@
         - status_filter_result.result.data | length == 0
 
   - name: Query for devices with a filter selector
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
       field_selector: "metadata.name!={{ deivce_name }}"
@@ -193,13 +193,13 @@
 
   always:
     - name: Delete test devices
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl:
         <<: *connection_info
         kind: Device
         state: absent
 
     - name: Delete test fleet
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl:
         <<: *connection_info
         kind: Fleet
         name: "{{ fleet_name }}"

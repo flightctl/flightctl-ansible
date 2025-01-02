@@ -1,0 +1,20 @@
+ancestor: null
+releases:
+  0.2.0:
+    changes:
+      breaking_changes:
+      - Renamed collection `core` from `edge`
+      release_summary: Initial documented release of flightctl content
+    modules:
+    - description: Manage Flight Control resources
+      name: flightctl
+      namespace: ''
+    - description: Approve or deny certificate signing or enrollment requests
+      name: flightctl_certificate
+      namespace: ''
+    - description: Get information about enrollment configuration
+      name: flightctl_enrollment_config_info
+      namespace: ''
+    - description: Get information about Flight Control resources
+      name: flightctl_info
+      namespace: ''
