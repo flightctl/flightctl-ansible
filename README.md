@@ -158,17 +158,18 @@ Currently, the publishing to Ansible Galaxy is manual and requires the following
 
 1. Update the version in the following places:
     1. The `version` in `galaxy.yml`
-    2. This README's version in the Installation section
+    2. This README's referenced versions in the Installation section
 2. Update the CHANGELOG:
     1. Make sure you have [`antsibull-changelog`](https://pypi.org/project/antsibull-changelog/) installed.
-    2. Make sure there are fragments for all known changes in `changelogs/fragments`.
+    2. Make sure there are fragments for all known changes in `changelogs/fragments`.  Info about creating changelog fragments can be found [here](https://docs.ansible.com/ansible/devel/community/development_process.html#creating-a-changelog-fragment)
     3. Run `antsibull-changelog release`.
 3. Ensure the colleciton tarball builds properly:
     1. Run `ansible-galaxy collection build`
+    2. Ensure there are no errors and a tarball like `flightctl-core-0.2.0.tar.gz` exists in the current directory
 4. Commit the changes and create a PR with the changes. Ensure CI tests pass and merge to main.
 5. Pull and checkout the latest code from the main branch.
 6. Use git to tag the release appropriately:
-    1. `git tag -n`    # see current tags and their comments
+    1. `git tag -n` # see current tags and their comments
     2. `git tag -a NEW_VERSION -m "comment here"` # the comment can be, for example,  "flightctl.core: 1.0.0"
     3. `git push upstream NEW_VERSION`
 7. Build and push the collection to Galaxy:
