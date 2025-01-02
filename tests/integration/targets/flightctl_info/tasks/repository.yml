@@ -2,11 +2,14 @@
 - name: Test Get Repository Info
   vars:
     repository_name: ansible-integration-test-repository
+    connection_info: &connection_info
+      flightctl_token: "{{ flightctl_token | default(omit)}}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: False
   block:
   - name: Create a test repo
     flightctl.core.flightctl:
-      flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: false
+      <<: *connection_info
       kind: Repository
       name: "{{ repository_name }}"
       resource_definition:
@@ -16,8 +19,7 @@
 
   - name: Get test repo
     flightctl.core.flightctl_info:
-      flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: false
+      <<: *connection_info
       kind: Repository
       name: "{{ repository_name }}"
     register: repo_result
@@ -31,8 +33,7 @@
   always:
     - name: Delete test repo
       flightctl.core.flightctl:
-        flightctl_host: "{{ flightctl_host }}"
-        flightctl_validate_certs: false
+        <<: *connection_info
         kind: Repository
         name: "{{ repository_name }}"
         state: absent

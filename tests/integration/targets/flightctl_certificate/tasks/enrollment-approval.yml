@@ -2,11 +2,14 @@
 - name: Test approve device enrollment
   vars:
     enrollment_name: ansible-integration-test-enrollment-approval
+    connection_info: &connection_info
+      flightctl_token: "{{ flightctl_token | default(omit)}}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: False
   block:
   - name: Create an enrollment request
     flightctl.core.flightctl:
-      flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: false
+      <<: *connection_info
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
       api_version: v1alpha1
@@ -24,8 +27,7 @@
 
   - name: Approve the enrollment request in check mode
     flightctl.core.flightctl_certificate:
-      flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: false
+      <<: *connection_info
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
       approved: true
@@ -36,8 +38,7 @@
 
   - name: Get the enrollment request
     flightctl.core.flightctl_info:
-      flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: false
+      <<: *connection_info
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
     register: check_result
@@ -50,8 +51,7 @@
 
   - name: Approve the enrollment request
     flightctl.core.flightctl_certificate:
-      flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: false
+      <<: *connection_info
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
       approved: true
@@ -67,8 +67,7 @@
 
   - name: Get the enrollment request
     flightctl.core.flightctl_info:
-      flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: false
+      <<: *connection_info
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
     register: enrollment_result
@@ -83,8 +82,7 @@
 
   - name: Try to approve the enrollment request again (idempotency)
     flightctl.core.flightctl_certificate:
-      flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: false
+      <<: *connection_info
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
       approved: true
@@ -102,8 +100,7 @@
   always:
     - name: Delete enrollment request
       flightctl.core.flightctl:
-        flightctl_host: "{{ flightctl_host }}"
-        flightctl_validate_certs: false
+        <<: *connection_info
         kind: EnrollmentRequest
         name: "{{ enrollment_name }}"
         state: absent
@@ -111,8 +108,7 @@
     # Approving an enrollment request attempts to create a device, clean it up here as well
     - name: Delete test device
       flightctl.core.flightctl:
-        flightctl_host: "{{ flightctl_host }}"
-        flightctl_validate_certs: false
+        <<: *connection_info
         kind: Device
         name: "{{ enrollment_name }}"
         state: absent

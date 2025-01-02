@@ -2,11 +2,14 @@
 - name: Test Get Fleet Info
   vars:
     fleet_name: ansible-integration-test-fleet
+    connection_info: &connection_info
+      flightctl_token: "{{ flightctl_token | default(omit)}}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: False
   block:
   - name: Create a test fleet
     flightctl.core.flightctl:
-      flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: false
+      <<: *connection_info
       kind: Fleet
       name: "{{ fleet_name }}"
       resource_definition:
@@ -21,8 +24,7 @@
 
   - name: Create test devices
     flightctl.core.flightctl:
-      flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: false
+      <<: *connection_info
       kind: Device
       name: "{{ item }}"
       resource_definition:
@@ -36,8 +38,7 @@
 
   - name: Fetch fleet
     flightctl.core.flightctl_info:
-      flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: false
+      <<: *connection_info
       kind: Fleet
       name: "{{ fleet_name }}"
       summary: True
@@ -53,15 +54,13 @@
   always:
   - name: Delete test devices
     flightctl.core.flightctl:
-      flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: false
+      <<: *connection_info
       kind: Device
       state: absent
 
   - name: Delete test fleet
     flightctl.core.flightctl:
-      flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: false
+      <<: *connection_info
       kind: Fleet
       name: "{{ fleet_name }}"
       state: absent
