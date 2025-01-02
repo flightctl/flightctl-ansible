@@ -67,7 +67,7 @@ Refer to the following for more details.
 
 ## Use Cases
 
-You can either call modules, rulebooks and playbooks by their Fully Qualified Collection Name (FQCN), such as ansible.eda.activation, or you can call modules by their short name if you list the flightctl.core collection in the playbook's collections keyword:
+You can either call modules, rulebooks and playbooks by their Fully Qualified Collection Name (FQCN), such as flightctl.core.flightctl, or you can call modules by their short name if you list the flightctl.core collection in the playbook's collections keyword:
 
 ```yaml
 ---
@@ -156,27 +156,32 @@ The easiest way to run tests locally is to:
 
 Currently, the publishing to Ansible Galaxy is manual and requires the following steps:
 
-1. Update the version in the following places:
+1. Checkout a release branch
+    1. `git checkout -b release-NEW_VERSION`
+2. Update the version in the following places:
     1. The `version` in `galaxy.yml`
     2. This README's referenced versions in the Installation section
-2. Update the CHANGELOG:
+3. Update the CHANGELOG:
     1. Make sure you have [`antsibull-changelog`](https://pypi.org/project/antsibull-changelog/) installed.
     2. Make sure there are fragments for all known changes in `changelogs/fragments`.  Info about creating changelog fragments can be found [here](https://docs.ansible.com/ansible/devel/community/development_process.html#creating-a-changelog-fragment)
     3. Run `antsibull-changelog release`.
-3. Ensure the colleciton tarball builds properly:
+4. Ensure the colleciton tarball builds properly:
     1. Run `ansible-galaxy collection build`
-    2. Ensure there are no errors and a tarball like `flightctl-core-0.2.0.tar.gz` exists in the current directory
-4. Commit the changes and create a PR with the changes. Ensure CI tests pass and merge to main.
-5. Pull and checkout the latest code from the main branch.
-6. Use git to tag the release appropriately:
+    2. Ensure there are no errors and a tarball like `flightctl-core-{some-version}.tar.gz` exists in the current directory
+5. Install and verify the collection tarball locally
+    1. Install the built collection via `ansible-galaxy collection install flightctl-core-{some-version}.tar.gz --force`
+    2. Run a basic playbook to verify functionality (examples can be found in demo/README.md)
+6. Commit the changes and create a PR with the changes. Ensure CI tests pass and merge to main.
+7. Pull and checkout the latest code from the main branch.
+8. Use git to tag the release appropriately:
     1. `git tag -n` # see current tags and their comments
     2. `git tag -a NEW_VERSION -m "comment here"` # the comment can be, for example,  "flightctl.core: 1.0.0"
     3. `git push upstream NEW_VERSION`
-7. Build and push the collection to Galaxy:
+9. Build and push the collection to Galaxy:
     1. Run `ansible-galaxy collection build`
     2. Fetch or configure your [Galaxy Token](https://galaxy.ansible.com/ui/token/) if you have not done so already.
     3. Publish the collection `ansible-galaxy collection publish path/to/built/collection.tar.gz --token=your_token_here`
-8. Verify the new version exists on the [Flightctl Galaxy page](https://galaxy.ansible.com/flightctl/core).
+10. Verify the new version exists on the [Flightctl Galaxy page](https://galaxy.ansible.com/flightctl/core).
 
 ## Support
 
