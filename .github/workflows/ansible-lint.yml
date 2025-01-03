@@ -3,7 +3,9 @@ name: Linters
 
 on:
   pull_request:
-    branches: ["stable", "release/v*"]
+    branches:
+      - main
+
 jobs:
   lint:
     runs-on: "ubuntu-latest"
