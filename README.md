@@ -152,6 +152,16 @@ The easiest way to run tests locally is to:
 - Run `make write-integration-config` from this repository to create the proper integration config from your running services
 - Run locally via `make test-integration`
 
+## Linting
+
+### Ansible Lint
+
+Install and run `ansible-lint`
+```
+pip3 install ansible-lint
+ansible-lint
+```
+
 ## Publishing New Versions
 
 Currently, the publishing to Ansible Galaxy is manual and requires the following steps:

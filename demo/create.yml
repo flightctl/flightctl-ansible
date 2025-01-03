@@ -1,3 +1,4 @@
+---
 - name: Test Flight Control Collection to create resources
   hosts: localhost
   gather_facts: false
@@ -8,26 +9,38 @@
       ansible.builtin.set_fact:
         credential_defaults: &credential_defaults
           flightctl_config_file: "{{ flightctl_config_file | default(omit) }}"
-          flightctl_ca_path: "{{ flightctl_ca_path | default(omit)}}"
-          flightctl_token: "{{ flightctl_token | default(omit)}}"
-          flightctl_host: "{{ flightctl_host | default(omit)}}"
-          flightctl_validate_certs: "{{ flightctl_validate_certs | default(True)}}"
+          flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+          flightctl_token: "{{ flightctl_token | default(omit) }}"
+          flightctl_host: "{{ flightctl_host | default(omit) }}"
+          flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
 
     - name: Get all devices
       flightctl.core.flightctl_info:
         <<: *credential_defaults
         kind: Device
 
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
     - name: Get all fleets
       flightctl.core.flightctl_info:
         <<: *credential_defaults
         kind: Fleet
 
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
     - name: Get information about a specific device
       flightctl.core.flightctl_info:
         <<: *credential_defaults
         kind: Device
         name: "2bd0rgpir74c5jtrhfb1idvb2cvvvinem24t727qdudfcqr60sog"
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
       register: result
 
     - name: Get information about a specific device
@@ -36,6 +49,10 @@
         kind: Device
         label_selector: "owner=mparra"
 
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
     - name: Create a test device in check_mode
       flightctl.core.flightctl:
         <<: *credential_defaults
@@ -49,6 +66,10 @@
             labels:
               fleet: default
               novalue: ""
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
       check_mode: true
 
     - name: Create a test device
@@ -64,6 +85,10 @@
             labels:
               fleet: default
               novalue: ""
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
       register: _result
 
     - name: Assert that Device was created
@@ -85,6 +110,10 @@
             labels:
               fleet: default
               novalue: ""
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
       register: _result
 
     - name: Assert that Device was not created
@@ -99,6 +128,10 @@
         kind: Device
         name: "device-ansible-example-2"
         api_version: v1alpha1
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
       register: _result
 
     - name: Assert that Device was created
@@ -120,6 +153,10 @@
             labels:
               fleet: default
               novalue: ""
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
       register: _result
 
     - name: Assert that Device was updated
@@ -134,12 +171,20 @@
         kind: Device
         name: "device-ansible-example"
 
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
     - name: Delete a test device in check_mode
       flightctl.core.flightctl:
         <<: *credential_defaults
         kind: Device
         name: "device-ansible-example"
         state: absent
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
       check_mode: true
 
     - name: Get information about a specific device
@@ -148,12 +193,20 @@
         kind: Device
         name: "device-ansible-example"
 
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
     - name: Create a new fleet
       flightctl.core.flightctl:
         <<: *credential_defaults
         kind: Fleet
         name: "fleet-ansible-example"
         resource_definition: "{{ lookup('file', 'fleet.yml') | from_yaml }}"
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
       register: _result
 
     - name: Assert that Fleet was created
@@ -168,6 +221,10 @@
         kind: Device
         name: "device-ansible-example-3"
         resource_definition: "{{ lookup('file', 'device.yml') | from_yaml }}"
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
       register: _result
 
     - name: Assert that Device was created
@@ -189,6 +246,10 @@
           spec:
             url: https://github.com/flightctl/flightctl.git
             type: git
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
       register: _result
 
     - name: Assert that Repository was created

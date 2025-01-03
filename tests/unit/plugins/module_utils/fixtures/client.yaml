@@ -1,3 +1,4 @@
+---
 authentication: {}
 service:
   server: https://agent-api.flightctl.127.0.0.1.nip.io:7443

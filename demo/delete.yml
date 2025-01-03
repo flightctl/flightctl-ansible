@@ -1,3 +1,4 @@
+---
 - name: Test Flight Control Collection to delete resources
   hosts: localhost
   gather_facts: false
@@ -7,10 +8,10 @@
       ansible.builtin.set_fact:
         credential_defaults: &credential_defaults
           flightctl_config_file: "{{ flightctl_config_file | default(omit) }}"
-          flightctl_ca_path: "{{ flightctl_ca_path | default(omit)}}"
-          flightctl_token: "{{ flightctl_token | default(omit)}}"
-          flightctl_host: "{{ flightctl_host | default(omit)}}"
-          flightctl_validate_certs: "{{ flightctl_validate_certs | default(True)}}"
+          flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+          flightctl_token: "{{ flightctl_token | default(omit) }}"
+          flightctl_host: "{{ flightctl_host | default(omit) }}"
+          flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
 
     - name: Delete devices
       flightctl.core.flightctl:
@@ -18,6 +19,10 @@
         kind: Device
         name: "{{ item }}"
         state: absent
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
       loop:
         - "device-ansible-example"
         - "device-ansible-example-2"
@@ -30,9 +35,17 @@
         name: "fleet-ansible-example"
         state: absent
 
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"
     - name: Delete repository
       flightctl.core.flightctl:
         <<: *credential_defaults
         kind: Repository
         name: "repository-ansible-example"
         state: absent
+        flightctl_ca_path: "{{ flightctl_ca_path | default(omit) }}"
+        flightctl_token: "{{ flightctl_token | default(omit) }}"
+        flightctl_host: "{{ flightctl_host | default(omit) }}"
+        flightctl_validate_certs: "{{ flightctl_validate_certs | default(True) }}"

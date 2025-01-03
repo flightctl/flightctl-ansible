@@ -1,2 +1,2 @@
 ---
-- include_tasks: fetch-config.yml
+- ansible.builtin.include_tasks: fetch-config.yml

@@ -1,0 +1,14 @@
+---
+name: Linters
+
+on:
+  pull_request:
+    branches: ["stable", "release/v*"]
+jobs:
+  lint:
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run ansible-lint
+        uses: ansible/ansible-lint@24.12.2

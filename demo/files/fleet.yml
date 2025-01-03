@@ -32,7 +32,7 @@ spec:
           inline:
             - path: "/etc/motd"
               content: "This system is managed by flightctl."
-              mode: 0644
+              mode: "0644"
       systemd:
         matchPatterns:
           - chronyd.service

@@ -3,64 +3,63 @@
   vars:
     fleet_name: ansible-integration-test-fleet
     connection_info: &connection_info
-      flightctl_token: "{{ flightctl_token | default(omit)}}"
+      flightctl_token: "{{ flightctl_token | default(omit) }}"
       flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: False
+      flightctl_validate_certs: false
   block:
-  - name: Create a test fleet
-    flightctl.core.flightctl:
-      <<: *connection_info
-      kind: Fleet
-      name: "{{ fleet_name }}"
-      resource_definition:
-        spec:
-          selector:
-            matchLabels:
+    - name: Create a test fleet
+      flightctl.core.flightctl:
+        <<: *connection_info
+        kind: Fleet
+        name: "{{ fleet_name }}"
+        resource_definition:
+          spec:
+            selector:
+              matchLabels:
+                fleet: "{{ fleet_name }}"
+            template:
+              spec:
+                os:
+                  image: quay.io/redhat/rhde:9.2
+
+    - name: Create test devices
+      flightctl.core.flightctl:
+        <<: *connection_info
+        kind: Device
+        name: "{{ item }}"
+        resource_definition:
+          metadata:
+            labels:
               fleet: "{{ fleet_name }}"
-          template:
-            spec:
-              os:
-                image: quay.io/redhat/rhde:9.2
+      loop:
+        - test-device-1
+        - test-device-2
+        - test-device-3
 
-  - name: Create test devices
-    flightctl.core.flightctl:
-      <<: *connection_info
-      kind: Device
-      name: "{{ item }}"
-      resource_definition:
-        metadata:
-          labels:
-            fleet: "{{ fleet_name }}"
-    loop:
-      - test-device-1
-      - test-device-2
-      - test-device-3
+    - name: Fetch fleet
+      flightctl.core.flightctl_info:
+        <<: *connection_info
+        kind: Fleet
+        name: "{{ fleet_name }}"
+        summary: true
+      register: fleet_result
 
-  - name: Fetch fleet
-    flightctl.core.flightctl_info:
-      <<: *connection_info
-      kind: Fleet
-      name: "{{ fleet_name }}"
-      summary: True
-    register:
-      fleet_result
-
-  - name: Assert that the fleet info was fetched
-    ansible.builtin.assert:
-      that:
-        - fleet_result is success
-        - fleet_result.result.data[0].status.devicesSummary.total == 3
+    - name: Assert that the fleet info was fetched
+      ansible.builtin.assert:
+        that:
+          - fleet_result is success
+          - fleet_result.result.data[0].status.devicesSummary.total == 3
 
   always:
-  - name: Delete test devices
-    flightctl.core.flightctl:
-      <<: *connection_info
-      kind: Device
-      state: absent
+    - name: Delete test devices
+      flightctl.core.flightctl:
+        <<: *connection_info
+        kind: Device
+        state: absent
 
-  - name: Delete test fleet
-    flightctl.core.flightctl:
-      <<: *connection_info
-      kind: Fleet
-      name: "{{ fleet_name }}"
-      state: absent
+    - name: Delete test fleet
+      flightctl.core.flightctl:
+        <<: *connection_info
+        kind: Fleet
+        name: "{{ fleet_name }}"
+        state: absent
