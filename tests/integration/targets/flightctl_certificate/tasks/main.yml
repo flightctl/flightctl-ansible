@@ -1,5 +1,9 @@
 ---
-- ansible.builtin.include_tasks: enrollment-approval.yml
-- ansible.builtin.include_tasks: enrollment-denial.yml
-- ansible.builtin.include_tasks: certificate-signing-approval.yml
-- ansible.builtin.include_tasks: certificate-signing-denial.yml
+- name: Enrollment Approval test
+  ansible.builtin.include_tasks: enrollment-approval.yml
+- name: Enrollment Denial test
+  ansible.builtin.include_tasks: enrollment-denial.yml
+- name: CSR Approval test
+  ansible.builtin.include_tasks: certificate-signing-approval.yml
+- name: CSR Denial test
+  ansible.builtin.include_tasks: certificate-signing-denial.yml

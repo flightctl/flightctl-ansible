@@ -1,2 +1,3 @@
 ---
-- ansible.builtin.include_tasks: update-device.yml
+- name: Update device test
+  ansible.builtin.include_tasks: update-device.yml

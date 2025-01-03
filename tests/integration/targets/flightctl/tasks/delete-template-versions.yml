@@ -115,14 +115,16 @@
           - template_version_result is success
           - template_version_result.result.data | length == 0
   always:
-    - flightctl.core.flightctl:
+    - name: Delete fleet
+      flightctl.core.flightctl:
         flightctl_host: "{{ flightctl_host }}"
         flightctl_validate_certs: false
         kind: Fleet
         name: "{{ fleet_name }}"
         state: absent
 
-    - flightctl.core.flightctl:
+    - name: Delete template versions
+      flightctl.core.flightctl:
         flightctl_host: "{{ flightctl_host }}"
         flightctl_validate_certs: false
         kind: TemplateVersion

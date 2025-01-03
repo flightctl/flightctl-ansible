@@ -1,2 +1,3 @@
 ---
-- ansible.builtin.include_tasks: fetch-config.yml
+- name: Fetch Config Test
+  ansible.builtin.include_tasks: fetch-config.yml
