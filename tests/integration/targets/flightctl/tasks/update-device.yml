@@ -1,72 +1,73 @@
+---
 - name: Test Update Device
   vars:
     device_name: ansible-integration-test-device
     connection_info: &connection_info
-      flightctl_token: "{{ flightctl_token | default(omit)}}"
+      flightctl_token: "{{ flightctl_token | default(omit) }}"
       flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: False
+      flightctl_validate_certs: false
   block:
-  - name: Create a test device
-    flightctl.core.flightctl:
-      <<: *connection_info
-      kind: Device
-      name: "{{ device_name }}"
-      resource_definition:
-        spec:
-          os:
-            image: quay.io/redhat/rhde:9.1
-          systemd:
-            matchPatterns:
-              - chronyd.service
+    - name: Create a test device
+      flightctl.core.flightctl:
+        <<: *connection_info
+        kind: Device
+        name: "{{ device_name }}"
+        resource_definition:
+          spec:
+            os:
+              image: quay.io/redhat/rhde:9.1
+            systemd:
+              matchPatterns:
+                - chronyd.service
 
-  - name: Update the test device
-    flightctl.core.flightctl:
-      <<: *connection_info
-      kind: Device
-      name: "{{ device_name }}"
-      resource_definition:
-        spec:
-          os:
-            image: quay.io/redhat/rhde:9.3
+    - name: Update the test device
+      flightctl.core.flightctl:
+        <<: *connection_info
+        kind: Device
+        name: "{{ device_name }}"
+        resource_definition:
+          spec:
+            os:
+              image: quay.io/redhat/rhde:9.3
 
-  - name: Get test device
-    flightctl.core.flightctl_info:
-      <<: *connection_info
-      kind: Device
-      name: "{{ device_name }}"
-    register: device_result
+    - name: Get test device
+      flightctl.core.flightctl_info:
+        <<: *connection_info
+        kind: Device
+        name: "{{ device_name }}"
+      register: device_result
 
-  - name: Assert that Device spec was updated
-    ansible.builtin.assert:
-      that:
-        - device_result is success
-        - device_result.result.data[0].spec.os.image == "quay.io/redhat/rhde:9.3"
-        - device_result.result.data[0].spec.systemd.matchPatterns[0] == "chronyd.service"
+    - name: Assert that Device spec was updated
+      ansible.builtin.assert:
+        that:
+          - device_result is success
+          - device_result.result.data[0].spec.os.image == "quay.io/redhat/rhde:9.3"
+          - device_result.result.data[0].spec.systemd.matchPatterns[0] == "chronyd.service"
 
-  - name: Update the test device with force_update
-    flightctl.core.flightctl:
-      <<: *connection_info
-      kind: Device
-      name: "{{ device_name }}"
-      force_update: True
-      resource_definition:
-        spec:
-          os:
-            image: quay.io/redhat/rhde:9.4
+    - name: Update the test device with force_update
+      flightctl.core.flightctl:
+        <<: *connection_info
+        kind: Device
+        name: "{{ device_name }}"
+        force_update: true
+        resource_definition:
+          spec:
+            os:
+              image: quay.io/redhat/rhde:9.4
 
-  - name: Get test device
-    flightctl.core.flightctl_info:
-      <<: *connection_info
-      kind: Device
-      name: "{{ device_name }}"
-    register: device_result
+    - name: Get test device
+      flightctl.core.flightctl_info:
+        <<: *connection_info
+        kind: Device
+        name: "{{ device_name }}"
+      register: device_result
 
-  - name: Assert that Device spec was updated from the forced update
-    ansible.builtin.assert:
-      that:
-        - device_result is success
-        - device_result.result.data[0].spec.os.image == "quay.io/redhat/rhde:9.4"
-        - "'systemd' not in device_result.result.data[0].spec"
+    - name: Assert that Device spec was updated from the forced update
+      ansible.builtin.assert:
+        that:
+          - device_result is success
+          - device_result.result.data[0].spec.os.image == "quay.io/redhat/rhde:9.4"
+          - "'systemd' not in device_result.result.data[0].spec"
 
   always:
     - name: Delete test device

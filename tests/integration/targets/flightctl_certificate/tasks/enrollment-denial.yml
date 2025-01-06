@@ -3,80 +3,80 @@
   vars:
     enrollment_name: ansible-integration-test-enrollment-denail
     connection_info: &connection_info
-      flightctl_token: "{{ flightctl_token | default(omit)}}"
+      flightctl_token: "{{ flightctl_token | default(omit) }}"
       flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: False
+      flightctl_validate_certs: false
   block:
-  - name: Create an enrollment request
-    flightctl.core.flightctl:
-      <<: *connection_info
-      kind: EnrollmentRequest
-      name: "{{ enrollment_name }}"
-      api_version: v1alpha1
-      resource_definition:
-        spec:
-          csr: |
-            -----BEGIN CERTIFICATE REQUEST-----
-            MIIBBjCBrQIBADBLMUkwRwYDVQQDE0AxM2Q2MzJkODYzNzNjYWFlZGE2NGRhNDA1
-            MmY5NTdmYWE3NDJmYzcwNTAwMjY3NDhiYzc5MDY1Yzg4MTlkMWIwMFkwEwYHKoZI
-            zj0CAQYIKoZIzj0DAQcDQgAEHBMC30NRJTJ3NWOlei9YWkBM/MzoNDGyMRKuzE0/
-            cKkyXVJexHq0xIn22YCNN3ZDNxxwW6LlQg3ijGnvStQOb6AAMAoGCCqGSM49BAMC
-            A0gAMEUCIQDSrxi6krdCKcLChdMB3w7IqmDlZhREGbHMCESVn6ssPAIgZL+QrJtw
-            8R+r4piaYvZktrsk3yCIuz3hI7loYmXP3d8=
-            -----END CERTIFICATE REQUEST-----
+    - name: Create an enrollment request
+      flightctl.core.flightctl:
+        <<: *connection_info
+        kind: EnrollmentRequest
+        name: "{{ enrollment_name }}"
+        api_version: v1alpha1
+        resource_definition:
+          spec:
+            csr: |
+              -----BEGIN CERTIFICATE REQUEST-----
+              MIIBBjCBrQIBADBLMUkwRwYDVQQDE0AxM2Q2MzJkODYzNzNjYWFlZGE2NGRhNDA1
+              MmY5NTdmYWE3NDJmYzcwNTAwMjY3NDhiYzc5MDY1Yzg4MTlkMWIwMFkwEwYHKoZI
+              zj0CAQYIKoZIzj0DAQcDQgAEHBMC30NRJTJ3NWOlei9YWkBM/MzoNDGyMRKuzE0/
+              cKkyXVJexHq0xIn22YCNN3ZDNxxwW6LlQg3ijGnvStQOb6AAMAoGCCqGSM49BAMC
+              A0gAMEUCIQDSrxi6krdCKcLChdMB3w7IqmDlZhREGbHMCESVn6ssPAIgZL+QrJtw
+              8R+r4piaYvZktrsk3yCIuz3hI7loYmXP3d8=
+              -----END CERTIFICATE REQUEST-----
 
-  - name: Deny the enrollment request in check mode
-    flightctl.core.flightctl_certificate:
-      <<: *connection_info
-      kind: EnrollmentRequest
-      name: "{{ enrollment_name }}"
-      approved: false
-      approved_by: "ansible-integration-testing"
-      labels:
-        testing_label: is_set_during_testing
-    check_mode: true
+    - name: Deny the enrollment request in check mode
+      flightctl.core.flightctl_certificate:
+        <<: *connection_info
+        kind: EnrollmentRequest
+        name: "{{ enrollment_name }}"
+        approved: false
+        approved_by: "ansible-integration-testing"
+        labels:
+          testing_label: is_set_during_testing
+      check_mode: true
 
-  - name: Get the enrollment request
-    flightctl.core.flightctl_info:
-      <<: *connection_info
-      kind: EnrollmentRequest
-      name: "{{ enrollment_name }}"
-    register: check_result
+    - name: Get the enrollment request
+      flightctl.core.flightctl_info:
+        <<: *connection_info
+        kind: EnrollmentRequest
+        name: "{{ enrollment_name }}"
+      register: check_result
 
-  - name: Assert that the enrollment request was not denied
-    ansible.builtin.assert:
-      that:
-        - check_result is success
-        - check_result.result.data[0].status.get('approval', None) == None
+    - name: Assert that the enrollment request was not denied
+      ansible.builtin.assert:
+        that:
+          - check_result is success
+          - check_result.result.data[0].status.get('approval', None) == None
 
-  - name: Deny the enrollment request
-    flightctl.core.flightctl_certificate:
-      <<: *connection_info
-      kind: EnrollmentRequest
-      name: "{{ enrollment_name }}"
-      approved: false
-      approved_by: "ansible-integration-testing"
-      labels:
-        testing_label: is_set_during_testing
-    register: approve_result
+    - name: Deny the enrollment request
+      flightctl.core.flightctl_certificate:
+        <<: *connection_info
+        kind: EnrollmentRequest
+        name: "{{ enrollment_name }}"
+        approved: false
+        approved_by: "ansible-integration-testing"
+        labels:
+          testing_label: is_set_during_testing
+      register: approve_result
 
-  - name: Assert that approval request succeeded
-    ansible.builtin.assert:
-      that:
-        - approve_result is success
+    - name: Assert that approval request succeeded
+      ansible.builtin.assert:
+        that:
+          - approve_result is success
 
-  - name: Get the enrollment request
-    flightctl.core.flightctl_info:
-      <<: *connection_info
-      kind: EnrollmentRequest
-      name: "{{ enrollment_name }}"
-    register: enrollment_result
+    - name: Get the enrollment request
+      flightctl.core.flightctl_info:
+        <<: *connection_info
+        kind: EnrollmentRequest
+        name: "{{ enrollment_name }}"
+      register: enrollment_result
 
-  - name: Assert that the enrollment request is now denied
-    ansible.builtin.assert:
-      that:
-        - enrollment_result is success
-        - enrollment_result.result.data[0].status.get('approval', None) == None
+    - name: Assert that the enrollment request is now denied
+      ansible.builtin.assert:
+        that:
+          - enrollment_result is success
+          - enrollment_result.result.data[0].status.get('approval', None) == None
 
   always:
     - name: Delete enrollment request

@@ -1,5 +1,9 @@
 ---
-  - include_tasks: devices.yml
-  - include_tasks: fleets.yml
-  - include_tasks: repository.yml
-  - include_tasks: resource-sync.yml
+- name: Devices test
+  ansible.builtin.include_tasks: devices.yml
+- name: Fleets test
+  ansible.builtin.include_tasks: fleets.yml
+- name: Repository test
+  ansible.builtin.include_tasks: repository.yml
+- name: ResourceSync test
+  ansible.builtin.include_tasks: resource-sync.yml

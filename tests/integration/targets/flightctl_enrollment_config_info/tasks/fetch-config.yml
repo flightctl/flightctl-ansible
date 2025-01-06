@@ -3,41 +3,42 @@
   vars:
     csr_name: ansible-integration-test-enrollment-config-csr
     connection_info: &connection_info
-      flightctl_token: "{{ flightctl_token | default(omit)}}"
+      flightctl_token: "{{ flightctl_token | default(omit) }}"
       flightctl_host: "{{ flightctl_host }}"
-      flightctl_validate_certs: False
+      flightctl_validate_certs: false
   block:
-  - name: Create a csr
-    flightctl.core.flightctl:
-      <<: *connection_info
-      kind: CertificateSigningRequest
-      name: "{{ csr_name }}"
-      api_version: v1alpha1
-      resource_definition:
-        spec:
-          request: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQkJqQ0JyUUlCQURCTE1Va3dSd1lEVlFRREUwQXhNMlEyTXpKa09EWXpOek5qWVdGbFpHRTJOR1JoTkRBMQpNbVk1TlRkbVlXRTNOREptWXpjd05UQXdNalkzTkRoaVl6YzVNRFkxWXpnNE1UbGtNV0l3TUZrd0V3WUhLb1pJCnpqMENBUVlJS29aSXpqMERBUWNEUWdBRUhCTUMzME5SSlRKM05XT2xlaTlZV2tCTS9Nem9OREd5TVJLdXpFMC8KY0treVhWSmV4SHEweEluMjJZQ05OM1pETnh4d1c2TGxRZzNpakdudlN0UU9iNkFBTUFvR0NDcUdTTTQ5QkFNQwpBMGdBTUVVQ0lRRFNyeGk2a3JkQ0tjTENoZE1CM3c3SXFtRGxaaFJFR2JITUNFU1ZuNnNzUEFJZ1pMK1FySnR3CjhSK3I0cGlhWXZaa3Ryc2szeUNJdXozaEk3bG9ZbVhQM2Q4PQotLS0tLUVORCBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0=
-          signerName: enrollment
-          usages: ["clientAuth", "CA:false"]
+    - name: Create a csr
+      flightctl.core.flightctl:
+        <<: *connection_info
+        kind: CertificateSigningRequest
+        name: "{{ csr_name }}"
+        api_version: v1alpha1
+        resource_definition:
+          spec:
+            request:
+              LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQkJqQ0JyUUlCQURCTE1Va3dSd1lEVlFRREUwQXhNMlEyTXpKa09EWXpOek5qWVdGbFpHRTJOR1JoTkRBMQpNbVk1TlRkbVlXRTNOREptWXpjd05UQXdNalkzTkRoaVl6YzVNRFkxWXpnNE1UbGtNV0l3TUZrd0V3WUhLb1pJCnpqMENBUVlJS29aSXpqMERBUWNEUWdBRUhCTUMzME5SSlRKM05XT2xlaTlZV2tCTS9Nem9OREd5TVJLdXpFMC8KY0treVhWSmV4SHEweEluMjJZQ05OM1pETnh4d1c2TGxRZzNpakdudlN0UU9iNkFBTUFvR0NDcUdTTTQ5QkFNQwpBMGdBTUVVQ0lRRFNyeGk2a3JkQ0tjTENoZE1CM3c3SXFtRGxaaFJFR2JITUNFU1ZuNnNzUEFJZ1pMK1FySnR3CjhSK3I0cGlhWXZaa3Ryc2szeUNJdXozaEk3bG9ZbVhQM2Q4PQotLS0tLUVORCBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0=
+            signerName: enrollment
+            usages: ["clientAuth", "CA:false"]
 
-  - name: Approve the csr
-    flightctl.core.flightctl_certificate:
-      <<: *connection_info
-      kind: CertificateSigningRequest
-      name: "{{ csr_name }}"
-      approved: true
+    - name: Approve the csr
+      flightctl.core.flightctl_certificate:
+        <<: *connection_info
+        kind: CertificateSigningRequest
+        name: "{{ csr_name }}"
+        approved: true
 
-  - name: Fetch enrollment config for the csr
-    flightctl.core.flightctl_enrollment_config_info:
-      <<: *connection_info
-      name: "{{ csr_name }}"
-    register: enrollment_config_result
+    - name: Fetch enrollment config for the csr
+      flightctl.core.flightctl_enrollment_config_info:
+        <<: *connection_info
+        name: "{{ csr_name }}"
+      register: enrollment_config_result
 
-  - name: Assert that the request was successful
-    ansible.builtin.assert:
-      that:
-        - enrollment_config_result is success
-        - enrollment_config_result["result"]["enrollment-service"]["authentication"]["client-certificate-data"] != ""
-        - enrollment_config_result["result"]["enrollment-service"]["service"]["certificate-authority-data"] != ""
+    - name: Assert that the request was successful
+      ansible.builtin.assert:
+        that:
+          - enrollment_config_result is success
+          - enrollment_config_result["result"]["enrollment-service"]["authentication"]["client-certificate-data"] != ""
+          - enrollment_config_result["result"]["enrollment-service"]["service"]["certificate-authority-data"] != ""
 
   always:
     - name: Delete csr

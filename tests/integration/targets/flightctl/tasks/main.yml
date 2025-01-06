@@ -1,4 +1,3 @@
 ---
-- include_tasks: update-device.yml
-# TODO - re-enable the delete template versions when the service stops returning a 500
-# - include_tasks: delete-template-versions.yml
+- name: Update device test
+  ansible.builtin.include_tasks: update-device.yml
