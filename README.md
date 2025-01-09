@@ -135,11 +135,11 @@ There are unit, sanity, and integration tests configured to run for this reposit
 
 ### Unit Tests
 
-Run locally via `make test-unit`
+Run locally via `make unit-test`
 
 ### Sanity Tests
 
-Run locally via `make test-sanity`
+Run locally via `make sanity-test`
 
 ### Integration Tests
 
@@ -150,7 +150,7 @@ Integration tests are dependent on:
 The easiest way to run tests locally is to:
 - Run `make deploy` from the main flightctl repository
 - Run `make write-integration-config` from this repository to create the proper integration config from your running services
-- Run locally via `make test-integration`
+- Run locally via `make integration-test`
 
 ## Support
 
