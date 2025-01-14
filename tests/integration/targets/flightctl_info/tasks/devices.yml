@@ -1,9 +1,9 @@
 ---
 - name: Test Get Device Info
   vars:
-    deivce_name: ansible-integration-test-device
-    deivce_name_with_label_1: ansible-integration-test-device-label-1
-    deivce_name_with_label_2: ansible-integration-test-device-label-2
+    device_name: ansible-integration-test-device
+    device_name_with_label_1: ansible-integration-test-device-label-1
+    device_name_with_label_2: ansible-integration-test-device-label-2
     fleet_name: ansible-integration-test-fleet
     connection_info: &connection_info
       flightctl_token: "{{ flightctl_token | default(omit)}}"
@@ -29,7 +29,7 @@
     flightctl.core.flightctl:
       <<: *connection_info
       kind: Device
-      name: "{{ deivce_name }}"
+      name: "{{ device_name }}"
       resource_definition:
         metadata:
           labels:
@@ -39,7 +39,7 @@
     flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
-      name: "{{ deivce_name }}"
+      name: "{{ device_name }}"
     register: device_result
 
   - name: Assert that device info was fetched
@@ -52,7 +52,7 @@
     flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
-      name: "{{ deivce_name }}"
+      name: "{{ device_name }}"
       rendered: True
     register: rendered_result
 
@@ -66,7 +66,7 @@
     flightctl.core.flightctl:
       <<: *connection_info
       kind: Device
-      name: "{{ deivce_name_with_label_1 }}"
+      name: "{{ device_name_with_label_1 }}"
       api_version: v1alpha1
       resource_definition:
         metadata:
@@ -77,7 +77,7 @@
     flightctl.core.flightctl:
       <<: *connection_info
       kind: Device
-      name: "{{ deivce_name_with_label_2 }}"
+      name: "{{ device_name_with_label_2 }}"
       api_version: v1alpha1
       resource_definition:
         metadata:
@@ -182,7 +182,7 @@
     flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
-      field_selector: "metadata.name!={{ deivce_name }}"
+      field_selector: "metadata.name!={{ device_name }}"
     register: field_selector_result
 
   - name: Assert that the status filtered data was fetched

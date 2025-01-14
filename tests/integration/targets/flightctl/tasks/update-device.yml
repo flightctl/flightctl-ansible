@@ -1,6 +1,6 @@
 - name: Test Update Device
   vars:
-    deivce_name: ansible-integration-test-device
+    device_name: ansible-integration-test-device
     connection_info: &connection_info
       flightctl_token: "{{ flightctl_token | default(omit)}}"
       flightctl_host: "{{ flightctl_host }}"
@@ -10,7 +10,7 @@
     flightctl.core.flightctl:
       <<: *connection_info
       kind: Device
-      name: "{{ deivce_name }}"
+      name: "{{ device_name }}"
       resource_definition:
         spec:
           os:
@@ -23,7 +23,7 @@
     flightctl.core.flightctl:
       <<: *connection_info
       kind: Device
-      name: "{{ deivce_name }}"
+      name: "{{ device_name }}"
       resource_definition:
         spec:
           os:
@@ -33,7 +33,7 @@
     flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
-      name: "{{ deivce_name }}"
+      name: "{{ device_name }}"
     register: device_result
 
   - name: Assert that Device spec was updated
@@ -47,7 +47,7 @@
     flightctl.core.flightctl:
       <<: *connection_info
       kind: Device
-      name: "{{ deivce_name }}"
+      name: "{{ device_name }}"
       force_update: True
       resource_definition:
         spec:
@@ -58,7 +58,7 @@
     flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
-      name: "{{ deivce_name }}"
+      name: "{{ device_name }}"
     register: device_result
 
   - name: Assert that Device spec was updated from the forced update
@@ -73,5 +73,5 @@
       flightctl.core.flightctl:
         <<: *connection_info
         kind: Device
-        name: "{{ deivce_name }}"
+        name: "{{ device_name }}"
         state: absent

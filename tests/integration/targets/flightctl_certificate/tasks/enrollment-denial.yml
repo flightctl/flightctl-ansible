@@ -1,7 +1,7 @@
 ---
 - name: Test approve device enrollment
   vars:
-    enrollment_name: ansible-integration-test-enrollment-denail
+    enrollment_name: ansible-integration-test-enrollment-denial
     connection_info: &connection_info
       flightctl_token: "{{ flightctl_token | default(omit)}}"
       flightctl_host: "{{ flightctl_host }}"
