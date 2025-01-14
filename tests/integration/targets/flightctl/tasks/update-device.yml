@@ -7,7 +7,7 @@
       flightctl_validate_certs: False
   block:
   - name: Create a test device
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       <<: *connection_info
       kind: Device
       name: "{{ deivce_name }}"
@@ -20,7 +20,7 @@
               - chronyd.service
 
   - name: Update the test device
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       <<: *connection_info
       kind: Device
       name: "{{ deivce_name }}"
@@ -30,7 +30,7 @@
             image: quay.io/redhat/rhde:9.3
 
   - name: Get test device
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
       name: "{{ deivce_name }}"
@@ -44,7 +44,7 @@
         - device_result.result.data[0].spec.systemd.matchPatterns[0] == "chronyd.service"
 
   - name: Update the test device with force_update
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       <<: *connection_info
       kind: Device
       name: "{{ deivce_name }}"
@@ -55,7 +55,7 @@
             image: quay.io/redhat/rhde:9.4
 
   - name: Get test device
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Device
       name: "{{ deivce_name }}"
@@ -70,7 +70,7 @@
 
   always:
     - name: Delete test device
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl:
         <<: *connection_info
         kind: Device
         name: "{{ deivce_name }}"

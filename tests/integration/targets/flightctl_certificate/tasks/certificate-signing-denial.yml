@@ -8,7 +8,7 @@
       flightctl_validate_certs: False
   block:
   - name: Create a csr
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       <<: *connection_info
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
@@ -20,7 +20,7 @@
           usages: ["clientAuth", "CA:false"]
 
   - name: Deny the csr
-    flightctl.edge.flightctl_certificate:
+    flightctl.core.flightctl_certificate:
       <<: *connection_info
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
@@ -35,7 +35,7 @@
         - approve_result is success
 
   - name: Get the csr
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
@@ -50,7 +50,7 @@
         - csr_result.result.data[0].status.conditions[0].status == "False"
 
   - name: Try to approve the csr again (idempotency)
-    flightctl.edge.flightctl_certificate:
+    flightctl.core.flightctl_certificate:
       <<: *connection_info
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
@@ -65,7 +65,7 @@
 
   always:
     - name: Delete csr
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl:
         <<: *connection_info
         kind: CertificateSigningRequest
         name: "{{ csr_name }}"

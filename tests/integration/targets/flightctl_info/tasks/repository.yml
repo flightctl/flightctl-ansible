@@ -8,7 +8,7 @@
       flightctl_validate_certs: False
   block:
   - name: Create a test repo
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl:
       <<: *connection_info
       kind: Repository
       name: "{{ repository_name }}"
@@ -18,7 +18,7 @@
           type: git
 
   - name: Get test repo
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_info:
       <<: *connection_info
       kind: Repository
       name: "{{ repository_name }}"
@@ -32,7 +32,7 @@
 
   always:
     - name: Delete test repo
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl:
         <<: *connection_info
         kind: Repository
         name: "{{ repository_name }}"

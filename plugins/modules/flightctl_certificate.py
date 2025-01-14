@@ -39,7 +39,7 @@ options:
       - Labels that will be applied on approval.
     type: dict
 extends_documentation_fragment:
-  - flightctl.edge.auth
+  - flightctl.core.auth
 requirements:
   - jsonschema
   - PyYAML
@@ -49,7 +49,7 @@ requirements:
 
 EXAMPLES = r"""
 - name: Approve an enrollment request
-  flightctl.edge.flightctl_certificate:
+  flightctl.core.flightctl_certificate:
     kind: EnrollmentRequest
     approved: True
     approved_by: ExampleUser
@@ -57,7 +57,7 @@ EXAMPLES = r"""
       some_label: label_value
 
 - name: Deny an enrollment request
-  flightctl.edge.flightctl_certificate:
+  flightctl.core.flightctl_certificate:
     kind: EnrollmentRequest
     approved: False
     approved_by: ExampleUser
@@ -65,7 +65,7 @@ EXAMPLES = r"""
       some_label: label_value
 
 - name: Approve a certificate signing request
-  flightctl.edge.flightctl_certificate:
+  flightctl.core.flightctl_certificate:
     kind: CertificateSigningRequest
     approved: True
     labels:
