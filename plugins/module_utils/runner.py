@@ -100,6 +100,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
     label_selector = module.params.get("label_selector")
     state = module.params.get("state")
     changed: bool = False
+    result = None
 
     try:
         get_options = GetOptions(
@@ -147,6 +148,9 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 changed |= True
             except Exception as e:
                 raise FlightctlException(f"Failed to create resource: {e}") from e
+
+    if result is None:
+        raise FlightctlException("No result returned from operation.")
 
     return changed, result.to_dict()
 
