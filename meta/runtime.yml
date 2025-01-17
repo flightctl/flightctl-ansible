@@ -1,6 +1,8 @@
 ---
 requires_ansible: ">=2.15.0"
 action_groups:
-  edge:
-    - flightctl
-    - flightctl_info
+  core:
+    - flightctl_resource
+    - flightctl_resource_info
+    - flightctl_certificate_management
+    - flightctl_enrollment_config_info

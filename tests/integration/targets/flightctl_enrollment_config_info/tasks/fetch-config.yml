@@ -8,7 +8,7 @@
       flightctl_validate_certs: False
   block:
   - name: Create a csr
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl_resource:
       <<: *connection_info
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
@@ -20,14 +20,14 @@
           usages: ["clientAuth", "CA:false"]
 
   - name: Approve the csr
-    flightctl.edge.flightctl_certificate:
+    flightctl.core.flightctl_certificate_management:
       <<: *connection_info
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
       approved: true
 
   - name: Fetch enrollment config for the csr
-    flightctl.edge.flightctl_enrollment_config_info:
+    flightctl.core.flightctl_enrollment_config_info:
       <<: *connection_info
       name: "{{ csr_name }}"
     register: enrollment_config_result
@@ -41,7 +41,7 @@
 
   always:
     - name: Delete csr
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl_resource:
         <<: *connection_info
         kind: CertificateSigningRequest
         name: "{{ csr_name }}"

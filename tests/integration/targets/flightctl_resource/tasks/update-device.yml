@@ -1,16 +1,16 @@
 - name: Test Update Device
   vars:
-    deivce_name: ansible-integration-test-device
+    device_name: ansible-integration-test-device
     connection_info: &connection_info
       flightctl_token: "{{ flightctl_token | default(omit)}}"
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: False
   block:
   - name: Create a test device
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl_resource:
       <<: *connection_info
       kind: Device
-      name: "{{ deivce_name }}"
+      name: "{{ device_name }}"
       resource_definition:
         spec:
           os:
@@ -20,20 +20,20 @@
               - chronyd.service
 
   - name: Update the test device
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl_resource:
       <<: *connection_info
       kind: Device
-      name: "{{ deivce_name }}"
+      name: "{{ device_name }}"
       resource_definition:
         spec:
           os:
             image: quay.io/redhat/rhde:9.3
 
   - name: Get test device
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_resource_info:
       <<: *connection_info
       kind: Device
-      name: "{{ deivce_name }}"
+      name: "{{ device_name }}"
     register: device_result
 
   - name: Assert that Device spec was updated
@@ -44,10 +44,10 @@
         - device_result.result.data[0].spec.systemd.matchPatterns[0] == "chronyd.service"
 
   - name: Update the test device with force_update
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl_resource:
       <<: *connection_info
       kind: Device
-      name: "{{ deivce_name }}"
+      name: "{{ device_name }}"
       force_update: True
       resource_definition:
         spec:
@@ -55,10 +55,10 @@
             image: quay.io/redhat/rhde:9.4
 
   - name: Get test device
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_resource_info:
       <<: *connection_info
       kind: Device
-      name: "{{ deivce_name }}"
+      name: "{{ device_name }}"
     register: device_result
 
   - name: Assert that Device spec was updated from the forced update
@@ -70,8 +70,8 @@
 
   always:
     - name: Delete test device
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl_resource:
         <<: *connection_info
         kind: Device
-        name: "{{ deivce_name }}"
+        name: "{{ device_name }}"
         state: absent

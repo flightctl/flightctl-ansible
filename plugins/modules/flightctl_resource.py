@@ -9,12 +9,12 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 DOCUMENTATION = r"""
-module: flightctl
-short_description: Describe Flight Control Resources
+module: flightctl_resource
+short_description: Manage Flight Control resources
 author:
   - "Alina Buzachis (@alinabuzachis)"
 description:
-  - Describe Flight Control Resources.
+  - Manage Flight Control resources.
 options:
   api_version:
     description:
@@ -48,8 +48,8 @@ options:
       - Value can be provided as string or dictionary.
     type: raw
 extends_documentation_fragment:
-  - flightctl.edge.auth
-  - flightctl.edge.state
+  - flightctl.core.auth
+  - flightctl.core.state
 notes:
   - For resources other than O(kind=Device), O(resource_definition) must be specified when creating or
     updating a resource.
@@ -62,13 +62,13 @@ requirements:
 
 EXAMPLES = r"""
 - name: Create a device
-  flightctl.edge.flightctl:
+  flightctl.core.flightctl_resource:
     kind: Device
     name: "Example"
     api_version: v1alpha1
 
 - name: Create a device
-  flightctl.edge.flightctl:
+  flightctl.core.flightctl_resource:
     kind: Device
     resource_definition:
       apiVersion: v1alpha1
@@ -80,7 +80,7 @@ EXAMPLES = r"""
           novalue: ""
 
 - name: Delete a device
-  flightctl.edge.flightctl:
+  flightctl.core.flightctl_resource:
     kind: Device
     name: "Example"
 """

@@ -9,7 +9,7 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 DOCUMENTATION = r"""
-module: flightctl_info
+module: flightctl_resource_info
 short_description: Get information about Flight Control resources
 author:
   - "Alina Buzachis (@alinabuzachis)"
@@ -68,7 +68,7 @@ options:
       - Use to retrieve the next set of available objects.
     type: str
 extends_documentation_fragment:
-  - flightctl.edge.auth
+  - flightctl.core.auth
 requirements:
   - jsonschema
   - PyYAML
@@ -78,40 +78,40 @@ requirements:
 
 EXAMPLES = r"""
 - name: Get all devices
-  flightctl.edge.flightctl_info:
+  flightctl.core.flightctl_resource_info:
     kind: Device
 
 - name: Get all fleets
-  flightctl.edge.flightctl_info:
+  flightctl.core.flightctl_resource_info:
     kind: Fleet
 
 - name: Get information about a specific device
-  flightctl.edge.flightctl_info:
+  flightctl.core.flightctl_resource_info:
     kind: Device
     name: "Example"
 
 - name: Get information about a specific device using label_selector
-  flightctl.edge.flightctl_info:
+  flightctl.core.flightctl_resource_info:
     kind: Device
     label_selector: "machine_type=forklift"
 
 - name: Get devices with a specific owner
-  flightctl.edge.flightctl_info:
+  flightctl.core.flightctl_resource_info:
     kind: Device
     owner: "Fleet/SomeFleet"
 
 - name: Get devices filtered by status
-  flightctl.edge.flightctl_info:
+  flightctl.core.flightctl_resource_info:
     kind: Device
     status_filter: ['updated.status=OutOfDate']
 
 - name: Get devices filtered by a field selector
-  flightctl.edge.flightctl_info:
+  flightctl.core.flightctl_resource_info:
     kind: Device
     field_selector: "metadata.name!=some_value"
 
 - name: Get all template versions for a specific fleet
-  flightctl.edge.flightctl_info:
+  flightctl.core.flightctl_resource_info:
     kind: TemplateVersion
     fleet_name: test_fleet
 """

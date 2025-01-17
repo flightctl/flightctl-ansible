@@ -13,7 +13,7 @@
           flightctl_validate_certs: "{{ flightctl_validate_certs | default(True)}}"
 
     - name: Delete devices
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl_resource:
         <<: *credential_defaults
         kind: Device
         name: "{{ item }}"
@@ -24,14 +24,14 @@
         - "device-ansible-example-3"
 
     - name: Delete fleet
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl_resource:
         <<: *credential_defaults
         kind: Fleet
         name: "fleet-ansible-example"
         state: absent
 
     - name: Delete repository
-      flightctl.edge.flightctl:
+      flightctl.core.flightctl_resource:
         <<: *credential_defaults
         kind: Repository
         name: "repository-ansible-example"

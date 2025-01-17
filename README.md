@@ -19,10 +19,10 @@ This collection requires Python 3.10 or greater.
 <!--
 ## Installation
 
-The `flightctl.edge` collection can be installed with the Ansible Galaxy command-line tool:
+The `flightctl.core` collection can be installed with the Ansible Galaxy command-line tool:
 
 ```shell
-ansible-galaxy collection install flightctl.edge
+ansible-galaxy collection install flightctl.core
 ```
 
 You can also include it in a `requirements.yml` file and install it with `ansible-galaxy collection install -r requirements.yml`, using the format:
@@ -30,14 +30,14 @@ You can also include it in a `requirements.yml` file and install it with `ansibl
 ```yaml
 ---
 collections:
-  - name: flightctl.edge
+  - name: flightctl.core
 ```
 
 Note that if you install any collections from Ansible Galaxy, they will not be upgraded automatically when you upgrade the Ansible package.
 To upgrade the collection to the latest available version, run the following command:
 
 ```shell
-ansible-galaxy collection install flightctl.edge --upgrade
+ansible-galaxy collection install flightctl.core --upgrade
 ```
 
 A specific version of the collection can be installed by using the `version` keyword in the `requirements.yml` file:
@@ -45,14 +45,14 @@ A specific version of the collection can be installed by using the `version` key
 ```yaml
 ---
 collections:
-  - name: flightctl.edge
+  - name: flightctl.core
     version: 1.0.0
 ```
 
 or using the ansible-galaxy command as follows
 
 ```shell
-ansible-galaxy collection install flightctl.edge:==1.0.0
+ansible-galaxy collection install flightctl.core:==1.0.0
 ```
 
 The Python module dependencies are not installed by ansible-galaxy. They must be installed manually using pip:
@@ -67,24 +67,24 @@ Refer to the following for more details.
 -->
 ## Use Cases
 
-You can either call modules, rulebooks and playbooks by their Fully Qualified Collection Name (FQCN), such as ansible.eda.activation, or you can call modules by their short name if you list the flightctl.edge collection in the playbook's collections keyword:
+You can either call modules, rulebooks and playbooks by their Fully Qualified Collection Name (FQCN), such as ansible.eda.activation, or you can call modules by their short name if you list the flightctl.core collection in the playbook's collections keyword:
 
 ```yaml
 ---
   - name: Create a new test device
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl_resource:
       kind: Device
       name: "test-ansible-device"
       api_version: v1alpha1
 
   - name: Create a new device
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl_resource:
       kind: Device
       name: "test-ansible-device-2"
       resource_definition: "{{ lookup('file', 'device.yml') | from_yaml }}"
 
   - name: Update new test device
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl_resource:
       kind: Device
       name: "test-ansible-device"
       api_version: v1alpha1
@@ -97,28 +97,28 @@ You can either call modules, rulebooks and playbooks by their Fully Qualified Co
             novalue: ""
 
   - name: Get information about a specific device
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_resource_info:
       kind: Device
       name: "test-ansible-device"
 
   - name: Delete a test device
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl_resource:
       kind: Device
       name: "test-ansible-device"
       state: absent
 
   - name: Get all devices
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_resource_info:
       kind: Device
 
   - name: Get all fleets
-    flightctl.edge.flightctl_info:
+    flightctl.core.flightctl_resource_info:
       kind: Fleet
 
   - name: Update the resource definition for a fleet
-    flightctl.edge.flightctl:
+    flightctl.core.flightctl_resource:
       kind: Fleet
-      name: "asible-test-fleet"
+      name: "ansible-test-fleet"
       resource_definition:
         spec:
           os:
@@ -131,7 +131,7 @@ There are unit, sanity, and integration tests configured to run for this reposit
 
 `ansible-test` is used to run each of the test types.  For `ansible-test` to properly work the collection must be present in the following directory structure on your local machine:
 
-{...}/ansible_collections/flightctl/edge/{code_from_this_repo}
+{...}/ansible_collections/flightctl/core/{code_from_this_repo}
 
 ### Unit Tests
 
