@@ -72,19 +72,19 @@ You can either call modules, rulebooks and playbooks by their Fully Qualified Co
 ```yaml
 ---
   - name: Create a new test device
-    flightctl.core.flightctl:
+    flightctl.coreflightctl_resource:
       kind: Device
       name: "test-ansible-device"
       api_version: v1alpha1
 
   - name: Create a new device
-    flightctl.core.flightctl:
+    flightctl.coreflightctl_resource:
       kind: Device
       name: "test-ansible-device-2"
       resource_definition: "{{ lookup('file', 'device.yml') | from_yaml }}"
 
   - name: Update new test device
-    flightctl.core.flightctl:
+    flightctl.coreflightctl_resource:
       kind: Device
       name: "test-ansible-device"
       api_version: v1alpha1
@@ -97,26 +97,26 @@ You can either call modules, rulebooks and playbooks by their Fully Qualified Co
             novalue: ""
 
   - name: Get information about a specific device
-    flightctl.core.flightctl_info:
+    flightctl.coreflightctl_resource_info:
       kind: Device
       name: "test-ansible-device"
 
   - name: Delete a test device
-    flightctl.core.flightctl:
+    flightctl.coreflightctl_resource:
       kind: Device
       name: "test-ansible-device"
       state: absent
 
   - name: Get all devices
-    flightctl.core.flightctl_info:
+    flightctl.coreflightctl_resource_info:
       kind: Device
 
   - name: Get all fleets
-    flightctl.core.flightctl_info:
+    flightctl.coreflightctl_resource_info:
       kind: Fleet
 
   - name: Update the resource definition for a fleet
-    flightctl.core.flightctl:
+    flightctl.coreflightctl_resource:
       kind: Fleet
       name: "asible-test-fleet"
       resource_definition:

@@ -4,7 +4,7 @@
     fleet_name: ansible-integration-fleet
   block:
   - name: Create a test fleet
-    flightctl.core.flightctl:
+    flightctl.core.flightctl_resource:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Fleet
@@ -17,7 +17,7 @@
                 image: quay.io/redhat/rhde:9.2
 
   - name: Update the test fleet
-    flightctl.core.flightctl:
+    flightctl.core.flightctl_resource:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Fleet
@@ -30,7 +30,7 @@
                 image: quay.io/redhat/rhde:9.3
 
   - name: Update the test fleet again
-    flightctl.core.flightctl:
+    flightctl.core.flightctl_resource:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: Fleet
@@ -43,7 +43,7 @@
                 image: quay.io/redhat/rhde:9.4
 
   - name: Get all template versions
-    flightctl.core.flightctl_info:
+    flightctl.core.flightctl_resource_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: TemplateVersion
@@ -57,7 +57,7 @@
         - template_version_result.result.data | length == 3
 
   - name: Delete a template version by name
-    flightctl.core.flightctl:
+    flightctl.core.flightctl_resource:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: TemplateVersion
@@ -73,7 +73,7 @@
         - delete_single_template_version_result.changed
 
   - name: Get all template versions
-    flightctl.core.flightctl_info:
+    flightctl.core.flightctl_resource_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: TemplateVersion
@@ -87,7 +87,7 @@
         - template_version_result.result.data | length == 2
 
   - name: Delete all template versions owned by a fleet
-    flightctl.core.flightctl:
+    flightctl.core.flightctl_resource:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: TemplateVersion
@@ -102,7 +102,7 @@
         - delete_all_template_version_result.changed
 
   - name: Get all template versions
-    flightctl.core.flightctl_info:
+    flightctl.core.flightctl_resource_info:
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: false
       kind: TemplateVersion
@@ -115,14 +115,14 @@
         - template_version_result is success
         - template_version_result.result.data | length == 0
   always:
-    - flightctl.core.flightctl:
+    - flightctl.core.flightctl_resource:
         flightctl_host: "{{ flightctl_host }}"
         flightctl_validate_certs: false
         kind: Fleet
         name: "{{ fleet_name }}"
         state: absent
 
-    - flightctl.core.flightctl:
+    - flightctl.core.flightctl_resource:
         flightctl_host: "{{ flightctl_host }}"
         flightctl_validate_certs: false
         kind: TemplateVersion

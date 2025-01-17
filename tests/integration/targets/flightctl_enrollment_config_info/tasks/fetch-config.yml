@@ -8,7 +8,7 @@
       flightctl_validate_certs: False
   block:
   - name: Create a csr
-    flightctl.core.flightctl:
+    flightctl.core.flightctl_resource:
       <<: *connection_info
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
@@ -20,7 +20,7 @@
           usages: ["clientAuth", "CA:false"]
 
   - name: Approve the csr
-    flightctl.core.flightctl_certificate:
+    flightctl.core.flightctl_resource:
       <<: *connection_info
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
@@ -41,7 +41,7 @@
 
   always:
     - name: Delete csr
-      flightctl.core.flightctl:
+      flightctl.core.flightctl_resource:
         <<: *connection_info
         kind: CertificateSigningRequest
         name: "{{ csr_name }}"

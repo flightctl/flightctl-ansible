@@ -1,14 +1,14 @@
 ---
 - name: Test approve certificate signing request
   vars:
-    csr_name: ansible-integration-test-approval-csr
+    csr_name: ansible-integration-test-denial-csr
     connection_info: &connection_info
       flightctl_token: "{{ flightctl_token | default(omit)}}"
       flightctl_host: "{{ flightctl_host }}"
       flightctl_validate_certs: False
   block:
   - name: Create a csr
-    flightctl.core.flightctl:
+    flightctl.core.flightctl_resource:
       <<: *connection_info
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
@@ -19,12 +19,12 @@
           signerName: enrollment
           usages: ["clientAuth", "CA:false"]
 
-  - name: Approve the csr
-    flightctl.core.flightctl_certificate:
+  - name: Deny the csr
+    flightctl.core.flightctl_certificate_management:
       <<: *connection_info
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
-      approved: true
+      approved: false
       labels:
         testing_label: is_set_during_testing
     register: approve_result
@@ -35,25 +35,26 @@
         - approve_result is success
 
   - name: Get the csr
-    flightctl.core.flightctl_info:
+    flightctl.core.flightctl_resource_info:
       <<: *connection_info
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
     register: csr_result
 
-  - name: Assert that the csr is now approved
+  - name: Assert that the csr is now denied
     ansible.builtin.assert:
       that:
         - csr_result is success
         - csr_result.result.data[0].status.conditions[0].type == "Approved"
-        - csr_result.result.data[0].status.conditions[0].status == "True"
+        - csr_result.result.data[0].status.conditions[0].message == "Denied"
+        - csr_result.result.data[0].status.conditions[0].status == "False"
 
   - name: Try to approve the csr again (idempotency)
-    flightctl.core.flightctl_certificate:
+    flightctl.core.flightctl_certificate_management:
       <<: *connection_info
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
-      approved: true
+      approved: false
     register: idempotency_result
 
   - name: Assert that the result was not changed
@@ -64,7 +65,7 @@
 
   always:
     - name: Delete csr
-      flightctl.core.flightctl:
+      flightctl.core.flightctl_resource:
         <<: *connection_info
         kind: CertificateSigningRequest
         name: "{{ csr_name }}"

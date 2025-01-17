@@ -9,12 +9,12 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 DOCUMENTATION = r"""
-module: flightctl_certificate
-short_description: Approve or deny certificate signing or enrollment requests.
+module: flightctl_certificate_management
+short_description: Manage approving or denying certificate signing or enrollment requests
 author:
   - "Dakota Crowder (@dakcrowder)"
 description:
-  - Approve or deny certificate signing or enrollment requests.
+  - Manage approving or denying certificate signing or enrollment requests.
 options:
   kind:
     description:
@@ -49,7 +49,7 @@ requirements:
 
 EXAMPLES = r"""
 - name: Approve an enrollment request
-  flightctl.core.flightctl_certificate:
+  flightctl.core.flightctl_certificate_management:
     kind: EnrollmentRequest
     approved: True
     approved_by: ExampleUser
@@ -57,7 +57,7 @@ EXAMPLES = r"""
       some_label: label_value
 
 - name: Deny an enrollment request
-  flightctl.core.flightctl_certificate:
+  flightctl.core.flightctl_certificate_management:
     kind: EnrollmentRequest
     approved: False
     approved_by: ExampleUser
@@ -65,7 +65,7 @@ EXAMPLES = r"""
       some_label: label_value
 
 - name: Approve a certificate signing request
-  flightctl.core.flightctl_certificate:
+  flightctl.core.flightctl_certificate_management:
     kind: CertificateSigningRequest
     approved: True
     labels:

@@ -9,7 +9,7 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 DOCUMENTATION = r"""
-module: flightctl
+module: flightctl_resource
 short_description: Manage Flight Control resources
 author:
   - "Alina Buzachis (@alinabuzachis)"
@@ -62,13 +62,13 @@ requirements:
 
 EXAMPLES = r"""
 - name: Create a device
-  flightctl.core.flightctl:
+  flightctl.core.flightctl_resource:
     kind: Device
     name: "Example"
     api_version: v1alpha1
 
 - name: Create a device
-  flightctl.core.flightctl:
+  flightctl.core.flightctl_resource:
     kind: Device
     resource_definition:
       apiVersion: v1alpha1
@@ -80,7 +80,7 @@ EXAMPLES = r"""
           novalue: ""
 
 - name: Delete a device
-  flightctl.core.flightctl:
+  flightctl.core.flightctl_resource:
     kind: Device
     name: "Example"
 """

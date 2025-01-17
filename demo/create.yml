@@ -14,30 +14,30 @@
           flightctl_validate_certs: "{{ flightctl_validate_certs | default(True)}}"
 
     - name: Get all devices
-      flightctl.core.flightctl_info:
+      flightctl.core.flightctl_resource_info:
         <<: *credential_defaults
         kind: Device
 
     - name: Get all fleets
-      flightctl.core.flightctl_info:
+      flightctl.core.flightctl_resource_info:
         <<: *credential_defaults
         kind: Fleet
 
     - name: Get information about a specific device
-      flightctl.core.flightctl_info:
+      flightctl.core.flightctl_resource_info:
         <<: *credential_defaults
         kind: Device
         name: "2bd0rgpir74c5jtrhfb1idvb2cvvvinem24t727qdudfcqr60sog"
       register: result
 
     - name: Get information about a specific device
-      flightctl.core.flightctl_info:
+      flightctl.core.flightctl_resource_info:
         <<: *credential_defaults
         kind: Device
         label_selector: "owner=mparra"
 
     - name: Create a test device in check_mode
-      flightctl.core.flightctl:
+      flightctl.core.flightctl_resource:
         <<: *credential_defaults
         kind: Device
         name: "device-ansible-example"
@@ -52,7 +52,7 @@
       check_mode: true
 
     - name: Create a test device
-      flightctl.core.flightctl:
+      flightctl.core.flightctl_resource:
         <<: *credential_defaults
         kind: Device
         name: "device-ansible-example"
@@ -73,7 +73,7 @@
           - _result is success
 
     - name: Create a test device again (idempotence)
-      flightctl.core.flightctl:
+      flightctl.core.flightctl_resource:
         <<: *credential_defaults
         kind: Device
         name: "device-ansible-example"
@@ -94,7 +94,7 @@
           - _result is success
 
     - name: Create a new test device
-      flightctl.core.flightctl:
+      flightctl.core.flightctl_resource:
         <<: *credential_defaults
         kind: Device
         name: "device-ansible-example-2"
@@ -108,7 +108,7 @@
           - _result is success
 
     - name: Update new test device
-      flightctl.core.flightctl:
+      flightctl.core.flightctl_resource:
         <<: *credential_defaults
         kind: Device
         name: "device-ansible-example-2"
@@ -129,13 +129,13 @@
           - _result is success
 
     - name: Get information about a specific device
-      flightctl.core.flightctl_info:
+      flightctl.core.flightctl_resource_info:
         <<: *credential_defaults
         kind: Device
         name: "device-ansible-example"
 
     - name: Delete a test device in check_mode
-      flightctl.core.flightctl:
+      flightctl.core.flightctl_resource:
         <<: *credential_defaults
         kind: Device
         name: "device-ansible-example"
@@ -143,13 +143,13 @@
       check_mode: true
 
     - name: Get information about a specific device
-      flightctl.core.flightctl_info:
+      flightctl.core.flightctl_resource_info:
         <<: *credential_defaults
         kind: Device
         name: "device-ansible-example"
 
     - name: Create a new fleet
-      flightctl.core.flightctl:
+      flightctl.core.flightctl_resource:
         <<: *credential_defaults
         kind: Fleet
         name: "fleet-ansible-example"
@@ -163,7 +163,7 @@
           - _result is success
 
     - name: Create a new device
-      flightctl.core.flightctl:
+      flightctl.core.flightctl_resource:
         <<: *credential_defaults
         kind: Device
         name: "device-ansible-example-3"
@@ -177,7 +177,7 @@
           - _result is success
 
     - name: Create a new repository
-      flightctl.core.flightctl:
+      flightctl.core.flightctl_resource:
         <<: *credential_defaults
         kind: Repository
         name: "repository-ansible-example"
