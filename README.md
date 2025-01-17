@@ -158,18 +158,18 @@ The easiest way to run tests locally is to:
 
 Currently, the publishing to Ansible Galaxy is manual and requires the following steps:
 
-1. Checkout a release branch
+1. Check out a release branch
     1. `git checkout -b release-NEW_VERSION`
 2. Update the version in the following places:
     1. The `version` in `galaxy.yml`
     2. This README's referenced versions in the Installation section
 3. Update the CHANGELOG:
-    1. Make sure you have [`antsibull-changelog`](https://pypi.org/project/antsibull-changelog/) installed.
-    2. Make sure there are fragments for all known changes in `changelogs/fragments`.  Info about creating changelog fragments can be found [here](https://docs.ansible.com/ansible/devel/community/development_process.html#creating-a-changelog-fragment)
+    1. Install [`antsibull-changelog`](https://pypi.org/project/antsibull-changelog)
+    2. Verify fragments exist for all known changes in `changelogs/fragments`.  Info about creating changelog fragments can be found [here](https://docs.ansible.com/ansible/devel/community/development_process.html#creating-a-changelog-fragment)
     3. Run `antsibull-changelog release`.
-4. Ensure the colleciton tarball builds properly:
+4. Build the collection tarball:
     1. Run `ansible-galaxy collection build`
-    2. Ensure there are no errors and a tarball like `flightctl-core-{some-version}.tar.gz` exists in the current directory
+    2. Verify the tarball `flightctl-core-{some-version}.tar.gz` was created in the current directory without build errors
 5. Install and verify the collection tarball locally
     1. Install the built collection via `ansible-galaxy collection install flightctl-core-{some-version}.tar.gz --force`
     2. Run a basic playbook to verify functionality (examples can be found in demo/README.md)
