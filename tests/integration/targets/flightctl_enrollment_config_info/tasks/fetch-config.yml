@@ -20,7 +20,7 @@
           usages: ["clientAuth", "CA:false"]
 
   - name: Approve the csr
-    flightctl.core.flightctl_resource:
+    flightctl.core.flightctl_certificate_management:
       <<: *connection_info
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"

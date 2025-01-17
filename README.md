@@ -118,7 +118,7 @@ You can either call modules, rulebooks and playbooks by their Fully Qualified Co
   - name: Update the resource definition for a fleet
     flightctl.core.flightctl_resource:
       kind: Fleet
-      name: "asible-test-fleet"
+      name: "ansible-test-fleet"
       resource_definition:
         spec:
           os:

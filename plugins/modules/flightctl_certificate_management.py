@@ -51,7 +51,7 @@ EXAMPLES = r"""
 - name: Approve an enrollment request
   flightctl.core.flightctl_certificate_management:
     kind: EnrollmentRequest
-    approved: True
+    approved: true
     approved_by: ExampleUser
     labels:
       some_label: label_value
@@ -59,7 +59,7 @@ EXAMPLES = r"""
 - name: Deny an enrollment request
   flightctl.core.flightctl_certificate_management:
     kind: EnrollmentRequest
-    approved: False
+    approved: false
     approved_by: ExampleUser
     labels:
       some_label: label_value
@@ -67,7 +67,7 @@ EXAMPLES = r"""
 - name: Approve a certificate signing request
   flightctl.core.flightctl_certificate_management:
     kind: CertificateSigningRequest
-    approved: True
+    approved: true
     labels:
       some_label: label_value
 """
