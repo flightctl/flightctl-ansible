@@ -26,7 +26,7 @@
             -----END CERTIFICATE REQUEST-----
 
   - name: Approve the enrollment request in check mode
-    flightctl.core.flightctl_resource_certificate:
+    flightctl.core.flightctl_certificate_management:
       <<: *connection_info
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
