@@ -10,6 +10,6 @@ releases:
       release_summary: This release contains the initial documented release of the
         Flightctl collection
     fragments:
-    - brekaing_changes.yml
+    - breaking_changes.yml
     - release_summary.yml
     release_date: '2025-01-20'
