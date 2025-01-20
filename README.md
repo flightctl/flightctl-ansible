@@ -48,13 +48,13 @@ A specific version of the collection can be installed by using the `version` key
 ---
 collections:
   - name: flightctl.core
-    version: 1.0.0
+    version: 0.2.0
 ```
 
 or using the ansible-galaxy command as follows
 
 ```shell
-ansible-galaxy collection install flightctl.core:==1.0.0
+ansible-galaxy collection install flightctl.core:==0.2.0
 ```
 
 The Python module dependencies are not installed by ansible-galaxy. They must be installed manually using pip:
