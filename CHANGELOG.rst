@@ -1,5 +1,5 @@
 =========================
-ansible.eda Release Notes
+flightctl.core Release Notes
 =========================
 
 .. contents:: Topics
