@@ -1,0 +1,15 @@
+ancestor: null
+releases:
+  0.2.0:
+    changes:
+      breaking_changes:
+      - Renamed `flightctl_certificate_management` module (previously `flightctl_certificate`)
+      - Renamed `flightctl_resource_info` module (previously `flightctl_info`)
+      - Renamed `flightctl_resource` module (previously `flightctl`)
+      - Renamed collection to `core` (previously `edge`)
+      release_summary: This release contains the initial documented release of the
+        Flightctl collection
+    fragments:
+    - breaking_changes.yml
+    - release_summary.yml
+    release_date: '2025-01-20'

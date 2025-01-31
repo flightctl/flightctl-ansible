@@ -11,6 +11,7 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 module: flightctl_resource_info
 short_description: Get information about Flight Control resources
+version_added: 0.1.0
 author:
   - "Alina Buzachis (@alinabuzachis)"
 description:

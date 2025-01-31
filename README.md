@@ -48,13 +48,13 @@ A specific version of the collection can be installed by using the `version` key
 ---
 collections:
   - name: flightctl.core
-    version: 1.0.0
+    version: 0.2.0
 ```
 
 or using the ansible-galaxy command as follows
 
 ```shell
-ansible-galaxy collection install flightctl.core:==1.0.0
+ansible-galaxy collection install flightctl.core:==0.2.0
 ```
 
 The Python module dependencies are not installed by ansible-galaxy. They must be installed manually using pip:
@@ -69,7 +69,7 @@ Refer to the following for more details.
 
 ## Use Cases
 
-You can either call modules, rulebooks and playbooks by their Fully Qualified Collection Name (FQCN), such as ansible.eda.activation, or you can call modules by their short name if you list the flightctl.core collection in the playbook's collections keyword:
+You can either call modules, rulebooks and playbooks by their Fully Qualified Collection Name (FQCN), such as flightctl.core, or you can call modules by their short name if you list the flightctl.core collection in the playbook's collections keyword:
 
 ```yaml
 ---
