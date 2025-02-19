@@ -178,7 +178,7 @@ Currently, the publishing to Ansible Galaxy is manual and requires the following
 8. Use git to tag the release appropriately:
     1. `git tag -n` # see current tags and their comments
     2. `git tag -a NEW_VERSION -m "comment here"` # the comment can be, for example,  "flightctl.core: 1.0.0"
-    3. `git push upstream NEW_VERSION`
+    3. `git push origin NEW_VERSION`
 9. Build and push the collection to Galaxy:
     1. Run `ansible-galaxy collection build`
     2. Fetch or configure your [Galaxy Token](https://galaxy.ansible.com/ui/token/) if you have not done so already.
