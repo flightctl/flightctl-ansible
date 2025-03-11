@@ -11,7 +11,6 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 module: flightctl_enrollment_config_info
 short_description: Get information about enrollment configuration.
-version_added: 0.1.0
 author:
   - "Dakota Crowder (@dakcrowder)"
 description:

@@ -12,7 +12,7 @@ options:
         created, if it does not already exist. If set to C(absent), an existing object will be deleted. If set to
         C(present), an existing object will be patched, if its attributes differ from those specified using
         I(resource_definition) or I(src).
-    choices: ["present", "absent"]
+    choices: ["present", "absent", "decommission"]
     default: "present"
     type: str
   force_update:

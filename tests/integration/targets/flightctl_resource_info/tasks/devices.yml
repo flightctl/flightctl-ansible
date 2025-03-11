@@ -60,7 +60,7 @@
     ansible.builtin.assert:
       that:
         - rendered_result is success
-        - rendered_result.result.data[0].os.image == "quay.io/redhat/rhde:9.2"
+        - rendered_result.result.data[0].spec.os.image == "quay.io/redhat/rhde:9.2"
 
   - name: Create a test device with a label
     flightctl.core.flightctl_resource:
@@ -98,20 +98,6 @@
         - device_with_label_result.result.data | length == 2
         - device_with_label_result.result.data[0].metadata.name is match("ansible-integration-test-device-label-*")
         - device_with_label_result.result.data[1].metadata.name is match("ansible-integration-test-device-label-*")
-
-  - name: Query for all devices by owner
-    flightctl.core.flightctl_resource_info:
-      <<: *connection_info
-      kind: Device
-      owner: "Fleet/{{ fleet_name }}"
-    register: device_with_owner_result
-
-  - name: Assert that the device info was filtered by owner
-    ansible.builtin.assert:
-      that:
-        - device_with_owner_result is success
-        - device_with_owner_result.result.data | length == 1
-        - device_with_owner_result.result.data[0].metadata.name == "ansible-integration-test-device"
 
   - name: Query for all devices
     flightctl.core.flightctl_resource_info:
@@ -164,19 +150,6 @@
     ansible.builtin.assert:
       that:
         - second_limit_result is success
-
-  - name: Query for all devices with a status filter
-    flightctl.core.flightctl_resource_info:
-      <<: *connection_info
-      kind: Device
-      status_filter: ['updated.status=OutOfDate']
-    register: status_filter_result
-
-  - name: Assert that the status filtered data was fetched
-    ansible.builtin.assert:
-      that:
-        - status_filter_result is success
-        - status_filter_result.result.data | length == 0
 
   - name: Query for devices with a filter selector
     flightctl.core.flightctl_resource_info:

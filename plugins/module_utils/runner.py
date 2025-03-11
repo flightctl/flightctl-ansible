@@ -149,6 +149,22 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
             except Exception as e:
                 raise FlightctlException(f"Failed to create resource: {e}") from e
 
+    elif state == "decommission":  # Handle decommissioning
+        if resource != ResourceType.DEVICE:
+            raise ValidationException(f"Decommissioning is only allowed for devices, not {resource}.")
+
+        if existing_result.data:
+            if module.check_mode:
+                module.exit_json(**{"changed": True})
+
+            try:
+                result = module.decommission(name, definition)
+                changed |= True
+            except Exception as e:
+                raise FlightctlException(f"Failed to decommission device: {e}") from e
+        else:
+            raise FlightctlException(f"Device '{name}' not found for decommissioning.")
+
     if result is None:
         raise FlightctlException("No result returned from operation.")
 

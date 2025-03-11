@@ -11,7 +11,6 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 module: flightctl_resource_info
 short_description: Get information about Flight Control resources
-version_added: 0.1.0
 author:
   - "Alina Buzachis (@alinabuzachis)"
 description:
@@ -225,7 +224,7 @@ def main():
     try:
         result = module.get_one_or_many(options)
     except FlightctlException as e:
-        module.fail_json(msg=f"Failed to get resource: {e}")
+        module.fail_json(msg=f"Failed to get resource: {e}", error=traceback.format_exc())
 
     module.exit_json(result=result.to_dict())
 

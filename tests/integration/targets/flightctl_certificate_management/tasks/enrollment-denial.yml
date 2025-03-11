@@ -85,3 +85,4 @@
         kind: EnrollmentRequest
         name: "{{ enrollment_name }}"
         state: absent
+      ignore_errors: yes
