@@ -26,7 +26,7 @@ jobs:
           # This ref is an arbitrary value from a recent commit relative to workflow being written
           # Once we begin to pin the collection against specific flightctl versions this should be updated
           # to reference a specific release
-          ref: 'acfa41af729145511d2423ca8cd97aaa92aadd37'
+          ref: '09036ecb00f3c6aa811d65da31b10d7e026694f7'
 
       - name: Setup dependencies for flightctl
         uses: ./.github/actions/setup-dependencies
