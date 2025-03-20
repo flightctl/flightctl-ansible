@@ -213,12 +213,14 @@ def perform_approval(module: FlightctlAPIModule) -> None:
         elif isinstance(existing, CertificateSigningRequest):
             try:
                 conditions = existing.status.conditions
-                approval_condition = next((c for c in conditions if c.type == "Approved"), None)
-                if approval_condition is not None:
-                    # The api returns string values for booleans in the conditions
-                    if approval_condition.status == 'True':
-                        currently_approved = True
-                    elif approval_condition.status == 'False':
+                approval_condition = next((c for c in conditions if c.type in {"Approved", "Denied"}), None)
+
+                if approval_condition:
+                    status_map = {"Approved": True, "Denied": False}
+                    
+                    if approval_condition.status == "True":
+                        currently_approved = status_map[approval_condition.type]
+                    elif approval_condition.status == "False":
                         currently_approved = False
             except AttributeError:
                 pass
