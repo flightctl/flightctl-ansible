@@ -217,7 +217,7 @@ def perform_approval(module: FlightctlAPIModule) -> None:
 
                 if approval_condition:
                     status_map = {"Approved": True, "Denied": False}
-                    
+
                     if approval_condition.status == "True":
                         currently_approved = status_map[approval_condition.type]
                     elif approval_condition.status == "False":
