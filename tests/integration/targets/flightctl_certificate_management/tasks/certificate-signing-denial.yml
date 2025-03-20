@@ -53,7 +53,7 @@
       <<: *connection_info
       kind: CertificateSigningRequest
       name: "{{ csr_name }}"
-      approved: true
+      approved: false
     register: idempotency_result
 
   - name: Assert that the result was not changed
