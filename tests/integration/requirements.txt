@@ -1,3 +1,4 @@
 jsonschema
 jsonpatch
+# Temporary fork for Updated python client(0.5) - revert to official repo after merge
 git+https://github.com/SiddarthR56/flightctl-python-client.git

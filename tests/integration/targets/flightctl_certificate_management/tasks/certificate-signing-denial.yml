@@ -48,6 +48,20 @@
         - csr_result.result.data[0].status.conditions[0].type == "Denied"
         - csr_result.result.data[0].status.conditions[0].status == "True"
 
+  - name: Try to deny the csr again (idempotency)
+    flightctl.core.flightctl_certificate_management:
+      <<: *connection_info
+      kind: CertificateSigningRequest
+      name: "{{ csr_name }}"
+      approved: true
+    register: idempotency_result
+
+  - name: Assert that the result was not changed
+    ansible.builtin.assert:
+      that:
+        - idempotency_result is success
+        - idempotency_result.changed == False
+
   always:
     - name: Delete csr
       flightctl.core.flightctl_resource:

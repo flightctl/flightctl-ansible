@@ -70,6 +70,16 @@
         - device_result.result.data[0].spec.os.image == "quay.io/redhat/rhde:9.4"
         - "'systemd' not in device_result.result.data[0].spec"
 
+  - name: Decommission test device in check mode
+    flightctl.core.flightctl_resource:
+      <<: *connection_info
+      kind: Device
+      name: "{{ device_name }}"
+      state: decommission
+      resource_definition:
+        target: "FactoryReset"
+    check_mode: true
+  
   - name: Decommission test device
     flightctl.core.flightctl_resource:
       <<: *connection_info

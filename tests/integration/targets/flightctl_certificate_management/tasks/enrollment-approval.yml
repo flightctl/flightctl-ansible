@@ -102,6 +102,7 @@
         kind: EnrollmentRequest
         name: "{{ enrollment_name }}"
         state: absent
+      ignore_errors: yes
 
     # Approving an enrollment request attempts to create a device, clean it up here as well
     - name: Delete test device

@@ -406,17 +406,25 @@ class FlightctlAPIModule(FlightctlModule):
             try:
                 csr = self.call_api(api_instance.read_certificate_signing_request, input.name)
 
+                if csr.status is None:
+                    csr.status = CertificateSigningRequestStatus(conditions=[])
+
+                expected_type = ConditionType.APPROVED if input.approved else ConditionType.DENIED
+
+                # Idempotency of certificate approval/denial is no longer handled in FlightCTL.
+                # This logic will be enforced within the Ansible collection instead.
+
+                if any(cond.type == expected_type for cond in csr.status.conditions):  # Check if the condition already exists
+                    return csr
+
                 approval_type = Condition(
-                    type=ConditionType.APPROVED if input.approved else ConditionType.DENIED,
+                    type=expected_type,
                     status=ConditionStatus.TRUE,
                     observed_generation=1,
                     last_transition_time=datetime.now().isoformat() + "Z",
                     message="The request has been approved." if input.approved else "The request has been denied.",
-                    reason="UserApproval" if input.approved else "UserDenial"
+                    reason="ManualApproval" if input.approved else "ManualDenial"
                 )
-
-                if csr.status is None:
-                    csr.status = CertificateSigningRequestStatus(conditions=[])
 
                 csr.status.conditions.append(approval_type)
 
@@ -443,7 +451,7 @@ class FlightctlAPIModule(FlightctlModule):
         if not hasattr(api_instance, "decommission_device"):
             raise FlightctlException(f"Decommissioning is not supported for resource type {ResourceType.DEVICE}")
 
-        decommission_call = getattr(api_instance, "decommission_device")
+        decommission_call = api_instance.decommission_device
 
         target = definition.get("target", "Unenroll")
 
