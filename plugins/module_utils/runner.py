@@ -157,6 +157,12 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
             if module.check_mode:
                 module.exit_json(**{"changed": True})
 
+            device_spec = existing_result.data[0].spec
+
+            # Check if the device is already decommissioned
+            if device_spec.decommissioning is not None:
+                module.exit_json(**{"changed": False, "msg": f"Device '{name}' has already been decommissioned."})
+
             try:
                 result = module.decommission(name, definition)
                 changed |= True

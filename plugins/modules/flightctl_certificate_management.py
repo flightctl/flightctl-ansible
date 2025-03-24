@@ -11,6 +11,7 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 module: flightctl_certificate_management
 short_description: Manage approving or denying certificate signing or enrollment requests
+version_added: 1.0.0
 author:
   - "Dakota Crowder (@dakcrowder)"
 description:
