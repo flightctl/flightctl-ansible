@@ -16,6 +16,18 @@ from ansible.module_utils.six.moves.urllib.parse import urlparse
 
 from .config_loader import ConfigLoader
 from .exceptions import FlightctlException
+from .token_manager import OIDCTokenManager
+
+
+try:
+    import flightctl
+    from flightctl.models.auth_config import AuthConfig
+    from flightctl.rest import ApiException
+
+except ImportError as imp_exc:
+    CLIENT_IMPORT_ERROR = imp_exc
+else:
+    CLIENT_IMPORT_ERROR = None
 
 
 class FlightctlModule(AnsibleModule):
@@ -58,6 +70,12 @@ class FlightctlModule(AnsibleModule):
             type="path",
             aliases=["ca_path"],
             fallback=(env_fallback, ["FLIGHTCTL_CA_PATH"]),
+        ),
+        flightctl_client_id=dict(
+            required=False,
+            type="str",
+            aliases=["client_id"],
+            fallback=(env_fallback, ["FLIGHTCTL_CLIENT_ID"]),
         )
     )
     short_params: Dict[str, str] = {
@@ -68,6 +86,7 @@ class FlightctlModule(AnsibleModule):
         "request_timeout": "flightctl_request_timeout",
         "token": "flightctl_token",
         "ca_path": "flightctl_ca_path",
+        "client_id": "flightctl_client_id",
     }
     # Default attribute values
     host: Optional[str] = None
@@ -78,6 +97,8 @@ class FlightctlModule(AnsibleModule):
     request_timeout: float = 10
     token: Optional[str] = None
     ca_path: Optional[str] = None
+    client_id: Optional[str] = None
+    token_manager: Optional[OIDCTokenManager] = None
     # authenticated = False
 
     def __init__(
@@ -118,6 +139,11 @@ class FlightctlModule(AnsibleModule):
 
         # Ensure the host URL is valid
         self.ensure_host_url()
+
+
+        ###Change
+        if self.username and self.password:
+            self.handle_authentication()
 
     def ensure_host_url(self) -> None:
         """
@@ -181,6 +207,38 @@ class FlightctlModule(AnsibleModule):
 
             # Ensure the created temp file is deleted when our module exits
             self.add_cleanup_file(temp_file.name)
+
+    def handle_authentication(self) -> None:
+        """
+        Handles OIDC authentication by retrieving, validating, and refreshing tokens.
+        """
+        configuration = flightctl.Configuration(host=self.host)
+
+        with flightctl.ApiClient(configuration) as api_client:
+            api_instance = flightctl.AuthenticationApi(api_client)
+
+            try:
+                auth_response = api_instance.auth_config()
+
+                if auth_response.auth_type == "OIDC":
+                    self.token_manager = OIDCTokenManager(
+                        oidc_url=auth_response.auth_url,
+                        client_id=self.client_id,
+                        username=self.username,
+                        password=self.password,
+                        vault_password_file=".vault_password"
+                    )
+
+                    token_data = self.token_manager.get_token()
+
+                    if "access_token" in token_data:
+                        self.token = token_data["access_token"]
+                    else:
+                        raise FlightctlException("Failed to retrieve access token from OIDC")
+
+            except Exception as e:
+                raise FlightctlException(f"Error during OIDC authentication: {e}") from e
+
 
     def logout(self) -> None:
         # This method is intended to be overridden
