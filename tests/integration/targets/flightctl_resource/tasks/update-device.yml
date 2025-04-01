@@ -11,6 +11,7 @@
       <<: *connection_info
       kind: Device
       name: "{{ device_name }}"
+      api_version: flightctl.io/v1alpha1
       resource_definition:
         spec:
           os:
@@ -24,6 +25,7 @@
       <<: *connection_info
       kind: Device
       name: "{{ device_name }}"
+      api_version: flightctl.io/v1alpha1
       resource_definition:
         spec:
           os:
@@ -68,6 +70,38 @@
         - device_result.result.data[0].spec.os.image == "quay.io/redhat/rhde:9.4"
         - "'systemd' not in device_result.result.data[0].spec"
 
+  - name: Decommission test device in check mode
+    flightctl.core.flightctl_resource:
+      <<: *connection_info
+      kind: Device
+      name: "{{ device_name }}"
+      state: decommission
+      resource_definition:
+        target: "FactoryReset"
+    check_mode: true
+  
+  - name: Decommission test device
+    flightctl.core.flightctl_resource:
+      <<: *connection_info
+      kind: Device
+      name: "{{ device_name }}"
+      state: decommission
+      resource_definition:
+        target: "FactoryReset"
+
+  - name: Get test device
+    flightctl.core.flightctl_resource_info:
+      <<: *connection_info
+      kind: Device
+      name: "{{ device_name }}"
+    register: device_result
+
+  - name: Assert that Device was decommissioned
+    ansible.builtin.assert:
+      that:
+        - device_result is success
+        - device_result.result.data[0].spec.decommissioning.target == "FactoryReset"
+  
   always:
     - name: Delete test device
       flightctl.core.flightctl_resource:

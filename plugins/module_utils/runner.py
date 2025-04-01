@@ -149,6 +149,28 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
             except Exception as e:
                 raise FlightctlException(f"Failed to create resource: {e}") from e
 
+    elif state == "decommission":  # Handle decommissioning
+        if resource != ResourceType.DEVICE:
+            raise ValidationException(f"Decommissioning is only allowed for devices, not {resource}.")
+
+        if existing_result.data:
+            if module.check_mode:
+                module.exit_json(**{"changed": True})
+
+            device_spec = existing_result.data[0].spec
+
+            # Check if the device is already decommissioned
+            if device_spec.decommissioning is not None:
+                module.exit_json(**{"changed": False, "msg": f"Device '{name}' has already been decommissioned."})
+
+            try:
+                result = module.decommission(name, definition)
+                changed |= True
+            except Exception as e:
+                raise FlightctlException(f"Failed to decommission device: {e}") from e
+        else:
+            raise FlightctlException(f"Device '{name}' not found for decommissioning.")
+
     if result is None:
         raise FlightctlException("No result returned from operation.")
 
@@ -197,12 +219,14 @@ def perform_approval(module: FlightctlAPIModule) -> None:
         elif isinstance(existing, CertificateSigningRequest):
             try:
                 conditions = existing.status.conditions
-                approval_condition = next((c for c in conditions if c.type == "Approved"), None)
-                if approval_condition is not None:
-                    # The api returns string values for booleans in the conditions
-                    if approval_condition.status == 'True':
-                        currently_approved = True
-                    elif approval_condition.status == 'False':
+                approval_condition = next((c for c in conditions if c.type in {"Approved", "Denied"}), None)
+
+                if approval_condition:
+                    status_map = {"Approved": True, "Denied": False}
+
+                    if approval_condition.status == "True":
+                        currently_approved = status_map[approval_condition.type]
+                    elif approval_condition.status == "False":
                         currently_approved = False
             except AttributeError:
                 pass

@@ -6,6 +6,7 @@ from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
 
+from datetime import datetime
 from base64 import b64encode
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
@@ -16,15 +17,23 @@ from .exceptions import FlightctlException, FlightctlApiException
 from .options import ApprovalOptions, GetOptions
 from .utils import diff_dicts, get_patch, json_patch
 
+
 try:
     from flightctl import ApiClient
     from flightctl.configuration import Configuration
     from flightctl.api.enrollmentrequest_api import EnrollmentrequestApi
-    from flightctl.api.default_api import DefaultApi
+    from flightctl.api.certificatesigningrequest_api import CertificatesigningrequestApi
     from flightctl.exceptions import ApiException, NotFoundException
     from flightctl.models.patch_request_inner import PatchRequestInner
     from flightctl.models.enrollment_request_approval import EnrollmentRequestApproval
     from flightctl.models.list_meta import ListMeta
+    from flightctl.models.condition import Condition
+    from flightctl.models.condition_status import ConditionStatus
+    from flightctl.models.condition_type import ConditionType
+    from flightctl.models.certificate_signing_request_status import CertificateSigningRequestStatus
+    from flightctl.models.device_decommission import DeviceDecommission
+    from flightctl.models.device_decommission_target_type import DeviceDecommissionTargetType
+
 except ImportError as imp_exc:
     ListMeta = None
     CLIENT_IMPORT_ERROR = imp_exc
@@ -170,6 +179,8 @@ class FlightctlAPIModule(FlightctlModule):
         try:
             if options.resource is ResourceType.TEMPLATE_VERSION:
                 return self.call_api(get_call, options.fleet_name, options.name)
+            elif options.resource is ResourceType.FLEET:
+                return self.call_api(get_call, options.name, options.summary)
             else:
                 return self.call_api(get_call, options.name)
         except NotFoundException:
@@ -391,11 +402,66 @@ class FlightctlAPIModule(FlightctlModule):
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to approve {input.resource.value} - {input.name}: {e}")
         else:
-            api_instance = DefaultApi(self.client)
+            api_instance = CertificatesigningrequestApi(self.client)
             try:
-                if input.approved:
-                    self.call_api(api_instance.approve_certificate_signing_request, input.name)
-                else:
-                    self.call_api(api_instance.deny_certificate_signing_request, input.name)
+                csr = self.call_api(api_instance.read_certificate_signing_request, input.name)
+
+                if csr.status is None:
+                    csr.status = CertificateSigningRequestStatus(conditions=[])
+
+                expected_type = ConditionType.APPROVED if input.approved else ConditionType.DENIED
+
+                # Idempotency of certificate approval/denial is no longer handled in FlightCTL.
+                # This logic will be enforced within the Ansible collection instead.
+
+                if any(cond.type == expected_type for cond in csr.status.conditions):  # Check if the condition already exists
+                    return csr
+
+                approval_type = Condition(
+                    type=expected_type,
+                    status=ConditionStatus.TRUE,
+                    observed_generation=1,
+                    last_transition_time=datetime.now().isoformat() + "Z",
+                    message="The request has been approved." if input.approved else "The request has been denied.",
+                    reason="ManualApproval" if input.approved else "ManualDenial"
+                )
+
+                csr.status.conditions.append(approval_type)
+
+                self.call_api(api_instance.update_certificate_signing_request_approval, input.name, csr)
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to approve {input.resource.value} - {input.name}: {e}")
+
+    def decommission(self, device_name: str, definition: Dict[str, Any]) -> ResourceProtocol:
+        """
+        Sends a decommission request for a device.
+
+        Args:
+            device_name (str): The name of the device to decommission.
+
+        Returns:
+            ResourceProtocol: The updated device resource after decommissioning.
+
+        Raises:
+            FlightctlApiException: If the request fails.
+        """
+        api_type = API_MAPPING[ResourceType.DEVICE]
+        api_instance = api_type.api(self.client)
+
+        if not hasattr(api_instance, "decommission_device"):
+            raise FlightctlException(f"Decommissioning is not supported for resource type {ResourceType.DEVICE}")
+
+        decommission_call = api_instance.decommission_device
+
+        target = definition.get("target", "Unenroll")
+
+        try:
+            target_enum = DeviceDecommissionTargetType(target)
+        except ValueError:
+            raise FlightctlException(f"Invalid target value: {target}. Must be 'Unenroll' or 'FactoryReset'")
+
+        try:
+            device_decommission = DeviceDecommission(target=target_enum)
+            return self.call_api(decommission_call, device_name, device_decommission)
+        except ApiException as e:
+            raise FlightctlApiException(f"Unable to decommission device {device_name}: {e}")

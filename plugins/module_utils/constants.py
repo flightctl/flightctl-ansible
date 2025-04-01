@@ -19,7 +19,6 @@ class ResourceType(Enum):
     REPOSITORY = "Repository"
     RESOURCE_SYNC = "ResourceSync"
     TEMPLATE_VERSION = "TemplateVersion"
-
     ENROLLMENT_CONFIG = "EnrollmentConfig"
 
 
@@ -34,8 +33,6 @@ try:
     from flightctl.api.enrollmentrequest_api import EnrollmentrequestApi
     from flightctl.api.repository_api import RepositoryApi
     from flightctl.api.resourcesync_api import ResourcesyncApi
-    from flightctl.api.templateversion_api import TemplateversionApi
-    from flightctl.api.enrollmentconfig_api import EnrollmentconfigApi
 
     # Models
     from flightctl.models.device import Device
@@ -44,12 +41,11 @@ try:
     from flightctl.models.enrollment_request import EnrollmentRequest
     from flightctl.models.repository import Repository
     from flightctl.models.resource_sync import ResourceSync
-    from flightctl.models.template_version import TemplateVersion
     from flightctl.models.enrollment_config import EnrollmentConfig
 
     @dataclass
     class ApiResource:
-        api: Union[DeviceApi, FleetApi, CertificatesigningrequestApi, EnrollmentrequestApi, RepositoryApi, ResourcesyncApi, EnrollmentconfigApi]
+        api: Union[DeviceApi, FleetApi, CertificatesigningrequestApi, EnrollmentrequestApi, RepositoryApi, ResourcesyncApi]
         model: Union[Device, Fleet, CertificateSigningRequest, EnrollmentRequest, Repository, ResourceSync, EnrollmentConfig]
 
         get: str
@@ -61,6 +57,7 @@ try:
         patch: Optional[str] = None
         replace: Optional[str] = None
         rendered: Optional[str] = None
+        decommission: Optional[str] = None
 
     API_MAPPING = {
         ResourceType.DEVICE: ApiResource(
@@ -73,7 +70,9 @@ try:
             replace='replace_device',
             delete='delete_device',
             delete_all='delete_devices',
-            rendered='get_rendered_device_spec'
+            rendered='get_rendered_device',
+            decommission='decommission_device'
+
         ),
         ResourceType.FLEET: ApiResource(
             api=FleetApi,
@@ -129,18 +128,10 @@ try:
             delete='delete_resource_sync',
             delete_all='delete_resource_syncs',
         ),
-        ResourceType.TEMPLATE_VERSION: ApiResource(
-            api=TemplateversionApi,
-            model=TemplateVersion,
-            get='read_template_version',
-            list='list_template_versions',
-            delete='delete_template_version',
-            delete_all='delete_template_versions',
-        ),
         ResourceType.ENROLLMENT_CONFIG: ApiResource(
-            api=EnrollmentconfigApi,
+            api=EnrollmentrequestApi,
             model=EnrollmentConfig,
-            get='enrollment_config'
+            get='get_enrollment_config'
         )
     }
 except ImportError as imp_exc:

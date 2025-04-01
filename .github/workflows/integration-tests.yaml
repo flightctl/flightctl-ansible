@@ -23,10 +23,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: 'flightctl/flightctl'
-          # This ref is an arbitrary value from a recent commit relative to workflow being written
-          # Once we begin to pin the collection against specific flightctl versions this should be updated
-          # to reference a specific release
-          ref: 'acfa41af729145511d2423ca8cd97aaa92aadd37'
+          ref: v0.5.0
 
       - name: Setup dependencies for flightctl
         uses: ./.github/actions/setup-dependencies
