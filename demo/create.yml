@@ -42,7 +42,7 @@
         kind: Device
         name: "device-ansible-example"
         resource_definition:
-          apiVersion: v1alpha1
+          apiVersion: flightctl.io/v1alpha1
           kind: Device
           metadata:
             name: "device-ansible-example"
@@ -57,7 +57,7 @@
         kind: Device
         name: "device-ansible-example"
         resource_definition:
-          apiVersion: v1alpha1
+          apiVersion: flightctl.io/v1alpha1
           kind: Device
           metadata:
             name: "device-ansible-example"
@@ -78,7 +78,7 @@
         kind: Device
         name: "device-ansible-example"
         resource_definition:
-          apiVersion: v1alpha1
+          apiVersion: flightctl.io/v1alpha1
           kind: Device
           metadata:
             name: "device-ansible-example"
@@ -98,7 +98,7 @@
         <<: *credential_defaults
         kind: Device
         name: "device-ansible-example-2"
-        api_version: v1alpha1
+        api_version: flightctl.io/v1alpha1
       register: _result
 
     - name: Assert that Device was created
@@ -112,9 +112,9 @@
         <<: *credential_defaults
         kind: Device
         name: "device-ansible-example-2"
-        api_version: v1alpha1
+        api_version: flightctl.io/v1alpha1
         resource_definition:
-          apiVersion: v1alpha1
+          apiVersion: flightctl.io/v1alpha1
           kind: Device
           metadata:
             labels:
@@ -182,7 +182,7 @@
         kind: Repository
         name: "repository-ansible-example"
         resource_definition:
-          apiVersion: v1alpha1
+          apiVersion: flightctl.io/v1alpha1
           kind: Repository
           metadata:
             name: repository-ansible-example

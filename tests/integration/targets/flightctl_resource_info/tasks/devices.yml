@@ -67,7 +67,7 @@
       <<: *connection_info
       kind: Device
       name: "{{ device_name_with_label_1 }}"
-      api_version: v1alpha1
+      api_version: flightctl.io/v1alpha1
       resource_definition:
         metadata:
           labels:
@@ -78,7 +78,7 @@
       <<: *connection_info
       kind: Device
       name: "{{ device_name_with_label_2 }}"
-      api_version: v1alpha1
+      api_version: flightctl.io/v1alpha1
       resource_definition:
         metadata:
           labels:
