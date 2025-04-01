@@ -12,7 +12,7 @@
       <<: *connection_info
       kind: EnrollmentRequest
       name: "{{ enrollment_name }}"
-      api_version: v1alpha1
+      api_version: flightctl.io/v1alpha1
       resource_definition:
         spec:
           csr: |

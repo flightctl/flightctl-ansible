@@ -8,9 +8,9 @@
         credential_defaults: &credential_defaults
           flightctl_config_file: "{{ flightctl_config_file | default(omit) }}"
           flightctl_ca_path: "{{ flightctl_ca_path | default(omit)}}"
-          flightctl_token: "{{ flightctl_token | default(omit)}}"
-          flightctl_host: "{{ flightctl_host | default(omit)}}"
-          flightctl_validate_certs: "{{ flightctl_validate_certs | default(True)}}"
+          flightctl_token: "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJsVVFsb1BHaWxWV0RQNUNsem5BbGRtSFhxQWo3MXhJcTdtaFVkNUtOdnlFIn0.eyJleHAiOjE3NDM1MzkwMTcsImlhdCI6MTc0MzUzMjQxNywianRpIjoiNGE1NjI4MTQtNTVkOS00M2FjLWI0ODAtNDI5Mjg2ZGE2NGQzIiwiaXNzIjoiaHR0cDovL2F1dGguMTAwLjExMC42Ny4xNDAubmlwLmlvOjgwODEvcmVhbG1zL2ZsaWdodGN0bCIsInN1YiI6ImRlbW91c2VyIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZmxpZ2h0Y3RsIiwic2lkIjoiYTdmNDgzNDQtY2Q1Ny00OGZjLTk0NzktYjBhMjljMjBjMWRlIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyJodHRwOi8vbG9jYWxob3N0OjkwMDAiXSwic2NvcGUiOiJwcm9maWxlIGVtYWlsIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInByZWZlcnJlZF91c2VybmFtZSI6ImRlbW91c2VyIn0.RydvNBepBxcNxH1ETGh-pOznmwy9OCKO3La1-ts-t0e56AiluxggNCW65oamO6tF_CQE1_B-iBs352L6t8j0Nz7LyYzdQpYIkrMSrZ0Rev5XJqlnomQShlOcazRk8CIfnQkJkpjcFAj-nKDRADPr0YX0yP6r6GwdhFwLhLF47E3VgRUPHXjP1FXN6UquW1lOjaS-ZtgMuae71KhHUavHhEzCr8FZzwQrvnc_tu1G2pcUEVtrArxLSgzbXPmtmC55QNCEjLZzKCC_CcvjglhrigXo5-wbVA3zSNU8oFZcY7g4sl_KhjWtJhGc2-0WAVCSMNBZjjGYPEstBUp3XsLgGQ"
+          flightctl_host: "https://api.100.110.67.140.nip.io:3443"
+          flightctl_validate_certs: "{{ flightctl_validate_certs | default(False)}}"
 
     - name: Delete devices
       flightctl.core.flightctl_resource:

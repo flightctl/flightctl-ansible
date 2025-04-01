@@ -77,7 +77,7 @@ You can either call modules, rulebooks and playbooks by their Fully Qualified Co
     flightctl.core.flightctl_resource:
       kind: Device
       name: "test-ansible-device"
-      api_version: v1alpha1
+      api_version: flightctl.io/v1alpha1
 
   - name: Create a new device
     flightctl.core.flightctl_resource:
@@ -89,9 +89,9 @@ You can either call modules, rulebooks and playbooks by their Fully Qualified Co
     flightctl.core.flightctl_resource:
       kind: Device
       name: "test-ansible-device"
-      api_version: v1alpha1
+      api_version: flightctl.io/v1alpha1
       resource_definition:
-        apiVersion: v1alpha1
+        apiVersion: flightctl.io/v1alpha1
         kind: Device
         metadata:
           labels:
