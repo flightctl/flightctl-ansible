@@ -48,13 +48,13 @@ A specific version of the collection can be installed by using the `version` key
 ---
 collections:
   - name: flightctl.core
-    version: 0.2.0
+    version: 1.0.0
 ```
 
 or using the ansible-galaxy command as follows
 
 ```shell
-ansible-galaxy collection install flightctl.core:==0.2.0
+ansible-galaxy collection install flightctl.core:==1.0.0
 ```
 
 The Python module dependencies are not installed by ansible-galaxy. They must be installed manually using pip:
@@ -156,6 +156,8 @@ The easiest way to run tests locally is to:
 
 ## Publishing New Versions
 
+### Publishing to Ansible Galaxy
+
 Currently, the publishing to Ansible Galaxy is manual and requires the following steps:
 
 1. Check out a release branch
@@ -185,6 +187,39 @@ Currently, the publishing to Ansible Galaxy is manual and requires the following
     3. Publish the collection `ansible-galaxy collection publish path/to/built/collection.tar.gz --token=your_token_here`
 10. Verify the new version exists on the [Flightctl Galaxy page](https://galaxy.ansible.com/flightctl/core).
 
+### Publishing to Automation Hub
+
+#### Build the downstream Collection
+
+To create the downstream build for Automation Hub, use the provided `downstream.sh` script. Follow these steps:
+
+1. Navigate to the `ci` directory where the `downstream.sh` script is located:
+2. Run the downstream.sh script with the -b option to build the downstream release:
+```shell
+./downstream.sh -b
+```
+3. Verify the tarball `redhat-edge_manager-{some-version}.tar.gz` was created in the current directory without build errors
+
+
+#### Using the Automation Hub User Interface
+
+To upload your collection using the Automation Hub user interface:
+
+1. Log in to the **Red Hat Ansible Automation Platform**.
+2. Navigate to **Automation Hub > My Namespaces**.
+3. Click a namespace.
+4. Click **Upload collection**.
+5. In the **New collection** modal, click **Select file**. Locate the `.tar.gz` file on your system.
+6. Click **Upload**.
+
+#### Using the `ansible-galaxy` Client
+
+To upload a collection using the `ansible-galaxy` client, enter the following command:
+
+```shell
+ansible-galaxy collection publish path/to/redhat-edge_manager-{some-version}.tar.gz --api-key=SECRET
+```
+
 ## Support
 
 If you encounter issues or have questions, you can submit a support request through the following channels:
@@ -192,7 +227,7 @@ If you encounter issues or have questions, you can submit a support request thro
 
 ## Release notes
 
-See the [changelog](https://github.com/flightctl/flightctl-ansible/blob/main/CHANGELOG.md).
+See the [changelog](https://github.com/flightctl/flightctl-ansible/blob/main/CHANGELOG.rst).
 
 ## Related Information
 
