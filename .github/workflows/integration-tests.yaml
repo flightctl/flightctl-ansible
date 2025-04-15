@@ -52,12 +52,36 @@ jobs:
           collection-src-directory: ./collection
 
   test-integration-downstream:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 20
-    needs: integration-tests  # Ensure upstream tests pass before running downstream tests
+    runs-on: "ubuntu-latest"
+    strategy:
+      matrix:
+        versions:
+          - ansible: stable-2.16
+            python: "3.10"
+            
     steps:
+      - name: Checkout flightctl
+        uses: actions/checkout@v4
+        with:
+          repository: 'flightctl/flightctl'
+          ref: v0.5.0
+
+      - name: Setup dependencies for flightctl
+        uses: ./.github/actions/setup-dependencies
+        with:
+          setup_podman4: yes
+
+      - name: Start flightctl services
+        run: make deploy
+
       - name: Checkout repository
         uses: actions/checkout@v4
+        with: 
+          path: collection
+
+      - name: Write integration config
+        run: make write-integration-config
+        working-directory: ./collection
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -69,10 +93,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install ansible ansible-lint
 
-      - name: Write integration config
-        run: make write-integration-config
-
       - name: Run downstream integration tests
         run: |
           cd ci
           ./downstream.sh -i
+        working-directory: ./collection
