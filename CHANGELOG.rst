@@ -4,7 +4,7 @@ flightctl.core Release Notes
 
 .. contents:: Topics
 
-v0.5.0
+v1.0.0
 ======
 
 Release Summary
