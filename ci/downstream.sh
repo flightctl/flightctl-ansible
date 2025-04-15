@@ -14,6 +14,10 @@ KEEP_DOWNSTREAM_TMPDIR="${KEEP_DOWNSTREAM_TMPDIR:-''}"
 INSTALL_DOWNSTREAM_COLLECTION_PATH="${INSTALL_DOWNSTREAM_COLLECTION_PATH:-}"
 _build_dir=""
 
+# Get the absolute path of the script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="${SCRIPT_DIR}/.."
+
 f_log_info()
 {
     printf "%s:LOG:INFO: %s\n" "${0}" "${1}"
@@ -60,7 +64,6 @@ f_prep()
         README.md
         Makefile
         requirements.txt
-        tox.ini
     )
 
     # Directories to recursively copy downstream (relative repo root dir path)
@@ -104,11 +107,11 @@ f_create_collection_dir_structure()
     # Create the Collection
     for f_name in "${_file_manifest[@]}";
     do
-        cp "./${f_name}" "${_build_dir}/${f_name}"
+        cp "${ROOT_DIR}/${f_name}" "${_build_dir}/${f_name}"
     done
     for d_name in "${_dir_manifest[@]}";
     do
-        cp -r "./${d_name}" "${_build_dir}/${d_name}"
+        cp -r "${ROOT_DIR}/${d_name}" "${_build_dir}/${d_name}"
     done
     if [ -n "${_file_exclude:-}" ]; then
         for exclude_file in "${_file_exclude[@]}";
@@ -125,7 +128,7 @@ f_copy_collection_to_working_dir()
     f_log_info "Copying built collection to working dir"
     # Copy the Collection build result into original working dir
     f_log_info "Copying built collection *.tar.gz into ./"
-    cp "${_build_dir}"/*.tar.gz ./
+    cp "${_build_dir}"/*.tar.gz "${ROOT_DIR}/"
     # Install downstream collection into provided path
     if [[ -n ${INSTALL_DOWNSTREAM_COLLECTION_PATH} ]]; then
         f_log_info "Installing built collection *.tar.gz into ${INSTALL_DOWNSTREAM_COLLECTION_PATH}"
