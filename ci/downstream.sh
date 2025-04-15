@@ -54,7 +54,6 @@ f_prep()
 
     # Files to copy downstream (relative repo root dir path)
     _file_manifest=(
-        .gitignore
         CHANGELOG.rst
         galaxy.yml
         LICENSE
@@ -66,7 +65,6 @@ f_prep()
 
     # Directories to recursively copy downstream (relative repo root dir path)
     _dir_manifest=(
-        .config
         changelogs
         meta
         plugins
@@ -75,7 +73,6 @@ f_prep()
 
     # Temp build dir
     _tmp_dir=$(mktemp -d)
-    _start_dir="${PWD}"
     _build_dir="${_tmp_dir}/ansible_collections/redhat/edge_manager"
     mkdir -p "${_build_dir}"
 }
