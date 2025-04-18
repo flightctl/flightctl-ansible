@@ -4,13 +4,13 @@
   gather_facts: false
   vars:
     ansible_connection: flightctl.core.flightctl_console
-    ansible_flightctl_device_name: 4gmlp0tt77hd9efpi4udjc4ht51mqvaeq0rr2uhgo19lkn02548g
+    ansible_flightctl_device_name: ns1d8qb3igh7lk0c62j3ncue2bhtj70nr0614bs8b6asbsce3ck0
     ansible_flightctl_api_url: 192.168.86.27.nip.io:3443
     ansible_flightctl_use_ssl: false
     ansible_remote_tmp: /var/.ansible/tmp
   tasks:
     - name: Run a simple command over the WebSocket connection
-      ansible.builtin.command: touch /var/tmp/from-playbook.txt
+      ansible.builtin.command: /usr/bin/flightctl-agent version
       register: result
 
     - name: Display the result

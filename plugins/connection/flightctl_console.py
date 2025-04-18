@@ -56,9 +56,13 @@ import ssl
 import urllib.parse
 from contextlib import asynccontextmanager
 
-# Import websocket exception classes
-import websockets
-from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
+try:
+    import websockets
+    from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
+except ImportError as imp_exc:
+    WEBSOCKETS_IMPORT_ERROR = imp_exc
+else:
+    WEBSOCKETS_IMPORT_ERROR = None
 
 from ansible.plugins.connection import ConnectionBase
 from ansible.errors import AnsibleConnectionFailure
@@ -69,8 +73,12 @@ CMD_END_MARKER = "__ANSIBLE_CMD_END__"
 class Connection(ConnectionBase):
     transport = 'flightctl_console'
     has_persistent_connections = True
+    has_tty = False
 
     def __init__(self, *args, **kwargs):
+        if WEBSOCKETS_IMPORT_ERROR:
+            raise WEBSOCKETS_IMPORT_ERROR
+
         super(Connection, self).__init__(*args, **kwargs)
         self._loop = None
         self._ws = None  # Persistent websocket
@@ -78,7 +86,7 @@ class Connection(ConnectionBase):
         # Plugin options
         self.plugin_options = {
             'flightctl_device_name': {},
-            'flightctl_api_url': {'default': 'localhost:3443'},
+            'flightctl_api_url': {},
             'flightctl_token': {},
             'flightctl_use_ssl': {'default': True, 'type': 'boolean'},
         }
@@ -153,10 +161,14 @@ class Connection(ConnectionBase):
 
     def exec_command(self, cmd, in_data=None, sudoable=False):
         """Run a bash -c command over the persistent websocket."""
+        if in_data:
+            raise AnsibleConnectionFailure("Pipelining not supported")
+
         if not self._ws:
             self._connect()
 
         self._display.vvv(f"Running command: {cmd}")
+
         try:
             stdout, stderr = self._run_async(self._send_command(cmd))
             return 0, stdout.encode(), stderr.encode()
@@ -180,7 +192,9 @@ class Connection(ConnectionBase):
     # Sent commands are terminated with a special marker "__ANSIBLE_CMD_END__" to indicate the end of the command
     # output. The command is also wrapped in a JSON object to provide metadata about the command
     async def _send_command(self, cmd):
-        await self._ws.send(b'\x00' + (cmd + f'\necho {CMD_END_MARKER}\n').encode())
+        full_cmd = cmd + f'\necho {CMD_END_MARKER}\n'
+        await self._ws.send(b'\x00' + full_cmd.encode())
+
         output = ""
         errOutput = ""
         while True:
@@ -188,8 +202,11 @@ class Connection(ConnectionBase):
             channel = msg[0]
             content = msg[1:].decode(errors="ignore")
 
+            self._display.vvv(f"Received message on channel {channel}: {content}")
+
             if channel == 1:
                 output += content
+                # Only break if we're looking for CMD_END_MARKER
                 if CMD_END_MARKER in content:
                     break
             elif channel == 2:
