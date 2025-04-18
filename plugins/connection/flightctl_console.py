@@ -9,19 +9,21 @@ __metaclass__ = type
 
 DOCUMENTATION = '''
     name: flightctl_console
-    short_description: Connect to devices via FlightControl API's console endpoint
+    short_description: Connect to Flight Control managed devices
     description:
         - This connection plugin allows Ansible to connect to managed FlightControl devices through the FlightControl API's console endpoint.
-    author: FlightControl (@flightctl)
-    version_added: "1.0.0"
+        - It uses WebSockets to establish a persistent connection, which is maintained for the duration of the Ansible playbook run.
+    author:
+    - "Dakota Crowder (@dakcrowder)"
+    version_added: "0.6.0"
     options:
-      flightctl_device:
-        description: The FlightControl device identifier
+      flightctl_device_name:
+        description: The FlightControl device name identifier
         default: ''
         vars:
-          - name: ansible_flightctl_device
+          - name: ansible_flightctl_device_name
         env:
-          - name: ANSIBLE_FLIGHTCTL_DEVICE
+          - name: ANSIBLE_FLIGHTCTL_DEVICE_NAME
       flightctl_api_url:
         description: URL for the FlightControl API server
         default: 'localhost:3443'
@@ -61,20 +63,9 @@ from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 from ansible.plugins.connection import ConnectionBase
 from ansible.errors import AnsibleConnectionFailure
 
-    # Per the Kubernetes documentation:
-    # // The Websocket RemoteCommand subprotocol "channel.k8s.io" prepends each binary message with a
-    # // byte indicating the channel number (zero indexed) the message was sent on. Messages in both
-    # // directions should prefix their messages with this channel byte. Used for remote execution,
-    # // the channel numbers are by convention defined to match the POSIX file-descriptors assigned
-    # // to STDIN, STDOUT, and STDERR (0, 1, and 2). No other conversion is performed on the raw
-    # // subprotocol - writes are sent as they are received by the server.
-    # //
-    # // Example client session:
-    # //
-    # //	CONNECT http://server.com with subprotocol "channel.k8s.io"
-    # //	WRITE []byte{0, 102, 111, 111, 10} # send "foo\n" on channel 0 (STDIN)
-    # //	READ  []byte{1, 10}                # receive "\n" on channel 1 (STDOUT)
-    # //	CLOSE
+
+CMD_END_MARKER = "__ANSIBLE_CMD_END__"
+
 class Connection(ConnectionBase):
     transport = 'flightctl_console'
     has_persistent_connections = True
@@ -86,7 +77,7 @@ class Connection(ConnectionBase):
 
         # Plugin options
         self.plugin_options = {
-            'flightctl_device': {},
+            'flightctl_device_name': {},
             'flightctl_api_url': {'default': 'localhost:3443'},
             'flightctl_token': {},
             'flightctl_use_ssl': {'default': True, 'type': 'boolean'},
@@ -110,9 +101,9 @@ class Connection(ConnectionBase):
             raise
 
     def _get_connection_params(self):
-        device = self.get_option('flightctl_device')
+        device = self.get_option('flightctl_device_name')
         if not device:
-            raise AnsibleConnectionFailure("flightctl_device must be specified")
+            raise AnsibleConnectionFailure("flightctl_device_name must be specified")
         api_url = self.get_option('flightctl_api_url')
         token = self.get_option('flightctl_token') or os.getenv('FLIGHTCTL_TOKEN')
         use_ssl = self.get_option('flightctl_use_ssl')
@@ -169,17 +160,27 @@ class Connection(ConnectionBase):
         try:
             stdout, stderr = self._run_async(self._send_command(cmd))
             return 0, stdout.encode(), stderr.encode()
-        except ConnectionClosedOK:
-            self._display.vvv("WebSocket connection closed")
-            return 0, b'', b''
+        except ConnectionClosedOK as e:
+            raise AnsibleConnectionFailure(f"WebSocket connection closed during command execution: {e}")
         except ConnectionClosedError as e:
-            self._display.vvv(f"WebSocket connection error: {e}")
             raise AnsibleConnectionFailure(f"WebSocket connection error: {e}")
         except Exception as e:
             raise AnsibleConnectionFailure(f"exec_command failed: {e}")
 
+    # We are implementing against the v5.channel.k8s.io subprotocol
+    #
+    # The subprotocol is a simple framing protocol. Each message is prefixed with a single byte
+    # indicating the channel number (0, 1, or 2) followed by the message content. The message
+    # content is a UTF-8 encoded string. The channel numbers are by convention defined to match
+    # the POSIX file-descriptors assigned to STDIN, STDOUT, and STDERR (0, 1, and 2).
+    #
+    # Commands are sent on channel 0 (STDIN) and the output is received on channel 1 (STDOUT).
+    # Any error output is received on channel 2 (STDERR).
+    #
+    # Sent commands are terminated with a special marker "__ANSIBLE_CMD_END__" to indicate the end of the command
+    # output. The command is also wrapped in a JSON object to provide metadata about the command
     async def _send_command(self, cmd):
-        await self._ws.send(b'\x00' + (cmd + '\necho __END__\n').encode())
+        await self._ws.send(b'\x00' + (cmd + f'\necho {CMD_END_MARKER}\n').encode())
         output = ""
         errOutput = ""
         while True:
@@ -189,22 +190,14 @@ class Connection(ConnectionBase):
 
             if channel == 1:
                 output += content
-                if "__END__" in content:
+                if CMD_END_MARKER in content:
                     break
             elif channel == 2:
                 errOutput += content
             elif channel == 3:
-                try:
-                    meta = json.loads(content)
-                    self._display.vvv(f"Received metadata: {meta}")
-                    return content, errOutput
-                except json.JSONDecodeError:
-                    raise Exception("Stream error occurred: " + content)
+                raise Exception("Stream error occurred: " + content)
 
-        self._display.vvv(f"Command output: {output}")
-        self._display.vvv(f"Command error output: {errOutput}")
-
-        return output.replace("__END__", "").strip(), errOutput.strip()
+        return output.replace(CMD_END_MARKER, "").strip(), errOutput.strip()
 
     def put_file(self, in_path, out_path):
         """Upload a file by streaming its contents over stdin."""
