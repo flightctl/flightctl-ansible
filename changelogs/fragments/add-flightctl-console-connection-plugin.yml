@@ -1,0 +1,4 @@
+major_changes:
+  - Added flight control console connection plugin
+bugfixes:
+  - auth documentation - fixed env var names to align with module usage

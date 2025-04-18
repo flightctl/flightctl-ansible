@@ -32,6 +32,7 @@ class ConfigLoader:
 
         # Assign token from config if it exists
         # Load from config file if provided
+        config_data = None
         if config_file:
             config_data = self._load_config_file(config_file)
 
