@@ -1,0 +1,17 @@
+---
+- name: Test Flight Control connection plugin
+  hosts: localhost
+  gather_facts: false
+  vars:
+    ansible_connection: flightctl.core.flightctl_console
+    ansible_flightctl_device: 277v7earoaatuc8c6naugd903b5t707nmbb9skj48fqpi201r2j0
+    ansible_flightctl_api_url: 192.168.86.27.nip.io:3443
+    ansible_flightctl_use_ssl: false
+  tasks:
+    - name: Run a simple command over the WebSocket connection
+      ansible.builtin.command: echo hello
+      register: result
+
+    - name: Display the result
+      debug:
+        var: result
