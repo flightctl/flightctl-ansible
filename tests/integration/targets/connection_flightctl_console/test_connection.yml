@@ -1,0 +1,70 @@
+---
+- name: Test Flight Control connection plugin
+  hosts: localhost
+  gather_facts: false
+  vars:
+    ansible_connection: flightctl.core.flightctl_console
+    ansible_remote_tmp: /var/.ansible/tmp
+    ansible_flightctl_device_name: 58use3ehgph4n8ljloma9lhe6idrirqk7nvu9pif007p5b5k1qp0
+    ansible_flightctl_token: "{{ flightctl_token | default(omit)}}"
+    ansible_flightctl_host: "{{ flightctl_host }}"
+    ansible_flightctl_validate_certs: false
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+    - name: Test ping connection
+      ansible.builtin.ping:
+      register: ping_result
+
+    - name: Assert that the ping was successful
+      ansible.builtin.assert:
+        that:
+          - ping_result.ping == "pong"
+
+    - name: Run a simple command over the WebSocket connection
+      ansible.builtin.command: /usr/bin/flightctl-agent version
+      register: result
+
+    - name: Assert that the command output contains expected text
+      ansible.builtin.assert:
+        that:
+          - "'Flightctl Agent Version:' in result.stdout"
+
+    - name: Test reset connection
+      ansible.builtin.meta: reset_connection
+
+    - name: Test file transfer to device
+      ansible.builtin.copy:
+        content: "This is a test file for FlightCtl connection plugin"
+        dest: "/tmp/test-flightctl-file.txt"
+        mode: '0644'
+      register: copy_result
+
+    - name: Verify file copy succeeded
+      ansible.builtin.command: cat /tmp/test-flightctl-file.txt
+      register: cat_result
+
+    - name: Assert that the file copy was successful
+      ansible.builtin.assert:
+        that:
+          - "'This is a test file for FlightCtl connection plugin' in cat_result.stdout"
+
+    - name: Fetch the file back
+      ansible.builtin.fetch:
+        src: /tmp/test-flightctl-file.txt
+        dest: "{{ playbook_dir }}/fetched-file.txt"
+        flat: true
+
+    - name: Assert that the fetched file contains expected text
+      ansible.builtin.assert:
+        that:
+          - "'This is a test file for FlightCtl connection plugin' in lookup('file', playbook_dir + '/fetched-file.txt')"
+
+    - name: Clean up test file
+      ansible.builtin.file:
+        path: /tmp/test-flightctl-file.txt
+        state: absent
+
+    - name: Clean up fetched file
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/fetched-file.txt"
+        state: absent

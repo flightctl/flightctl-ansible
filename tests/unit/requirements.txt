@@ -1,4 +1,6 @@
 jsonpatch
 jsonschema
 pytest
+pytest-asyncio
 git+https://github.com/flightctl/flightctl-python-client.git
+websockets

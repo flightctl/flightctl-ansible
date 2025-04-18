@@ -1,0 +1,20 @@
+---
+- name: Test Flight Control connection plugin
+  hosts: flightctl
+  gather_facts: false
+  tasks:
+    - name: Fetch the currently running agent version from the device
+      ansible.builtin.command: /usr/bin/flightctl-agent version
+      register: version
+
+    - name: Display the version
+      debug:
+        var: version
+
+    - name: Copy config.yaml to remote machine
+      ansible.builtin.command: /usr/bin/flightctl-agent system-info
+      register: info
+
+    - name: Display the system-info
+      debug:
+        var: info
