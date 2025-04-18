@@ -61,7 +61,20 @@ from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 from ansible.plugins.connection import ConnectionBase
 from ansible.errors import AnsibleConnectionFailure
 
-
+    # Per the Kubernetes documentation:
+    # // The Websocket RemoteCommand subprotocol "channel.k8s.io" prepends each binary message with a
+    # // byte indicating the channel number (zero indexed) the message was sent on. Messages in both
+    # // directions should prefix their messages with this channel byte. Used for remote execution,
+    # // the channel numbers are by convention defined to match the POSIX file-descriptors assigned
+    # // to STDIN, STDOUT, and STDERR (0, 1, and 2). No other conversion is performed on the raw
+    # // subprotocol - writes are sent as they are received by the server.
+    # //
+    # // Example client session:
+    # //
+    # //	CONNECT http://server.com with subprotocol "channel.k8s.io"
+    # //	WRITE []byte{0, 102, 111, 111, 10} # send "foo\n" on channel 0 (STDIN)
+    # //	READ  []byte{1, 10}                # receive "\n" on channel 1 (STDOUT)
+    # //	CLOSE
 class Connection(ConnectionBase):
     transport = 'flightctl_console'
     has_persistent_connections = True
@@ -141,8 +154,8 @@ class Connection(ConnectionBase):
         metadata = {
             "tty": False,
             "command": {
-                "command": "touch",
-                "args": ["/tmp/bar.txt"],
+                "command": "",
+                "args": [],
             },
         }
         return json.dumps(metadata)
@@ -154,51 +167,33 @@ class Connection(ConnectionBase):
 
         self._display.vvv(f"Running command: {cmd}")
         try:
-            result = self._run_async(self._send_and_receive(cmd))
-            return result['exit_code'], result['stdout'], result['stderr']
+            stdout, stderr = self._run_async(self._send_command(cmd))
+            return 0, stdout.encode(), stderr
         except Exception as e:
             raise AnsibleConnectionFailure(f"exec_command failed: {e}")
 
-    # Per the Kubernetes documentation:
-    # // The Websocket RemoteCommand subprotocol "channel.k8s.io" prepends each binary message with a
-    # // byte indicating the channel number (zero indexed) the message was sent on. Messages in both
-    # // directions should prefix their messages with this channel byte. Used for remote execution,
-    # // the channel numbers are by convention defined to match the POSIX file-descriptors assigned
-    # // to STDIN, STDOUT, and STDERR (0, 1, and 2). No other conversion is performed on the raw
-    # // subprotocol - writes are sent as they are received by the server.
-    # //
-    # // Example client session:
-    # //
-    # //	CONNECT http://server.com with subprotocol "channel.k8s.io"
-    # //	WRITE []byte{0, 102, 111, 111, 10} # send "foo\n" on channel 0 (STDIN)
-    # //	READ  []byte{1, 10}                # receive "\n" on channel 1 (STDOUT)
-    # //	CLOSE
-    async def _send_and_receive(self, cmd):
-        """Send metadata and collect response frames."""
-        ws = self._ws
-        # Prefix the command with the channel number (0 for STDIN)
-        prefixed_cmd = b'\x00' + cmd.encode('utf-8')
-        self._display.vvv(f"Sending")
-        await ws.send(prefixed_cmd)
-        self._display.vvv(f"Sent")
-        stdout_chunks = []
-        stderr_chunks = []
-        exit_code = None
+    async def _send_command(self, cmd):
+        await self._ws.send(b'\x00' + (cmd + '\necho __END__\n').encode())
+        output = ""
+        errOutput = ""
         while True:
-            try:
-                self._display.vvv(f"Waiting")
-                msg = await ws.recv()
-                self._display.vvv(f"Received message: {msg}")
-            except ConnectionClosedOK:
-                break
-            stdout_chunks.append(msg)
+            msg = await self._ws.recv()
+            channel = msg[0]
+            content = msg[1:].decode(errors="ignore")
 
-        self._display.vvv("Command completed, no longer waiting for messages")
-        return {
-            'stdout': ''.join(stdout_chunks),
-            'stderr': ''.join(stderr_chunks),
-            'exit_code': exit_code if exit_code is not None else 0
-        }
+            if channel == 1:
+                output += content
+                if "__END__" in content:
+                    break
+            elif channel == 2:
+                errOutput += content
+            elif channel == 3:
+                raise Exception("Execution error: " + content)
+
+        self._display.vvv(f"Command output: {output}")
+        self._display.vvv(f"Command error output: {errOutput}")
+
+        return output.replace("__END__", "").strip(), errOutput.strip()
 
     def put_file(self, in_path, out_path):
         """Simple cat-upload over websocket"""
