@@ -160,7 +160,7 @@ class Connection(ConnectionBase):
         }
         return json.dumps(metadata)
 
-    def exec_command(self, cmd, in_data=None, sudoable=True):
+    def exec_command(self, cmd, in_data=None, sudoable=False):
         """Run a bash -c command over the persistent websocket."""
         if not self._ws:
             self._connect()
@@ -168,7 +168,13 @@ class Connection(ConnectionBase):
         self._display.vvv(f"Running command: {cmd}")
         try:
             stdout, stderr = self._run_async(self._send_command(cmd))
-            return 0, stdout.encode(), stderr
+            return 0, stdout.encode(), stderr.encode()
+        except ConnectionClosedOK:
+            self._display.vvv("WebSocket connection closed")
+            return 0, b'', b''
+        except ConnectionClosedError as e:
+            self._display.vvv(f"WebSocket connection error: {e}")
+            raise AnsibleConnectionFailure(f"WebSocket connection error: {e}")
         except Exception as e:
             raise AnsibleConnectionFailure(f"exec_command failed: {e}")
 
@@ -188,7 +194,12 @@ class Connection(ConnectionBase):
             elif channel == 2:
                 errOutput += content
             elif channel == 3:
-                raise Exception("Execution error: " + content)
+                try:
+                    meta = json.loads(content)
+                    self._display.vvv(f"Received metadata: {meta}")
+                    return content, errOutput
+                except json.JSONDecodeError:
+                    raise Exception("Stream error occurred: " + content)
 
         self._display.vvv(f"Command output: {output}")
         self._display.vvv(f"Command error output: {errOutput}")
@@ -196,18 +207,25 @@ class Connection(ConnectionBase):
         return output.replace("__END__", "").strip(), errOutput.strip()
 
     def put_file(self, in_path, out_path):
-        """Simple cat-upload over websocket"""
-        if not self._ws:
-            raise AnsibleConnectionFailure("Connection not established")
-        data = open(in_path, 'rb').read()
-        cmd = f"cat > {out_path}"
-        meta = json.dumps({
-            "tty": False,
-            "command": {"command": "bash", "args": ["-c", cmd]}
-        })
-        # send file upload
-        self._run_async(self._ws.send(meta))
-        self._run_async(self._ws.send(data))
+        """Upload a file by streaming its contents over stdin."""
+        import base64
+
+        try:
+            # Read file contents and encode in base64
+            with open(in_path, 'rb') as f:
+                content = f.read()
+
+            b64content = base64.b64encode(content).decode()
+
+            # Create a command that will decode the base64 data and write to the output file
+            cmd = f"mkdir -p $(dirname '{out_path}') && cat << 'EOF_ANSIBLE_PUT_FILE' | base64 -d > '{out_path}'\n{b64content}\nEOF_ANSIBLE_PUT_FILE"
+
+            self._display.vvv(f"Copying file to {out_path}")
+
+            # Use the existing _send_command method to execute the file transfer
+            self._run_async(self._send_command(cmd))
+        except Exception as e:
+            raise AnsibleConnectionFailure(f"put_file failed: {str(e)}")
 
     def fetch_file(self, in_path, out_path):
         raise AnsibleConnectionFailure("fetch_file not supported")
