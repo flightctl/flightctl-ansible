@@ -1,7 +1,7 @@
 ---
 - name: Test fetching enrollment config
   vars:
-    csr_name: ansible-integration-test-enrollment-config-csr
+    csr_name: 13d632d86373caaeda64da4052f957faa742fc7050026748bc79065c8819d1b0
     connection_info: &connection_info
       flightctl_token: "{{ flightctl_token | default(omit)}}"
       flightctl_host: "{{ flightctl_host }}"
