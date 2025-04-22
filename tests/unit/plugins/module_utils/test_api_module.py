@@ -85,7 +85,7 @@ def test_approve_csr(mock_api, api_module):
     mock_csr = MagicMock(spec=CertificateSigningRequest)
     mock_csr.status = MagicMock()
 
-    mock_api_instance.read_certificate_signing_request.return_value = mock_csr
+    mock_api_instance.get_certificate_signing_request.return_value = mock_csr
 
     input = ApprovalOptions(ResourceType.CSR, "test-csr", True)
     api_module.approve(input)
@@ -99,7 +99,7 @@ def test_deny_csr(mock_api, api_module):
     mock_csr = MagicMock(spec=CertificateSigningRequest)
     mock_csr.status = MagicMock()
 
-    mock_api_instance.read_certificate_signing_request.return_value = mock_csr
+    mock_api_instance.get_certificate_signing_request.return_value = mock_csr
 
     input = ApprovalOptions(ResourceType.CSR, "test-csr", False)
     api_module.approve(input)
@@ -113,7 +113,7 @@ def test_token_auth(mock_api, api_module_with_token):
     mock_csr = MagicMock(spec=CertificateSigningRequest)
     mock_csr.status = MagicMock()
 
-    mock_api_instance.read_certificate_signing_request.return_value = mock_csr
+    mock_api_instance.get_certificate_signing_request.return_value = mock_csr
 
     input = ApprovalOptions(ResourceType.CSR, "test-csr", True)
     api_module_with_token.approve(input)
@@ -132,7 +132,7 @@ def test_basic_auth(mock_api, api_module_with_user_pass):
     mock_csr = MagicMock(spec=CertificateSigningRequest)
     mock_csr.status = MagicMock()
 
-    mock_api_instance.read_certificate_signing_request.return_value = mock_csr
+    mock_api_instance.get_certificate_signing_request.return_value = mock_csr
 
     input = ApprovalOptions(ResourceType.CSR, "test-csr", True)
     api_module_with_user_pass.approve(input)
