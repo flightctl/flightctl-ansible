@@ -63,7 +63,7 @@ try:
         ResourceType.DEVICE: ApiResource(
             api=DeviceApi,
             model=Device,
-            get='read_device',
+            get='get_device',
             create='create_device',
             list='list_devices',
             patch='patch_device',
@@ -77,7 +77,7 @@ try:
         ResourceType.FLEET: ApiResource(
             api=FleetApi,
             model=Fleet,
-            get='read_fleet',
+            get='get_fleet',
             create='create_fleet',
             list='list_fleets',
             patch='patch_fleet',
@@ -88,7 +88,7 @@ try:
         ResourceType.CSR: ApiResource(
             api=CertificatesigningrequestApi,
             model=CertificateSigningRequest,
-            get='read_certificate_signing_request',
+            get='get_certificate_signing_request',
             create='create_certificate_signing_request',
             list='list_certificate_signing_request',
             patch='patch_certificate_signing_request',
@@ -99,7 +99,7 @@ try:
         ResourceType.ENROLLMENT: ApiResource(
             api=EnrollmentrequestApi,
             model=EnrollmentRequest,
-            get='read_enrollment_request',
+            get='get_enrollment_request',
             create='create_enrollment_request',
             list='list_enrollment_requests',
             replace='replace_enrollment_request',
@@ -109,7 +109,7 @@ try:
         ResourceType.REPOSITORY: ApiResource(
             api=RepositoryApi,
             model=Repository,
-            get='read_repository',
+            get='get_repository',
             create='create_repository',
             list='list_repositories',
             patch='patch_repository',
@@ -120,7 +120,7 @@ try:
         ResourceType.RESOURCE_SYNC: ApiResource(
             api=ResourcesyncApi,
             model=ResourceSync,
-            get='read_resource_sync',
+            get='get_resource_sync',
             create='create_resource_sync',
             list='list_resource_sync',
             patch='patch_resource_sync',

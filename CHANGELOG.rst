@@ -4,6 +4,19 @@ flightctl.core Release Notes
 
 .. contents:: Topics
 
+v0.6.0
+======
+
+Release Summary
+---------------
+
+Added support for FlightCTL API v0.6.
+
+Major Changes
+-------------
+
+- Updated the Ansible collection to support FlightCTL API version 0.6.
+
 v0.5.0
 ======
 
@@ -15,8 +28,8 @@ Added support for FlightCTL API v0.5.
 Major Changes
 -------------
 
-- Updated the Ansible collection to support FlightCTL API version 0.5.
 - Added support for Device decommissioning.
+- Updated the Ansible collection to support FlightCTL API version 0.5.
 
 v0.2.0
 ======
