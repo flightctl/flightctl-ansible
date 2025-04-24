@@ -7,8 +7,7 @@ releases:
         - Renamed `flightctl_resource_info` module (previously `flightctl_info`)
         - Renamed `flightctl_resource` module (previously `flightctl`)
         - Renamed collection to `core` (previously `edge`)
-      release_summary: This release contains the initial documented release of the
-        Flightctl collection
+      release_summary: This release contains the initial documented release of the Flightctl collection
     fragments:
       - breaking_changes.yml
       - release_summary.yml
@@ -16,8 +15,8 @@ releases:
   0.5.0:
     changes:
       major_changes:
-        - Updated the Ansible collection to support FlightCTL API version 0.5.
         - Added support for Device decommissioning.
+        - Updated the Ansible collection to support FlightCTL API version 0.5.
       release_summary: Added support for FlightCTL API v0.5.
     fragments:
       - flightctl_0.5_update.yml
