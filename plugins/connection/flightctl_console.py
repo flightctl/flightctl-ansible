@@ -100,17 +100,15 @@ EXAMPLES = r"""
 """
 
 
-import asyncio
 import base64
 import json
 import os
 import re
 import ssl
 import urllib.parse
-from contextlib import asynccontextmanager
 
 try:
-    import websockets
+    from websockets.sync.client import connect
     from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 except ImportError as imp_exc:
     WEBSOCKETS_IMPORT_ERROR = imp_exc
@@ -146,10 +144,8 @@ class Connection(ConnectionBase):
     # Config file representation
     config_file = None
 
-    # Async context / websocket state
+    # Websocket state
     _ws = None
-    _ws_cm = None
-    _loop = None
 
     def __init__(self, *args, **kwargs):
         if WEBSOCKETS_IMPORT_ERROR:
@@ -245,29 +241,24 @@ class Connection(ConnectionBase):
             f"  validate_certs={self.validate_certs}"
         )
 
-    def _get_loop(self):
-        """Get or create the asyncio event loop."""
-        if self._loop is None or self._loop.is_closed():
-            self._loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(self._loop)
-        return self._loop
+    def _build_ssl_context(self):
+        """Build SSL context for the WebSocket connection."""
+        if self.validate_certs:
+            if self.ca_path:
+                return ssl.create_default_context(cafile=self.ca_path)
+            elif self.ca_data:
+                return ssl.create_default_context(cadata=self.ca_data)
+            else:
+                return ssl.create_default_context()
+        else:
+            return ssl._create_unverified_context()
 
-    def _run_async(self, coro):
-        """Run an async coroutine."""
-        try:
-            # First try to get the current running loop
-            loop = asyncio.get_running_loop()
-            # If successful, we're in an async context - use run_coroutine_threadsafe
-            fut = asyncio.run_coroutine_threadsafe(coro, loop)
-            return fut.result()
-        except RuntimeError:
-            # No running loop, create a new one
-            loop = self._get_loop()
-            return loop.run_until_complete(coro)
+    def _connect(self):
+        """Open persistent websocket connection using synchronous API."""
+        self._display.vvv("Opening persistent WebSocket connection")
+        # Set connection parameters
+        self._set_connection_params()
 
-    @asynccontextmanager
-    async def _open_websocket(self):
-        """Context manager to open persistent websocket."""
         ws_url = self._build_websocket_url()
         self._display.vvv(f"Connecting to WebSocket URL: {ws_url}")
 
@@ -276,13 +267,13 @@ class Connection(ConnectionBase):
             headers['Authorization'] = f"Bearer {self.token}"
 
         try:
-            ws = await websockets.connect(
+            self._ws = connect(
                 ws_url,
                 additional_headers=headers,
-                ssl=self._build_ssl_context(),
+                ssl_context=self._build_ssl_context(),
                 subprotocols=["v5.channel.k8s.io"],
             )
-            yield ws
+            return self
         except Exception as e:
             raise AnsibleConnectionFailure(f"WebSocket connect failed {e}") from e
 
@@ -299,32 +290,6 @@ class Connection(ConnectionBase):
         encoded_metadata = urllib.parse.quote(metadata)
 
         return f"wss://{host_url}/ws/v1/devices/{self.device_name}/console?metadata={encoded_metadata}"
-
-    def _build_ssl_context(self):
-        """Build SSL context for the WebSocket connection."""
-        if self.validate_certs:
-            if self.ca_path:
-                return ssl.create_default_context(cafile=self.ca_path)
-            elif self.ca_data:
-                return ssl.create_default_context(cadata=self.ca_data)
-            else:
-                return ssl.create_default_context()
-        else:
-            return ssl._create_unverified_context()
-
-    def _connect(self):
-        """Open persistent websocket connection."""
-        self._display.vvv("Opening persistent WebSocket connection")
-        # Set connection parameters
-        self._set_connection_params()
-
-        async def connect_ws():
-            cm = self._open_websocket()
-            self._ws = await cm.__aenter__()
-            return cm
-
-        self._ws_cm = self._run_async(connect_ws())
-        return self
 
     def _build_metadata(self):
         """Build the JSON metadata payload for a command."""
@@ -346,12 +311,12 @@ class Connection(ConnectionBase):
             self._connect()
 
         try:
-            stdout, stderr = self._run_async(self._send_command(cmd))
+            stdout, stderr = self._send_command(cmd)
             return 0, stdout.encode(), stderr.encode()
         except Exception as e:
             raise AnsibleConnectionFailure("exec_command failed") from e
 
-    async def _send_command(self, cmd):
+    def _send_command(self, cmd):
         """Send a command over the WebSocket and receive output/error streams.
 
         This method implements communication against the v5.channel.k8s.io subprotocol.
@@ -382,12 +347,12 @@ class Connection(ConnectionBase):
 
         full_cmd = cmd + f'\necho {CMD_END_MARKER}\n'
         try:
-            await self._ws.send(b'\x00' + full_cmd.encode())
+            self._ws.send(b'\x00' + full_cmd.encode())
 
             output = ""
             err_output = ""
             while True:
-                msg = await self._ws.recv()
+                msg = self._ws.recv()
                 channel = msg[0]
                 content = msg[1:].decode(errors="ignore")
 
@@ -423,8 +388,7 @@ class Connection(ConnectionBase):
 
             self._display.vvv(f"Copying file to {out_path}")
 
-            # Use the existing _send_command method to execute the file transfer
-            self._run_async(self._send_command(cmd))
+            self._send_command(cmd)
         except Exception as e:
             raise AnsibleConnectionFailure("put_file failed") from e
 
@@ -435,7 +399,7 @@ class Connection(ConnectionBase):
 
             # Read the remote file and encode it as base64
             cmd = f"cat '{in_path}' 2>/dev/null | base64"
-            stdout, stderr = self._run_async(self._send_command(cmd))
+            stdout, stderr = self._send_command(cmd)
 
             if stderr:
                 raise AnsibleConnectionFailure(f"Error reading remote file: {stderr}")
@@ -468,14 +432,10 @@ class Connection(ConnectionBase):
 
     def close(self):
         """Close persistent websocket if open."""
-        if self._ws and self._ws_cm:
+        if self._ws:
             try:
-                async def cleanup():
-                    await self._ws_cm.__aexit__(None, None, None)
-
-                self._run_async(cleanup())
+                self._ws.close()
             except Exception as e:
                 self._display.vvv(f"Error closing WebSocket: {e}")
             finally:
                 self._ws = None
-                self._ws_cm = None
