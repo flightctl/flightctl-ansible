@@ -11,7 +11,7 @@
       debug:
         var: version
 
-    - name: Copy config.yaml to remote machine
+    - name: Fetch system information from remote machine
       ansible.builtin.command: /usr/bin/flightctl-agent system-info
       register: info
 

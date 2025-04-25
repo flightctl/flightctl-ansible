@@ -215,7 +215,7 @@ class Connection(ConnectionBase):
             try:
                 self.ca_data = base64.b64decode(encoded_ca_data).decode('utf-8')
             except (base64.binascii.Error, UnicodeDecodeError) as e:
-                raise AnsibleConnectionFailure("ca_data is invalid")
+                raise AnsibleConnectionFailure("Invalid CA data – cannot decode base64-encoded PEM") from e
 
     def _set_connection_params(self):
         """Set connection parameters from passed configuration."""
@@ -255,8 +255,10 @@ class Connection(ConnectionBase):
         try:
             return loop.run_until_complete(coro)
         except RuntimeError as e:
+            # There isn't a specific error type for when the loop is already running,
+            # so the best we can do is check for a common error message.
             if "already running" in str(e):
-                return asyncio.get_event_loop().run_until_complete(coro)
+                return asyncio.get_event_loop().create_task(coro)
             raise
 
     @asynccontextmanager
@@ -278,7 +280,7 @@ class Connection(ConnectionBase):
             )
             yield ws
         except Exception as e:
-            raise AnsibleConnectionFailure(f"WebSocket connect failed: {e}")
+            raise AnsibleConnectionFailure("WebSocket connect failed") from e
 
     def _build_websocket_url(self):
         """Builds a proper WebSocket URL from host URL."""
@@ -338,7 +340,7 @@ class Connection(ConnectionBase):
             stdout, stderr = self._run_async(self._send_command(cmd))
             return 0, stdout.encode(), stderr.encode()
         except Exception as e:
-            raise AnsibleConnectionFailure(f"exec_command failed: {e}")
+            raise AnsibleConnectionFailure("exec_command failed") from e
 
     async def _send_command(self, cmd):
         """Send a command over the WebSocket and receive output/error streams.
@@ -374,7 +376,7 @@ class Connection(ConnectionBase):
             await self._ws.send(b'\x00' + full_cmd.encode())
 
             output = ""
-            errOutput = ""
+            err_output = ""
             while True:
                 msg = await self._ws.recv()
                 channel = msg[0]
@@ -382,21 +384,21 @@ class Connection(ConnectionBase):
 
                 if channel == 1:
                     output += content
-                    # Only break if we're looking for CMD_END_MARKER
-                    if CMD_END_MARKER in content:
+
+                    # Only break if we received CMD_END_MARKER
+                    if CMD_END_MARKER in output:
                         break
                 elif channel == 2:
-                    errOutput += content
+                    err_output += content
                 elif channel == 3:
                     raise Exception("Stream error occurred: " + content)
 
-            return output.replace(CMD_END_MARKER, "").strip(), errOutput.strip()
+            return output.replace(CMD_END_MARKER, "").strip(), err_output.strip()
         except (ConnectionClosedOK, ConnectionClosedError) as e:
             self._ws = None  # Clear the websocket reference since it's no longer usable
-            raise AnsibleConnectionFailure(f"WebSocket is not connected: {str(e)}")
+            raise AnsibleConnectionFailure("WebSocket is not connected")
         except Exception as e:
-            # Handle any other exceptions
-            raise AnsibleConnectionFailure(f"Error during command execution: {str(e)}")
+            raise AnsibleConnectionFailure("Error during command execution") from e
 
     def put_file(self, in_path, out_path):
         """Upload a file by streaming its contents over stdin."""
@@ -415,7 +417,7 @@ class Connection(ConnectionBase):
             # Use the existing _send_command method to execute the file transfer
             self._run_async(self._send_command(cmd))
         except Exception as e:
-            raise AnsibleConnectionFailure(f"put_file failed: {str(e)}")
+            raise AnsibleConnectionFailure("put_file failed") from e
 
     def fetch_file(self, in_path, out_path):
         """Download a file from the remote system to the local system."""
@@ -447,7 +449,7 @@ class Connection(ConnectionBase):
             with open(out_path, 'wb') as f:
                 f.write(content)
         except Exception as e:
-            raise AnsibleConnectionFailure(f"fetch_file failed: {str(e)}")
+            raise AnsibleConnectionFailure("fetch_file failed") from e
 
     def reset(self):
         """Reset the connection to the device."""
