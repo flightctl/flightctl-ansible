@@ -226,7 +226,7 @@ def test_exec_command_failure(mock_conn):
 
     mock_conn._send_command = failing_send_command
 
-    with pytest.raises(AnsibleConnectionFailure, match="exec_command failed: .*"):
+    with pytest.raises(AnsibleConnectionFailure, match="exec_command failed"):
         mock_conn.exec_command("failing command")
 
 
@@ -272,7 +272,7 @@ def test_put_file_failure(mock_conn, tmp_path):
 
     mock_conn._run_async = MagicMock(side_effect=failing_run_async)
 
-    with pytest.raises(AnsibleConnectionFailure, match="put_file failed: .*"):
+    with pytest.raises(AnsibleConnectionFailure, match="put_file failed"):
         mock_conn.put_file(str(test_file), "/remote/path")
 
 
@@ -306,7 +306,7 @@ def test_fetch_file_failure(mock_conn):
 
     mock_conn._run_async = MagicMock(side_effect=failing_run_async)
 
-    with pytest.raises(AnsibleConnectionFailure, match="fetch_file failed: .*"):
+    with pytest.raises(AnsibleConnectionFailure, match="fetch_file failed"):
         mock_conn.fetch_file("/remote/path", "/local/path")
 
 
@@ -319,8 +319,11 @@ def test_fetch_file_not_found(mock_conn):
         return "", ""
     mock_conn._send_command = mock_send_empty
 
-    with pytest.raises(AnsibleConnectionFailure, match="Remote file .* not found or is empty"):
+    with pytest.raises(AnsibleConnectionFailure) as exc_info:
         mock_conn.fetch_file("/nonexistent/file", "/local/path")
+
+    # Check that the cause was the decode error
+    assert "Remote file /nonexistent/file not found or is empty" in str(exc_info.value.__cause__)
 
 
 def test_fetch_file_decode_error(mock_conn, monkeypatch):
@@ -336,8 +339,11 @@ def test_fetch_file_decode_error(mock_conn, monkeypatch):
         raise base64.binascii.Error("Invalid base64-encoded string")
     monkeypatch.setattr(base64, 'b64decode', mock_b64decode)
 
-    with pytest.raises(AnsibleConnectionFailure, match="Failed to decode base64 content"):
+    with pytest.raises(AnsibleConnectionFailure) as exc_info:
         mock_conn.fetch_file("/remote/file", "/local/path")
+
+    # Check that the cause was the decode error
+    assert "Invalid base64-encoded string" in str(exc_info.value.__cause__)
 
 
 def test_reset(mock_conn):
