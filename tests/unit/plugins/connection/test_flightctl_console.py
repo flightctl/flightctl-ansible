@@ -362,6 +362,8 @@ def test_close(mock_conn):
     """Test that close method properly closes the websocket."""
     mock_ws = AsyncMock()
     mock_conn._ws = mock_ws
+    mock_ws_cm = AsyncMock()
+    mock_conn._ws_cm = mock_ws_cm
 
     mock_conn.close()
 
@@ -369,5 +371,6 @@ def test_close(mock_conn):
 
     # Instead of comparing coroutine objects directly, verify that
     # close() was called on the websocket
-    mock_ws.close.assert_called_once()
+    mock_ws_cm.__aexit__.assert_called_once()
     assert mock_conn._ws is None
+    assert mock_conn._ws_cm is None

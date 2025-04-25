@@ -146,13 +146,16 @@ class Connection(ConnectionBase):
     # Config file representation
     config_file = None
 
+    # Async context / websocket state
+    _ws = None
+    _ws_cm = None
+    _loop = None
+
     def __init__(self, *args, **kwargs):
         if WEBSOCKETS_IMPORT_ERROR:
             raise WEBSOCKETS_IMPORT_ERROR
 
         super(Connection, self).__init__(*args, **kwargs)
-        self._loop = None
-        self._ws = None
 
     def _get_param(self, option_name, env_var, config_attr=None):
         """Get a parameter value from various sources: options, environment variables, or config file."""
@@ -251,15 +254,16 @@ class Connection(ConnectionBase):
 
     def _run_async(self, coro):
         """Run an async coroutine."""
-        loop = self._get_loop()
         try:
+            # First try to get the current running loop
+            loop = asyncio.get_running_loop()
+            # If successful, we're in an async context - use run_coroutine_threadsafe
+            fut = asyncio.run_coroutine_threadsafe(coro, loop)
+            return fut.result()
+        except RuntimeError:
+            # No running loop, create a new one
+            loop = self._get_loop()
             return loop.run_until_complete(coro)
-        except RuntimeError as e:
-            # There isn't a specific error type for when the loop is already running,
-            # so the best we can do is check for a common error message.
-            if "already running" in str(e):
-                return asyncio.get_event_loop().create_task(coro)
-            raise
 
     @asynccontextmanager
     async def _open_websocket(self):
@@ -280,7 +284,7 @@ class Connection(ConnectionBase):
             )
             yield ws
         except Exception as e:
-            raise AnsibleConnectionFailure("WebSocket connect failed") from e
+            raise AnsibleConnectionFailure(f"WebSocket connect failed {e}") from e
 
     def _build_websocket_url(self):
         """Builds a proper WebSocket URL from host URL."""
@@ -309,12 +313,17 @@ class Connection(ConnectionBase):
             return ssl._create_unverified_context()
 
     def _connect(self):
-        """Open persistent websocket connection"""
+        """Open persistent websocket connection."""
         self._display.vvv("Opening persistent WebSocket connection")
         # Set connection parameters
         self._set_connection_params()
-        # Establish and cache websocket
-        self._ws = self._run_async(self._open_websocket().__aenter__())
+
+        async def connect_ws():
+            cm = self._open_websocket()
+            self._ws = await cm.__aenter__()
+            return cm
+
+        self._ws_cm = self._run_async(connect_ws())
         return self
 
     def _build_metadata(self):
@@ -449,7 +458,7 @@ class Connection(ConnectionBase):
             with open(out_path, 'wb') as f:
                 f.write(content)
         except Exception as e:
-            raise AnsibleConnectionFailure("fetch_file failed") from e
+            raise AnsibleConnectionFailure(f"fetch_file failed {e}") from e
 
     def reset(self):
         """Reset the connection to the device."""
@@ -458,7 +467,15 @@ class Connection(ConnectionBase):
         self._connect()
 
     def close(self):
-        """Close persistent websocket if open"""
-        if self._ws:
-            self._run_async(self._ws.close())
-            self._ws = None
+        """Close persistent websocket if open."""
+        if self._ws and self._ws_cm:
+            try:
+                async def cleanup():
+                    await self._ws_cm.__aexit__(None, None, None)
+
+                self._run_async(cleanup())
+            except Exception as e:
+                self._display.vvv(f"Error closing WebSocket: {e}")
+            finally:
+                self._ws = None
+                self._ws_cm = None
