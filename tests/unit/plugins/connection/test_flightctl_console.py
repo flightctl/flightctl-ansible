@@ -6,14 +6,50 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-import asyncio
 import base64
 import pytest
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock, patch
 
 from ansible.errors import AnsibleConnectionFailure
 
-from plugins.connection.flightctl_console import Connection, CMD_END_MARKER
+# Create custom exception classes
+ConnectionClosedOK = type('ConnectionClosedOK', (Exception,), {})
+ConnectionClosedError = type('ConnectionClosedError', (Exception,), {})
+
+
+# Create WebSocket mocks
+@pytest.fixture(scope="session", autouse=True)
+def mock_websockets():
+    """Patch websockets modules before they are imported."""
+    mock_wss = MagicMock()
+    mock_sync = MagicMock()
+    mock_client = MagicMock()
+    mock_exceptions = MagicMock()
+
+    mock_exceptions.ConnectionClosedOK = ConnectionClosedOK
+    mock_exceptions.ConnectionClosedError = ConnectionClosedError
+
+    mock_connect = MagicMock()
+    mock_client.connect = mock_connect
+
+    mock_sync.client = mock_client
+    mock_wss.sync = mock_sync
+    mock_wss.exceptions = mock_exceptions
+
+    with patch.dict('sys.modules', {
+        'websockets': mock_wss,
+        'websockets.sync': mock_sync,
+        'websockets.sync.client': mock_client,
+        'websockets.exceptions': mock_exceptions,
+    }):
+        yield mock_wss
+
+
+# Import the module after patching websockets
+with patch('websockets.sync.client.connect') as mock_connect, \
+     patch('websockets.exceptions.ConnectionClosedOK', ConnectionClosedOK), \
+     patch('websockets.exceptions.ConnectionClosedError', ConnectionClosedError):
+    from plugins.connection.flightctl_console import Connection, CMD_END_MARKER
 
 
 class MockConfigLoader:
@@ -24,28 +60,15 @@ class MockConfigLoader:
         self.ca_data = None
 
 
-ConnectionClosedOK = type('ConnectionClosedOK', (Exception,), {})
-ConnectionClosedError = type('ConnectionClosedError', (Exception,), {})
-
-
 @pytest.fixture(autouse=True)
 def setup_module_patches(monkeypatch):
     """Setup mocks for the tests."""
     # Mock ConfigLoader
     monkeypatch.setattr('plugins.module_utils.config_loader.ConfigLoader', MockConfigLoader)
 
-    # Mock websockets with proper exception classes
-    mock_websockets = MagicMock()
-    mock_websockets.ConnectionClosedOK = ConnectionClosedOK
-    mock_websockets.ConnectionClosedError = ConnectionClosedError
-    monkeypatch.setattr('websockets.connect', AsyncMock())
-
-    # Make the mocked module available for tests
-    monkeypatch.setattr('plugins.connection.flightctl_console.websockets', mock_websockets)
+    # Set the exception classes in the module
     monkeypatch.setattr('plugins.connection.flightctl_console.ConnectionClosedOK', ConnectionClosedOK)
     monkeypatch.setattr('plugins.connection.flightctl_console.ConnectionClosedError', ConnectionClosedError)
-
-    yield
 
 
 @pytest.fixture
@@ -53,13 +76,6 @@ def mock_conn():
     """Return a mocked connection object."""
     conn = Connection(MagicMock(), MagicMock(), MagicMock())
     conn._display = MagicMock()
-
-    # Create and use a mock event loop
-    mock_loop = asyncio.new_event_loop()
-    conn._get_loop = MagicMock(return_value=mock_loop)
-    conn._run_async = MagicMock()
-    conn._run_async.side_effect = mock_loop.run_until_complete
-
     return conn
 
 
@@ -152,10 +168,9 @@ def test_build_websocket_url(mock_conn):
     assert "command" in url  # Check that metadata is included
 
 
-@pytest.mark.asyncio
-async def test_send_command(mock_conn):
+def test_send_command(mock_conn):
     """Test the _send_command method."""
-    mock_ws = AsyncMock()
+    mock_ws = MagicMock()
     mock_conn._ws = mock_ws
 
     # Configure the mock to return specific messages
@@ -165,35 +180,33 @@ async def test_send_command(mock_conn):
         b'\x01' + f'more data\n{CMD_END_MARKER}'.encode()
     ]
 
-    stdout, stderr = await mock_conn._send_command("test command")
+    stdout, stderr = mock_conn._send_command("test command")
 
     assert "stdout data" in stdout
     assert "more data" in stdout
     assert stderr == "stderr data"
-    assert mock_ws.send.await_count == 1
-    assert mock_ws.recv.await_count == 3
+    assert mock_ws.send.call_count == 1
+    assert mock_ws.recv.call_count == 3
 
 
-@pytest.mark.asyncio
-async def test_send_command_websocket_closed(mock_conn):
+def test_send_command_websocket_closed(mock_conn):
     """Test that _send_command raises an exception when websocket is closed."""
-    mock_ws = AsyncMock()
+    mock_ws = MagicMock()
     mock_conn._ws = mock_ws
 
     mock_ws.send.side_effect = ConnectionClosedError()
 
     with pytest.raises(AnsibleConnectionFailure, match="WebSocket is not connected"):
-        await mock_conn._send_command("test command")
+        mock_conn._send_command("test command")
 
 
-@pytest.mark.asyncio
-async def test_send_command_no_websocket(mock_conn):
+def test_send_command_no_websocket(mock_conn):
     """Test that _send_command raises an exception when no websocket is available."""
     # Ensure there's no websocket
     mock_conn._ws = None
 
     with pytest.raises(AnsibleConnectionFailure, match="WebSocket is not connected"):
-        await mock_conn._send_command("test command")
+        mock_conn._send_command("test command")
 
 
 def test_exec_command(mock_conn):
@@ -201,10 +214,7 @@ def test_exec_command(mock_conn):
     mock_conn._ws = None  # Start with no connection
     mock_conn._connect = MagicMock(return_value=mock_conn)
 
-    async def mock_send_command(cmd):
-        return f"stdout: {cmd}", f"stderr: {cmd}"
-
-    mock_send_command = AsyncMock(side_effect=mock_send_command)
+    mock_send_command = MagicMock(return_value=("stdout: test command", "stderr: test command"))
     mock_conn._send_command = mock_send_command
 
     rc, stdout, stderr = mock_conn.exec_command("test command")
@@ -218,13 +228,10 @@ def test_exec_command(mock_conn):
 
 def test_exec_command_failure(mock_conn):
     """Test that exec_command handles errors properly."""
-    mock_conn._ws = AsyncMock()
+    mock_conn._ws = MagicMock()
 
     # Make _send_command raise an exception
-    async def failing_send_command(cmd):
-        raise Exception("Command execution failed")
-
-    mock_conn._send_command = failing_send_command
+    mock_conn._send_command = MagicMock(side_effect=Exception("Command execution failed"))
 
     with pytest.raises(AnsibleConnectionFailure, match="exec_command failed"):
         mock_conn.exec_command("failing command")
@@ -238,9 +245,8 @@ def test_put_file(mock_conn, tmp_path):
     remote_path = "/remote/path/file"
 
     # Mock _send_command to return a simple success result
-    send_command_mock = AsyncMock(return_value=("", ""))
+    send_command_mock = MagicMock(return_value=("", ""))
     mock_conn._send_command = send_command_mock
-    mock_conn._run_async = MagicMock()
 
     mock_conn.put_file(str(test_file), remote_path)
 
@@ -251,26 +257,20 @@ def test_put_file(mock_conn, tmp_path):
         "EOF_ANSIBLE_PUT_FILE"
     )
 
-    assert mock_conn._run_async.called
-
-    # We can't easily check the coroutine contents directly, so check
-    # that _send_command was called with the right arguments
+    # Check _send_command was called with the right arguments
     send_command_mock.assert_called_once_with(expected_cmd)
 
 
 def test_put_file_failure(mock_conn, tmp_path):
     """Test that put_file handles failures properly."""
-    mock_conn._ws = AsyncMock()
+    mock_conn._ws = MagicMock()
 
     # Create a test file
     test_file = tmp_path / "test_file.txt"
     test_file.write_text("test content")
 
-    # Make _run_async raise an exception when putting file
-    def failing_run_async(coro):
-        raise Exception("File transfer failed")
-
-    mock_conn._run_async = MagicMock(side_effect=failing_run_async)
+    # Make _send_command raise an exception when putting file
+    mock_conn._send_command = MagicMock(side_effect=Exception("File transfer failed"))
 
     with pytest.raises(AnsibleConnectionFailure, match="put_file failed"):
         mock_conn.put_file(str(test_file), "/remote/path")
@@ -280,7 +280,7 @@ def test_fetch_file(mock_conn, tmp_path):
     """Test that fetch_file gets the file and saves it properly."""
     test_content = "test remote content"
     encoded_content = base64.b64encode(test_content.encode()).decode()
-    send_command_mock = AsyncMock(return_value=(encoded_content, ""))
+    send_command_mock = MagicMock(return_value=(encoded_content, ""))
     mock_conn._send_command = send_command_mock
 
     # Setup output file path using pytest's tmp_path fixture
@@ -298,13 +298,10 @@ def test_fetch_file(mock_conn, tmp_path):
 
 def test_fetch_file_failure(mock_conn):
     """Test that fetch_file handles failures properly."""
-    mock_conn._ws = AsyncMock()
+    mock_conn._ws = MagicMock()
 
-    # Make _run_async raise an exception
-    def failing_run_async(coro):
-        raise Exception("File fetch failed")
-
-    mock_conn._run_async = MagicMock(side_effect=failing_run_async)
+    # Make _send_command raise an exception
+    mock_conn._send_command = MagicMock(side_effect=Exception("File fetch failed"))
 
     with pytest.raises(AnsibleConnectionFailure, match="fetch_file failed"):
         mock_conn.fetch_file("/remote/path", "/local/path")
@@ -312,12 +309,10 @@ def test_fetch_file_failure(mock_conn):
 
 def test_fetch_file_not_found(mock_conn):
     """Test fetch_file when remote file doesn't exist (empty output)."""
-    mock_conn._ws = AsyncMock()
+    mock_conn._ws = MagicMock()
 
     # Mock send_command to return empty content (file not found)
-    async def mock_send_empty(cmd):
-        return "", ""
-    mock_conn._send_command = mock_send_empty
+    mock_conn._send_command = MagicMock(return_value=("", ""))
 
     with pytest.raises(AnsibleConnectionFailure) as exc_info:
         mock_conn.fetch_file("/nonexistent/file", "/local/path")
@@ -328,11 +323,9 @@ def test_fetch_file_not_found(mock_conn):
 
 def test_fetch_file_decode_error(mock_conn, monkeypatch):
     """Test fetch_file when base64 decode fails."""
-    mock_conn._ws = AsyncMock()
+    mock_conn._ws = MagicMock()
 
-    async def mock_send(cmd):
-        return "some-content", ""
-    mock_conn._send_command = mock_send
+    mock_conn._send_command = MagicMock(return_value=("some-content", ""))
 
     # Mock base64.b64decode to raise an error
     def mock_b64decode(data):
@@ -348,7 +341,7 @@ def test_fetch_file_decode_error(mock_conn, monkeypatch):
 
 def test_reset(mock_conn):
     """Test that reset method calls close and then connect."""
-    mock_conn._ws = AsyncMock()
+    mock_conn._ws = MagicMock()
     mock_conn.close = MagicMock()
     mock_conn._connect = MagicMock(return_value=mock_conn)
 
@@ -360,17 +353,10 @@ def test_reset(mock_conn):
 
 def test_close(mock_conn):
     """Test that close method properly closes the websocket."""
-    mock_ws = AsyncMock()
+    mock_ws = MagicMock()
     mock_conn._ws = mock_ws
-    mock_ws_cm = AsyncMock()
-    mock_conn._ws_cm = mock_ws_cm
 
     mock_conn.close()
 
-    assert mock_conn._run_async.called
-
-    # Instead of comparing coroutine objects directly, verify that
-    # close() was called on the websocket
-    mock_ws_cm.__aexit__.assert_called_once()
+    assert mock_ws.close.called
     assert mock_conn._ws is None
-    assert mock_conn._ws_cm is None
