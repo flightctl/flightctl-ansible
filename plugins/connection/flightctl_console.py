@@ -75,7 +75,7 @@ EXAMPLES = r"""
   vars:
     ansible_connection: flightctl.core.flightctl_console
     ansible_remote_tmp: /var/.ansible/tmp # Default ansible tmp dir is readonly in bootc devices
-    ansible_kubectl_pod: my-device-name
+    ansible_flightctl_device_name: my-device-name
     ansible_flightctl_config_file: ~/.config/flightctl/client.yaml
   tasks:
     # Be aware that the command is executed as root and requires python to be installed on the device
@@ -128,7 +128,6 @@ class Connection(ConnectionBase):
 
     # ConnectionBase attributes
     transport = 'flightctl_console'
-    has_persistent_connections = True
     has_tty = False
 
     # Required params
@@ -153,57 +152,48 @@ class Connection(ConnectionBase):
 
         super(Connection, self).__init__(*args, **kwargs)
 
-    def _get_param(self, option_name, env_var, config_attr=None):
-        """Get a parameter value from various sources: options, environment variables, or config file."""
+    def _get_param(self, option_name, config_attr=None):
+        """Get a parameter value from ansible provided config or flighttl config file."""
         # 1. Check get_option
         value = self.get_option(option_name)
         if value is not None:
             return value
 
-        # 2. Check environment variable
-        value = os.getenv(env_var)
-        if value is not None:
-            return value
-
-        # 3. Check loaded config file
+        # 2. Check loaded config file
         if config_attr and self.config_file:
             value = getattr(self.config_file, config_attr, None)
             if value is not None:
                 return value
 
-        # 4. Return None if not found
+        # 3. Return None if not found
         return None
 
     def _set_device_name(self):
-        self.device_name = self._get_param('flightctl_device_name', 'FLIGHTCTL_DEVICE_NAME')
+        self.device_name = self._get_param('flightctl_device_name')
         if not self.device_name:
             raise AnsibleConnectionFailure("flightctl_device_name must be specified")
 
     def _set_host_url(self):
-        self.host_url = self._get_param('flightctl_host', 'FLIGHTCTL_HOST', 'host')
+        self.host_url = self._get_param('flightctl_host', 'host')
         if not self.host_url:
             raise AnsibleConnectionFailure("flightctl_host must be specified")
 
     def _set_token(self):
-        self.token = self._get_param('flightctl_token', 'FLIGHTCTL_TOKEN', 'token')
+        self.token = self._get_param('flightctl_token', 'token')
 
     def _set_validate_certs(self):
-        validate_certs_opt = self.get_option('flightctl_validate_certs')
-        validate_certs_env = os.getenv('FLIGHTCTL_VERIFY_SSL')
+        validate_certs_opt = self._get_param('flightctl_validate_certs')
         validate_certs_cfg = getattr(self.config_file, 'verify_ssl', None)
 
         if validate_certs_opt is not None:
             self.validate_certs = validate_certs_opt
-        elif validate_certs_env is not None:
-            # Environment variables are strings, convert to bool
-            self.validate_certs = validate_certs_env.lower() == 'true'
         elif validate_certs_cfg is not None:
             self.validate_certs = validate_certs_cfg
         else:
             self.validate_certs = True
 
     def _set_ca_cert(self):
-        self.ca_path = self._get_param('flightctl_ca_path', 'FLIGHTCTL_CA_PATH')
+        self.ca_path = self._get_param('flightctl_ca_path')
 
         if self.ca_path:
             return
@@ -254,8 +244,8 @@ class Connection(ConnectionBase):
             return ssl._create_unverified_context()
 
     def _connect(self):
-        """Open persistent websocket connection using synchronous API."""
-        self._display.vvv("Opening persistent WebSocket connection")
+        """Open websocket connection using synchronous API."""
+        self._display.vvv("Opening WebSocket connection")
         # Set connection parameters
         self._set_connection_params()
 
@@ -368,7 +358,7 @@ class Connection(ConnectionBase):
                     raise Exception("Stream error occurred: " + content)
 
             return output.replace(CMD_END_MARKER, "").strip(), err_output.strip()
-        except (ConnectionClosedOK, ConnectionClosedError) as e:
+        except (ConnectionClosedOK, ConnectionClosedError):
             self._ws = None  # Clear the websocket reference since it's no longer usable
             raise AnsibleConnectionFailure("WebSocket is not connected")
         except Exception as e:
@@ -411,12 +401,12 @@ class Connection(ConnectionBase):
             try:
                 content = base64.b64decode(stdout)
             except Exception as e:
-                raise AnsibleConnectionFailure(f"Failed to decode base64 content: {e}")
+                raise AnsibleConnectionFailure(f"Failed to decode base64 content: {e}") from e
 
             # Create the local directory if it doesn't exist
             local_dir = os.path.dirname(out_path)
-            if not os.path.exists(local_dir):
-                os.makedirs(local_dir)
+            if local_dir and not os.path.exists(local_dir):
+                os.makedirs(local_dir, exist_ok=True)
 
             # Write the content to the local file
             with open(out_path, 'wb') as f:

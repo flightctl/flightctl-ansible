@@ -11,8 +11,8 @@ integration-test: write-integration-config
 # unsupported in ansible-test and thus does not run in CI.
 #
 # To run the integration test locally, requirements are a running flightctl server as well as an
-# onboarded and connected device.  The ansible_flightctl_device_name in the test must be manually set
-# to the name of the device you want to test against.
+# onboarded and connected device.  The ansible_flightctl_device_name in the test (test_connection.yml)
+# must be manually set to the name of the device you want to test against.
 integration-test-connection: write-integration-config
 	ansible-test integration connection_flightctl_console \
 		--docker --diff --color --python $(PYTHON_VERSION) --allow-unsupported -v
