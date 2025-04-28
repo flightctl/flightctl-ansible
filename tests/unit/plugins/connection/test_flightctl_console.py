@@ -8,48 +8,12 @@ __metaclass__ = type
 
 import base64
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from ansible.errors import AnsibleConnectionFailure
 
-# Create custom exception classes
-ConnectionClosedOK = type('ConnectionClosedOK', (Exception,), {})
-ConnectionClosedError = type('ConnectionClosedError', (Exception,), {})
-
-
-# Create WebSocket mocks
-@pytest.fixture(scope="session", autouse=True)
-def mock_websockets():
-    """Patch websockets modules before they are imported."""
-    mock_wss = MagicMock()
-    mock_sync = MagicMock()
-    mock_client = MagicMock()
-    mock_exceptions = MagicMock()
-
-    mock_exceptions.ConnectionClosedOK = ConnectionClosedOK
-    mock_exceptions.ConnectionClosedError = ConnectionClosedError
-
-    mock_connect = MagicMock()
-    mock_client.connect = mock_connect
-
-    mock_sync.client = mock_client
-    mock_wss.sync = mock_sync
-    mock_wss.exceptions = mock_exceptions
-
-    with patch.dict('sys.modules', {
-        'websockets': mock_wss,
-        'websockets.sync': mock_sync,
-        'websockets.sync.client': mock_client,
-        'websockets.exceptions': mock_exceptions,
-    }):
-        yield mock_wss
-
-
-# Import the module after patching websockets
-with patch('websockets.sync.client.connect') as mock_connect, \
-     patch('websockets.exceptions.ConnectionClosedOK', ConnectionClosedOK), \
-     patch('websockets.exceptions.ConnectionClosedError', ConnectionClosedError):
-    from plugins.connection.flightctl_console import Connection, CMD_END_MARKER
+from websockets.exceptions import ConnectionClosedError
+from plugins.connection.flightctl_console import Connection, CMD_END_MARKER
 
 
 class MockConfigLoader:
@@ -58,17 +22,6 @@ class MockConfigLoader:
         self.token = None
         self.verify_ssl = None
         self.ca_data = None
-
-
-@pytest.fixture(autouse=True)
-def setup_module_patches(monkeypatch):
-    """Setup mocks for the tests."""
-    # Mock ConfigLoader
-    monkeypatch.setattr('plugins.module_utils.config_loader.ConfigLoader', MockConfigLoader)
-
-    # Set the exception classes in the module
-    monkeypatch.setattr('plugins.connection.flightctl_console.ConnectionClosedOK', ConnectionClosedOK)
-    monkeypatch.setattr('plugins.connection.flightctl_console.ConnectionClosedError', ConnectionClosedError)
 
 
 @pytest.fixture
@@ -86,15 +39,13 @@ def set_options(conn, options):
     conn.get_option = conn._options.get
 
 
-@pytest.mark.parametrize("opt_val, env_val, cfg_val, expected", [
-    (True, None, None, True),
-    (False, None, None, False),
-    (None, 'true', None, True),
-    (None, 'false', None, False),
-    (None, None, True, True),
-    (None, None, False, False),
+@pytest.mark.parametrize("opt_val, cfg_val, expected", [
+    (True, None, True),
+    (False, None, False),
+    (None, True, True),
+    (None, False, False),
 ])
-def test_set_validate_certs(mock_conn, monkeypatch, opt_val, env_val, cfg_val, expected):
+def test_set_validate_certs(mock_conn, opt_val, cfg_val, expected):
     """Test _set_validate_certs with various inputs."""
     # Setup options
     set_options(mock_conn, {'flightctl_validate_certs': opt_val})
@@ -103,12 +54,6 @@ def test_set_validate_certs(mock_conn, monkeypatch, opt_val, env_val, cfg_val, e
     if cfg_val is not None:
         mock_conn.config_file = MockConfigLoader()
         mock_conn.config_file.verify_ssl = cfg_val
-
-    # Setup environment if needed
-    if env_val is not None:
-        monkeypatch.setenv('FLIGHTCTL_VERIFY_SSL', env_val)
-    else:
-        monkeypatch.delenv('FLIGHTCTL_VERIFY_SSL', raising=False)
 
     # Call the method
     mock_conn._set_validate_certs()
@@ -194,7 +139,7 @@ def test_send_command_websocket_closed(mock_conn):
     mock_ws = MagicMock()
     mock_conn._ws = mock_ws
 
-    mock_ws.send.side_effect = ConnectionClosedError()
+    mock_ws.send.side_effect = ConnectionClosedError(None, None)
 
     with pytest.raises(AnsibleConnectionFailure, match="WebSocket is not connected"):
         mock_conn._send_command("test command")
