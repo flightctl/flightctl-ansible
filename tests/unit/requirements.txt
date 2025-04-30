@@ -1,6 +1,5 @@
 jsonpatch
 jsonschema
 pytest
-pytest-asyncio>=0.26.0
 git+https://github.com/flightctl/flightctl-python-client.git
 websockets>=15.0.1
