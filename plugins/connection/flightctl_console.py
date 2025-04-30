@@ -12,7 +12,6 @@ name: flightctl_console
 short_description: Connect to Flight Control managed devices
 description:
   - This connection plugin allows Ansible to connect to managed Flight Control devices through the API's console endpoint.
-  - It uses WebSockets to establish a persistent connection, which is maintained for the duration of the Ansible playbook run.
 author:
   - "Dakota Crowder (@dakcrowder)"
 version_added: "0.7.0"
@@ -121,6 +120,12 @@ from ..module_utils.config_loader import ConfigLoader
 
 
 CMD_END_MARKER = "__ANSIBLE_CMD_END__"
+PUT_FILE_MARKER = "__ANSIBLE_PUT_FILE__"
+
+STD_IN_CHANNEL = 0
+STD_OUT_CHANNEL = 1
+STD_ERR_CHANNEL = 2
+STREAM_ERR_CHANNEL = 3
 
 
 class Connection(ConnectionBase):
@@ -209,7 +214,7 @@ class Connection(ConnectionBase):
     def _set_connection_params(self):
         """Set connection parameters from passed configuration."""
         # Load config file if provided
-        config_file_path = self.get_option('flightctl_config_file') or os.getenv('FLIGHTCTL_CONFIG_FILE')
+        config_file_path = self.get_option('flightctl_config_file')
         if config_file_path and not os.path.exists(config_file_path):
             raise AnsibleConnectionFailure(f"Config file {config_file_path} does not exist")
         if config_file_path:
@@ -276,10 +281,14 @@ class Connection(ConnectionBase):
         if re.match("^https{0,1}://", host_url):
             host_url = host_url.split("://", 1)[1]
 
+        # Add wss:// prefix if not already present
+        if not host_url.startswith("wss://"):
+            host_url = f"wss://{host_url}"
+
         metadata = self._build_metadata()
         encoded_metadata = urllib.parse.quote(metadata)
 
-        return f"wss://{host_url}/ws/v1/devices/{self.device_name}/console?metadata={encoded_metadata}"
+        return f"{host_url}/ws/v1/devices/{self.device_name}/console?metadata={encoded_metadata}"
 
     def _build_metadata(self):
         """Build the JSON metadata payload for a command."""
@@ -293,7 +302,7 @@ class Connection(ConnectionBase):
         return json.dumps(metadata)
 
     def exec_command(self, cmd, in_data=None, sudoable=False):
-        """Run a bash command over the persistent websocket."""
+        """Run a bash command over the websocket."""
         if in_data:
             raise AnsibleConnectionFailure("Pipelining not supported")
 
@@ -337,7 +346,7 @@ class Connection(ConnectionBase):
 
         full_cmd = cmd + f'\necho {CMD_END_MARKER}\n'
         try:
-            self._ws.send(b'\x00' + full_cmd.encode())
+            self._ws.send(bytes([STD_IN_CHANNEL]) + full_cmd.encode())
 
             output = ""
             err_output = ""
@@ -346,15 +355,15 @@ class Connection(ConnectionBase):
                 channel = msg[0]
                 content = msg[1:].decode(errors="ignore")
 
-                if channel == 1:
+                if channel == STD_OUT_CHANNEL:
                     output += content
 
                     # Only break if we received CMD_END_MARKER
                     if CMD_END_MARKER in output:
                         break
-                elif channel == 2:
+                elif channel == STD_ERR_CHANNEL:
                     err_output += content
-                elif channel == 3:
+                elif channel == STREAM_ERR_CHANNEL:
                     raise Exception("Stream error occurred: " + content)
 
             return output.replace(CMD_END_MARKER, "").strip(), err_output.strip()
@@ -374,7 +383,7 @@ class Connection(ConnectionBase):
             b64content = base64.b64encode(content).decode()
 
             # Create a command that will decode the base64 data and write to the output file
-            cmd = f"mkdir -p $(dirname '{out_path}') && cat << 'EOF_ANSIBLE_PUT_FILE' | base64 -d > '{out_path}'\n{b64content}\nEOF_ANSIBLE_PUT_FILE"
+            cmd = f"mkdir -p $(dirname '{out_path}') && cat << '{PUT_FILE_MARKER}' | base64 -d > '{out_path}'\n{b64content}\n{PUT_FILE_MARKER}"
 
             self._display.vvv(f"Copying file to {out_path}")
 
@@ -421,7 +430,7 @@ class Connection(ConnectionBase):
         self._connect()
 
     def close(self):
-        """Close persistent websocket if open."""
+        """Close websocket if open."""
         if self._ws:
             try:
                 self._ws.close()

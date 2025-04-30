@@ -13,7 +13,7 @@ from unittest.mock import MagicMock
 from ansible.errors import AnsibleConnectionFailure
 
 from websockets.exceptions import ConnectionClosedError
-from plugins.connection.flightctl_console import Connection, CMD_END_MARKER
+from plugins.connection.flightctl_console import Connection, CMD_END_MARKER, PUT_FILE_MARKER
 
 
 class MockConfigLoader:
@@ -55,14 +55,12 @@ def test_set_validate_certs(mock_conn, opt_val, cfg_val, expected):
         mock_conn.config_file = MockConfigLoader()
         mock_conn.config_file.verify_ssl = cfg_val
 
-    # Call the method
     mock_conn._set_validate_certs()
 
-    # Assert the expected value
     assert mock_conn.validate_certs == expected
 
 
-def test_set_connection_params_basic(mock_conn):
+def test_set_connection_params__basic(mock_conn):
     """Test that _set_connection_params sets the expected instance attributes."""
     # Configure options and environment
     set_options(mock_conn, {
@@ -72,17 +70,15 @@ def test_set_connection_params_basic(mock_conn):
         'flightctl_validate_certs': None
     })
 
-    # Execute
     mock_conn._set_connection_params()
 
-    # Verify
     assert mock_conn.device_name == 'test-device'
     assert mock_conn.host_url == 'test-host'
     assert mock_conn.token == 'test-token'
     assert mock_conn.validate_certs is True
 
 
-def test_set_connection_params_no_device(mock_conn, monkeypatch):
+def test_set_connection_params__no_device(mock_conn, monkeypatch):
     """Test that _set_connection_params raises an error when no device name is provided."""
     set_options(mock_conn, {
         'flightctl_host': 'test-host',
@@ -92,7 +88,7 @@ def test_set_connection_params_no_device(mock_conn, monkeypatch):
         mock_conn._set_connection_params()
 
 
-def test_set_connection_params_no_host(mock_conn, monkeypatch):
+def test_set_connection_params__no_host(mock_conn, monkeypatch):
     """Test that _set_connection_params raises an error when no host is provided."""
     set_options(mock_conn, {
         'flightctl_device_name': 'test-device',
@@ -102,8 +98,8 @@ def test_set_connection_params_no_host(mock_conn, monkeypatch):
         mock_conn._set_connection_params()
 
 
-def test_build_websocket_url(mock_conn):
-    """Test that _build_websocket_url properly constructs the URL."""
+def test_build_websocket_url__https(mock_conn):
+    """Test that _build_websocket_url properly constructs the URL w/ an https url."""
     mock_conn.host_url = "https://api.example.com"
     mock_conn.device_name = "test-device"
 
@@ -113,7 +109,29 @@ def test_build_websocket_url(mock_conn):
     assert "command" in url  # Check that metadata is included
 
 
-def test_send_command(mock_conn):
+def test_build_websocket_url__wss(mock_conn):
+    """Test that _build_websocket_url properly constructs the URL w/ a wss url."""
+    mock_conn.host_url = "wss://api.example.com"
+    mock_conn.device_name = "test-device"
+
+    url = mock_conn._build_websocket_url()
+
+    assert url.startswith("wss://api.example.com/ws/v1/devices/test-device/console?metadata=")
+    assert "command" in url  # Check that metadata is included
+
+
+def test_build_websocket_url__no_protocol(mock_conn):
+    """Test that _build_websocket_url properly constructs the URL w/ a base url."""
+    mock_conn.host_url = "api.example.com"
+    mock_conn.device_name = "test-device"
+
+    url = mock_conn._build_websocket_url()
+
+    assert url.startswith("wss://api.example.com/ws/v1/devices/test-device/console?metadata=")
+    assert "command" in url  # Check that metadata is included
+
+
+def test_send_command__success(mock_conn):
     """Test the _send_command method."""
     mock_ws = MagicMock()
     mock_conn._ws = mock_ws
@@ -134,7 +152,28 @@ def test_send_command(mock_conn):
     assert mock_ws.recv.call_count == 3
 
 
-def test_send_command_websocket_closed(mock_conn):
+def test_send_command__stream_error(mock_conn):
+    """Test that _send_command raises an exception with the proper message when a stream error occurs."""
+    mock_ws = MagicMock()
+    mock_conn._ws = mock_ws
+
+    # Configure the mock to return a stream error
+    mock_ws.recv.side_effect = [
+        b'\x01stdout data',
+        b'\x03stream error message',
+    ]
+
+    with pytest.raises(AnsibleConnectionFailure) as exc_info:
+        mock_conn._send_command("test command")
+
+    # The __cause__ of the connection failure should be an Exception with
+    # the stream error message
+    inner_exc = exc_info.value.__cause__
+    assert isinstance(inner_exc, Exception)
+    assert "Stream error occurred: stream error message" in str(inner_exc)
+
+
+def test_send_command__websocket_closed(mock_conn):
     """Test that _send_command raises an exception when websocket is closed."""
     mock_ws = MagicMock()
     mock_conn._ws = mock_ws
@@ -145,7 +184,7 @@ def test_send_command_websocket_closed(mock_conn):
         mock_conn._send_command("test command")
 
 
-def test_send_command_no_websocket(mock_conn):
+def test_send_command__no_websocket(mock_conn):
     """Test that _send_command raises an exception when no websocket is available."""
     # Ensure there's no websocket
     mock_conn._ws = None
@@ -154,7 +193,7 @@ def test_send_command_no_websocket(mock_conn):
         mock_conn._send_command("test command")
 
 
-def test_exec_command(mock_conn):
+def test_exec_command__success(mock_conn):
     """Test that exec_command connects if needed and runs the command."""
     mock_conn._ws = None  # Start with no connection
     mock_conn._connect = MagicMock(return_value=mock_conn)
@@ -171,7 +210,7 @@ def test_exec_command(mock_conn):
     assert stderr == b"stderr: test command"
 
 
-def test_exec_command_failure(mock_conn):
+def test_exec_command__failure(mock_conn):
     """Test that exec_command handles errors properly."""
     mock_conn._ws = MagicMock()
 
@@ -182,7 +221,7 @@ def test_exec_command_failure(mock_conn):
         mock_conn.exec_command("failing command")
 
 
-def test_put_file(mock_conn, tmp_path):
+def test_put_file__success(mock_conn, tmp_path):
     """Test that put_file reads the file and sends the appropriate command."""
     test_file_content = "test content"
     test_file = tmp_path / "testfile"
@@ -197,16 +236,16 @@ def test_put_file(mock_conn, tmp_path):
 
     expected_b64_content = base64.b64encode(test_file_content.encode()).decode()
     expected_cmd = (
-        f"mkdir -p $(dirname '{remote_path}') && cat << 'EOF_ANSIBLE_PUT_FILE' | base64 -d > '{remote_path}'\n"
+        f"mkdir -p $(dirname '{remote_path}') && cat << '{PUT_FILE_MARKER}' | base64 -d > '{remote_path}'\n"
         f"{expected_b64_content}\n"
-        "EOF_ANSIBLE_PUT_FILE"
+        f"{PUT_FILE_MARKER}"
     )
 
     # Check _send_command was called with the right arguments
     send_command_mock.assert_called_once_with(expected_cmd)
 
 
-def test_put_file_failure(mock_conn, tmp_path):
+def test_put_file__failure(mock_conn, tmp_path):
     """Test that put_file handles failures properly."""
     mock_conn._ws = MagicMock()
 
@@ -221,7 +260,7 @@ def test_put_file_failure(mock_conn, tmp_path):
         mock_conn.put_file(str(test_file), "/remote/path")
 
 
-def test_fetch_file(mock_conn, tmp_path):
+def test_fetch_file__success(mock_conn, tmp_path):
     """Test that fetch_file gets the file and saves it properly."""
     test_content = "test remote content"
     encoded_content = base64.b64encode(test_content.encode()).decode()
@@ -241,7 +280,7 @@ def test_fetch_file(mock_conn, tmp_path):
     assert out_file.read_text() == test_content
 
 
-def test_fetch_file_failure(mock_conn):
+def test_fetch_file__failure(mock_conn):
     """Test that fetch_file handles failures properly."""
     mock_conn._ws = MagicMock()
 
@@ -252,7 +291,7 @@ def test_fetch_file_failure(mock_conn):
         mock_conn.fetch_file("/remote/path", "/local/path")
 
 
-def test_fetch_file_not_found(mock_conn):
+def test_fetch_file__not_found(mock_conn):
     """Test fetch_file when remote file doesn't exist (empty output)."""
     mock_conn._ws = MagicMock()
 
@@ -266,7 +305,7 @@ def test_fetch_file_not_found(mock_conn):
     assert "Remote file /nonexistent/file not found or is empty" in str(exc_info.value.__cause__)
 
 
-def test_fetch_file_decode_error(mock_conn, monkeypatch):
+def test_fetch_file__decode_error(mock_conn, monkeypatch):
     """Test fetch_file when base64 decode fails."""
     mock_conn._ws = MagicMock()
 
