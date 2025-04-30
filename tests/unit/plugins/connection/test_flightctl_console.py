@@ -13,7 +13,7 @@ from unittest.mock import MagicMock
 from ansible.errors import AnsibleConnectionFailure
 
 from websockets.exceptions import ConnectionClosedError
-from plugins.connection.flightctl_console import Connection, CMD_END_MARKER, PUT_FILE_MARKER
+from plugins.connection.flightctl_console import Connection, CMD_END_MARKER, PUT_FILE_MARKER, CommandType
 
 
 class MockConfigLoader:
@@ -131,6 +131,51 @@ def test_build_websocket_url__no_protocol(mock_conn):
     assert "command" in url  # Check that metadata is included
 
 
+def test_build_command__exec(mock_conn):
+    """Test that _build_command properly formats an exec command."""
+    cmd = "ls -la"
+    result = mock_conn._build_command(cmd, CommandType.EXEC)
+
+    # Command should include logging to systemd journal
+    assert "echo exec_command | systemd-cat -t ansible-console" in result
+    # Command should include the original command
+    assert "ls -la" in result
+    # Command should include the end marker
+    assert f"echo {CMD_END_MARKER}" in result
+    # The command, log and marker should be on separate lines
+    assert result.count("\n") >= 2
+
+
+def test_build_command__put_file(mock_conn):
+    """Test that _build_command properly formats a put_file command."""
+    cmd = "cat << EOF > /tmp/file\ndata\nEOF"
+    result = mock_conn._build_command(cmd, CommandType.PUT)
+
+    # Command should include logging to systemd journal
+    assert "echo put_file | systemd-cat -t ansible-console" in result
+    # Command should include the original command
+    assert cmd in result
+    # Command should include the end marker
+    assert f"echo {CMD_END_MARKER}" in result
+    # The command, log and marker should be on separate lines
+    assert result.count("\n") >= 3
+
+
+def test_build_command__fetch_file(mock_conn):
+    """Test that _build_command properly formats a fetch_file command."""
+    cmd = "cat /etc/passwd | base64"
+    result = mock_conn._build_command(cmd, CommandType.FETCH)
+
+    # Command should include logging to systemd journal
+    assert "echo fetch_file | systemd-cat -t ansible-console" in result
+    # Command should include the original command
+    assert cmd in result
+    # Command should include the end marker
+    assert f"echo {CMD_END_MARKER}" in result
+    # The command, log and marker should be on separate lines
+    assert result.count("\n") >= 2
+
+
 def test_send_command__success(mock_conn):
     """Test the _send_command method."""
     mock_ws = MagicMock()
@@ -143,7 +188,7 @@ def test_send_command__success(mock_conn):
         b'\x01' + f'more data\n{CMD_END_MARKER}'.encode()
     ]
 
-    stdout, stderr = mock_conn._send_command("test command")
+    stdout, stderr = mock_conn._send_command("test command", CommandType.EXEC)
 
     assert "stdout data" in stdout
     assert "more data" in stdout
@@ -164,7 +209,7 @@ def test_send_command__stream_error(mock_conn):
     ]
 
     with pytest.raises(AnsibleConnectionFailure) as exc_info:
-        mock_conn._send_command("test command")
+        mock_conn._send_command("test command", CommandType.EXEC)
 
     # The __cause__ of the connection failure should be an Exception with
     # the stream error message
@@ -181,7 +226,7 @@ def test_send_command__websocket_closed(mock_conn):
     mock_ws.send.side_effect = ConnectionClosedError(None, None)
 
     with pytest.raises(AnsibleConnectionFailure, match="WebSocket is not connected"):
-        mock_conn._send_command("test command")
+        mock_conn._send_command("test command", CommandType.EXEC)
 
 
 def test_send_command__no_websocket(mock_conn):
@@ -190,7 +235,7 @@ def test_send_command__no_websocket(mock_conn):
     mock_conn._ws = None
 
     with pytest.raises(AnsibleConnectionFailure, match="WebSocket is not connected"):
-        mock_conn._send_command("test command")
+        mock_conn._send_command("test command", CommandType.EXEC)
 
 
 def test_exec_command__success(mock_conn):
@@ -242,7 +287,7 @@ def test_put_file__success(mock_conn, tmp_path):
     )
 
     # Check _send_command was called with the right arguments
-    send_command_mock.assert_called_once_with(expected_cmd)
+    send_command_mock.assert_called_once_with(expected_cmd, CommandType.PUT)
 
 
 def test_put_file__failure(mock_conn, tmp_path):
@@ -273,7 +318,7 @@ def test_fetch_file__success(mock_conn, tmp_path):
 
     mock_conn.fetch_file("/remote/path", str(out_file))
 
-    send_command_mock.assert_called_once_with("cat '/remote/path' 2>/dev/null | base64")
+    send_command_mock.assert_called_once_with("cat '/remote/path' 2>/dev/null | base64", CommandType.FETCH)
 
     assert out_dir.exists()
     assert out_file.exists()

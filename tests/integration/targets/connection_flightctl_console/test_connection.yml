@@ -5,7 +5,7 @@
   vars:
     ansible_connection: flightctl.core.flightctl_console
     ansible_remote_tmp: /var/.ansible/tmp
-    ansible_flightctl_device_name: r3rh1eoh5vbf747catchhv930pf17kskb0ee1t7ioaqsuk7bm020
+    ansible_flightctl_device_name: gb3uh5qn7d6r6og410toti8pinhs860t5ggb6npafikqrsl7nlng
     ansible_flightctl_token: "{{ flightctl_token | default(omit)}}"
     ansible_flightctl_host: "{{ flightctl_host }}"
     ansible_flightctl_validate_certs: false

@@ -105,6 +105,7 @@ import os
 import re
 import ssl
 import urllib.parse
+from enum import Enum
 
 try:
     from websockets.sync.client import connect
@@ -126,6 +127,12 @@ STD_IN_CHANNEL = 0
 STD_OUT_CHANNEL = 1
 STD_ERR_CHANNEL = 2
 STREAM_ERR_CHANNEL = 3
+
+
+class CommandType(Enum):
+    EXEC = 1
+    PUT = 2
+    FETCH = 3
 
 
 class Connection(ConnectionBase):
@@ -310,12 +317,28 @@ class Connection(ConnectionBase):
             self._connect()
 
         try:
-            stdout, stderr = self._send_command(cmd)
+            stdout, stderr = self._send_command(cmd, CommandType.EXEC)
             return 0, stdout.encode(), stderr.encode()
         except Exception as e:
             raise AnsibleConnectionFailure("exec_command failed") from e
 
-    def _send_command(self, cmd):
+    def _build_command(self, cmd, type):
+        """Build the command string to be sent over the WebSocket."""
+        full_cmd = cmd.strip()
+        log_cmd = ""
+        if type == CommandType.EXEC:
+            log_cmd = "echo exec_command | systemd-cat -t ansible-console"
+        elif type == CommandType.PUT:
+            log_cmd = "echo put_file | systemd-cat -t ansible-console"
+        elif type == CommandType.FETCH:
+            log_cmd = "echo fetch_file | systemd-cat -t ansible-console"
+
+        if log_cmd:
+            full_cmd = f"{log_cmd}\n{full_cmd}"
+
+        return full_cmd + f'\necho {CMD_END_MARKER}\n'
+
+    def _send_command(self, cmd, type):
         """Send a command over the WebSocket and receive output/error streams.
 
         This method implements communication against the v5.channel.k8s.io subprotocol.
@@ -344,8 +367,8 @@ class Connection(ConnectionBase):
         if not self._ws:
             raise AnsibleConnectionFailure("WebSocket is not connected.")
 
-        full_cmd = cmd + f'\necho {CMD_END_MARKER}\n'
         try:
+            full_cmd = self._build_command(cmd, type)
             self._ws.send(bytes([STD_IN_CHANNEL]) + full_cmd.encode())
 
             output = ""
@@ -387,7 +410,7 @@ class Connection(ConnectionBase):
 
             self._display.vvv(f"Copying file to {out_path}")
 
-            self._send_command(cmd)
+            self._send_command(cmd, CommandType.PUT)
         except Exception as e:
             raise AnsibleConnectionFailure("put_file failed") from e
 
@@ -398,7 +421,7 @@ class Connection(ConnectionBase):
 
             # Read the remote file and encode it as base64
             cmd = f"cat '{in_path}' 2>/dev/null | base64"
-            stdout, stderr = self._send_command(cmd)
+            stdout, stderr = self._send_command(cmd, CommandType.FETCH)
 
             if stderr:
                 raise AnsibleConnectionFailure(f"Error reading remote file: {stderr}")
