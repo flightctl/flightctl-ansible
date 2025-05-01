@@ -94,3 +94,14 @@ ansible-playbook demo/create.yml \
 ansible-playbook demo/create.yml \
     --extra-vars "flightctl_config_file='~/.config/flightctl/client.yaml'" \
     --extra-vars "flightctl_validate_certs=True"
+
+## Connection Plugin
+
+Requires a running flightctl server and an onboarded and currently running device.
+
+To run with a static inventory file, update demo/connection/inventory to have the correct ansible_flightctl_device_name for your running device.  Update the ansible_flightctl_config_file to point towards an updated client config file or configure the other options like host, token, ca_path as needed.
+
+After configuring run:
+```bash
+ansible-playbook demo/connection/flightctl_connection.yml -i demo/connection/inventory
+```
