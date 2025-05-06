@@ -1,0 +1,243 @@
+# Run it with:
+# ansible-playbook demo/inventory/prepare-devices-and-fleets.yml --extra-vars "flightctl_config_file='~/.config/flightctl/client.yaml'"  --extra-vars "flightctl_validate_certs=False"
+#
+- name: Prepare Flight Control resources to use with fetch-inventory
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Set default credentials
+      ansible.builtin.set_fact:
+        credential_defaults: &credential_defaults
+          flightctl_config_file: "{{ flightctl_config_file | default(omit) }}"
+          flightctl_ca_path: "{{ flightctl_ca_path | default(omit)}}"
+          flightctl_token: "{{ flightctl_token | default(omit)}}"
+          flightctl_host: "{{ flightctl_host | default(omit)}}"
+          flightctl_validate_certs: "{{ flightctl_validate_certs | default(True)}}"
+
+    - name: Create a test device device-01
+      register: _result
+      flightctl.core.flightctl_resource:
+        <<: *credential_defaults
+        kind: Device
+        name: device-01
+        state: present
+        resource_definition:
+          apiVersion: flightctl.io/v1alpha1
+          kind: Device
+          metadata:
+            labels:
+              fleet: fleet-06
+              region: eu-west-1
+
+    - name: Assert that Device was created
+      ansible.builtin.assert:
+        that:
+          - _result.changed
+          - _result is success
+
+    - name: Create a test device device-02
+      register: _result
+      flightctl.core.flightctl_resource:
+        <<: *credential_defaults
+        kind: Device
+        name: device-02
+        state: present
+        resource_definition:
+          apiVersion: flightctl.io/v1alpha1
+          kind: Device
+          metadata:
+            labels:
+              fleet: fleet-06
+              region: eu-east-1
+
+    - name: Assert that Device was created
+      ansible.builtin.assert:
+        that:
+          - _result.changed
+          - _result is success
+
+    - name: Create a test device device-03
+      register: _result
+      flightctl.core.flightctl_resource:
+        <<: *credential_defaults
+        kind: Device
+        name: device-03
+        state: present
+        resource_definition:
+          apiVersion: flightctl.io/v1alpha1
+          kind: Device
+          metadata:
+            labels:
+              alias: device-03
+              fleet: fleet-00
+              region: eu-east-1
+
+    - name: Assert that Device was created
+      ansible.builtin.assert:
+        that:
+          - _result.changed
+          - _result is success
+
+    - name: Create a test device device-ansible-example
+      register: _result
+      flightctl.core.flightctl_resource:
+        <<: *credential_defaults
+        kind: Device
+        name: device-ansible-example
+        state: present
+        resource_definition:
+          apiVersion: flightctl.io/v1alpha1
+          kind: Device
+          metadata:
+            labels:
+              fleet: default
+
+    - name: Assert that Device was created
+      ansible.builtin.assert:
+        that:
+          - _result.changed
+          - _result is success
+
+    - name: Create a test device device-ansible-example-2
+      register: _result
+      flightctl.core.flightctl_resource:
+        <<: *credential_defaults
+        kind: Device
+        name: device-ansible-example-2
+        state: present
+        resource_definition:
+          apiVersion: flightctl.io/v1alpha1
+          kind: Device
+          metadata:
+            labels:
+              fleet: default
+
+    - name: Assert that Device was created
+      ansible.builtin.assert:
+        that:
+          - _result.changed
+          - _result is success
+
+    - name: Create a test device device-ansible-example-3
+      register: _result
+      flightctl.core.flightctl_resource:
+        <<: *credential_defaults
+        kind: Device
+        name: device-ansible-example-3
+        state: present
+        resource_definition:
+          apiVersion: flightctl.io/v1alpha1
+          kind: Device
+          metadata:
+            labels:
+              fleet: fleet-ansible-example
+
+    - name: Assert that Device was created
+      ansible.builtin.assert:
+        that:
+          - _result.changed
+          - _result is success
+
+    - name: Create a new fleet fleet-06
+      register: _result
+      flightctl.core.flightctl_resource:
+        <<: *credential_defaults
+        kind: Fleet
+        name: "fleet-06"
+        resource_definition:
+          apiVersion: flightctl.io/v1alpha1
+          kind: Fleet
+          metadata:
+            name: fleet-06
+          spec:
+            selector:
+              matchLabels:
+                fleet: fleet-06
+            template:
+              metadata:
+                labels:
+                  fleet: fleet-06
+              spec:
+                os:
+                  image: quay.io/redhat/rhde:9.2
+                config:
+                  - name: base
+                    configType: GitConfigProviderSpec
+                    gitRef:
+                      repository: default-repo
+                      targetRevision: main
+                      path: /production
+                  - name: acm-secrets
+                    configType: KubernetesSecretProviderSpec
+                    secretRef:
+                      name: device-name
+                      namespace: devices
+                      mountPath: /etc/microshift/manifests
+                  - name: motd-update
+                    configType: InlineConfigProviderSpec
+                    inline:
+                      - path: "/etc/motd"
+                        content: "This system is managed by flightctl."
+                        mode: 0644
+                systemd:
+                  matchPatterns:
+                    - chronyd.service
+
+
+    - name: Assert that Fleet was created
+      ansible.builtin.assert:
+        that:
+          - _result.changed
+          - _result is success
+
+    - name: Create a new fleet fleet-ansible-example
+      register: _result
+      flightctl.core.flightctl_resource:
+        <<: *credential_defaults
+        kind: Fleet
+        name: "fleet-ansible-example"
+        resource_definition:
+          apiVersion: flightctl.io/v1alpha1
+          kind: Fleet
+          metadata:
+            name: fleet-ansible-example
+          spec:
+            selector:
+              matchLabels:
+                fleet: fleet-ansible-example
+            template:
+              metadata:
+                labels:
+                  fleet: fleet-ansible-example
+              spec:
+                os:
+                  image: quay.io/redhat/rhde:9.2
+                config:
+                  - name: base
+                    configType: GitConfigProviderSpec
+                    gitRef:
+                      repository: default-repo
+                      targetRevision: main
+                      path: /production
+                  - name: acm-secrets
+                    configType: KubernetesSecretProviderSpec
+                    secretRef:
+                      name: device-name
+                      namespace: devices
+                      mountPath: /etc/microshift/manifests
+                  - name: motd-update
+                    configType: InlineConfigProviderSpec
+                    inline:
+                      - path: "/etc/motd"
+                        content: "This system is managed by flightctl."
+                        mode: 0644
+                systemd:
+                  matchPatterns:
+                    - chronyd.service
+
+    - name: Assert that Fleet was created
+      ansible.builtin.assert:
+        that:
+          - _result.changed
+          - _result is success
