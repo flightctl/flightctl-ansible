@@ -14,7 +14,7 @@
 #        - fleet = 'fleet-00'
 #      field_selectors:
 #        - metadata.name = 'device-03'
-#        - metadata.name in ['device-03', 'device-01']
+#        - metadata.name in ('device-03', 'device-01')
 #    - name: group6
 #      field_selectors:
 #        - metadata.owner = "Fleet/fleet-06"
@@ -35,36 +35,36 @@
 #
 # After running the prepare-devices-and-fleets.yml playbook, expected result:
 #
-# {
-#  "Devices": {
-#    "all": [
-#      "device-ansible-example",
-#      "device-ansible-example-2",
-#      "device-01",
-#      "device-02",
-#      "device-03",
-#      "device-ansible-example-3"
-#    ],
-#    "fleet_06": [
-#      "device-01",
-#      "device-02"
-#    ],
-#    "fleet_ansible_example": [
-#      "device-ansible-example-3"
-#    ],
-#    "group0": [
-#      "device-03"
-#    ],
-#    "group6": [
-#      "device-01",
-#      "device-02"
-#    ],
-#    "ungrouped": [
-#      "device-ansible-example",
-#      "device-ansible-example-2"
-#    ]
-#  }
-#}
+#   {
+#     "all_devices": [
+#       "device-ansible-example",
+#       "device-ansible-example-2",
+#       "device-01",
+#       "device-02",
+#       "device-ansible-example-3",
+#       "device-03"
+#     ],
+#     "fleet_06_devices": [
+#       "device-01",
+#       "device-02"
+#     ],
+#     "fleet_ansible_example_devices": [
+#       "device-ansible-example-3"
+#     ],
+#     "group0_devices": [
+#       "device-03"
+#     ],
+#     "group6_devices": [
+#       "device-01",
+#       "device-02"
+#     ],
+#     "ungrouped_devices": [
+#       "device-ansible-example",
+#       "device-ansible-example-2"
+#     ]
+#     }
+#   }
+#
 #
 
 - name: Test Flight Control Collection with Dynamic Inventory plugin
@@ -75,4 +75,10 @@
 
     - name: Display devices from the inventory
       debug:
-        msg: "Devices: {{ groups }}"
+        msg:
+          all_devices: "{{ groups.all }}"
+          ungrouped_devices: "{{ groups.ungrouped }}"
+          fleet_06_devices: "{{ groups.fleet_06 }}"
+          fleet_ansible_example_devices: "{{ groups.fleet_ansible_example }}"
+          group0_devices: "{{ groups.group0 }}"
+          group6_devices: "{{ groups.group6 }}"
