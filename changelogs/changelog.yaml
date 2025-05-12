@@ -36,18 +36,12 @@ releases:
       - auth documentation - fixed env var names to align with module usage
       major_changes:
       - Added flight control console connection plugin
-      - Added flight control console connection plugin
-      - Added support for dynamic inventory plugin
       - Added support for dynamic inventory plugin
       - Added support for new features in FlightCTL API v0.7.
-      - Added support for new features in FlightCTL API v0.7.
-      - Updated the Ansible collection to support FlightCTL API version 0.7.
       - Updated the Ansible collection to support FlightCTL API version 0.7.
       release_summary: Added support for FlightCTL API v0.7.
     fragments:
     - add-flightctl-console-connection-plugin.yml
-    - add-flightctl-console-connection-plugin.yml
-    - flightctl_0.7_update.yml
     - flightctl_0.7_update.yml
     plugins:
       connection:
