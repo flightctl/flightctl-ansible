@@ -45,8 +45,8 @@
     ansible.builtin.assert:
       that:
         - csr_result is success
-        # - csr_result.result.data[0].status.conditions[0].type == "Approved"
-        # - csr_result.result.data[0].status.conditions[0].status == "True"
+        - csr_result.result.data[0].status.conditions[0].type == "Approved"
+        - csr_result.result.data[0].status.conditions[0].status == "True"
 
   - name: Try to approve the csr again (idempotency)
     flightctl.core.flightctl_certificate_management:
@@ -60,7 +60,7 @@
     ansible.builtin.assert:
       that:
         - idempotency_result is success
-        # - idempotency_result.changed == False
+        - idempotency_result.changed == False
 
   always:
     - name: Delete csr
