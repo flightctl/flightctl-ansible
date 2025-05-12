@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: 'flightctl/flightctl'
-          ref: v0.6.0
+          ref: v0.7.0
 
       - name: Setup dependencies for flightctl
         uses: ./.github/actions/setup-dependencies
