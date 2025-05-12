@@ -58,4 +58,4 @@ releases:
       - description: Returns Ansible inventory using Flight Control as source.
         name: flightctl
         namespace: null
-    release_date: '2025-05-09'
+    release_date: '2025-05-12'
