@@ -25,7 +25,7 @@ releases:
   0.6.0:
     changes:
       major_changes:
-       - Updated the Ansible collection to support FlightCTL API version 0.6.
+        - Updated the Ansible collection to support FlightCTL API version 0.6.
       release_summary: Added support for FlightCTL API v0.6.
     fragments:
       - flightctl_0.6_update.yml
@@ -33,7 +33,7 @@ releases:
   0.7.0:
     changes:
       bugfixes:
-       - auth documentation - fixed env var names to align with module usage
+        - auth documentation - fixed env var names to align with module usage
       major_changes:
         - Added Flight Control console connection plugin
         - Added support for dynamic inventory plugin
@@ -45,13 +45,13 @@ releases:
       - flightctl_0.7_update.yml
     plugins:
       connection:
-      - description: Connect to Flight Control managed devices.
-        name: flightctl_console
-        namespace: null
+        - description: Connect to Flight Control managed devices.
+          name: flightctl_console
+          namespace: null
       inventory:
-      - description: Returns Ansible inventory using Flight Control as source.
-        name: flightctl
-        namespace: null
+        - description: Returns Ansible inventory using Flight Control as source.
+          name: flightctl
+          namespace: null
     release_date: '2025-05-12'
   1.0.0:
     changes:

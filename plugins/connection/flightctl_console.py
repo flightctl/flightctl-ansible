@@ -70,7 +70,7 @@ options:
 EXAMPLES = r"""
 - name: Run a command in a device using passed vars to setup the connection
   hosts: localhost
-  gather_facts: no
+  gather_facts: false
   vars:
     ansible_connection: flightctl.core.flightctl_console
     ansible_remote_tmp: /var/.ansible/tmp # Default ansible tmp dir is readonly in bootc devices
@@ -80,6 +80,7 @@ EXAMPLES = r"""
     # Be aware that the command is executed as root and requires python to be installed on the device
     - name: Run a command in a pod
       ansible.builtin.command: echo "Hello, World!"
+      changed_when: false
 
 - name: Run a command in a device using a static inventory file
   # Example inventory:
@@ -96,6 +97,7 @@ EXAMPLES = r"""
     # Be aware that the command is executed as root and requires python to be installed on the device
     - name: Run a command in a device
       ansible.builtin.command: echo "Hello, World!"
+      changed_when: false
 """
 
 
