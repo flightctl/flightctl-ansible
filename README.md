@@ -164,7 +164,7 @@ The easiest way to run tests locally is to:
 
 ## Support
 
-redhat.edge_manager collection v0.7.1 is for [Technical Preview](https://access.redhat.com/support/offerings/techpreview). IIf you encounter issues or have questions, you can submit a support request through the following channels:
+redhat.edge_manager collection v0.7.1 is for [Technical Preview](https://access.redhat.com/support/offerings/techpreview). If you encounter issues or have questions, you can submit a support request through the following channels:
  - GitHub Issues: Report bugs, request features, or ask questions by opening an issue in the [GitHub repository](https://github.com/flightctl/flightctl-ansible/issues).
 
 ## Release notes
