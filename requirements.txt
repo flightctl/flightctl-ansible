@@ -2,4 +2,5 @@ ansible-core>=2.15
 pyyaml>=6.0.1
 jsonpatch
 jsonschema
+websockets>=15.0.1
 git+https://github.com/flightctl/flightctl-python-client.git

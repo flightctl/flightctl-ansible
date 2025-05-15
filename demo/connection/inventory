@@ -1,0 +1,11 @@
+flightctl:
+  hosts:
+    example-device-1:
+      ansible_connection: flightctl.core.flightctl_console
+      ansible_remote_tmp: /var/.ansible/tmp
+      ansible_flightctl_device_name:
+      ansible_flightctl_config_file: ~/.config/flightctl/client.yaml
+      # ansible_flightctl_host:
+      # ansible_flightctl_token:
+      # ansible_flightctl_ca_path:
+      # ansible_flightctl_validate_certs:

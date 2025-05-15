@@ -9,7 +9,7 @@ options:
   flightctl_host:
     description:
     - URL to Flight Control server.
-    - If value not set, will try environment variable C(FLIGHTCTL_HOSTNAME).
+    - If value not set, will try environment variable C(FLIGHTCTL_HOST).
     type: str
   flightctl_username:
     description:
@@ -28,7 +28,7 @@ options:
     description:
     - The Flight Control API token to use.
     - This value can be in one of two formats.
-    - If value not set, will try environment variable C(FLIGHTCTL_API_TOKEN)
+    - If value not set, will try environment variable C(FLIGHTCTL_TOKEN)
     type: str
   flightctl_validate_certs:
     description:

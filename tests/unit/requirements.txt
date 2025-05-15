@@ -1,4 +1,5 @@
 jsonpatch
 jsonschema
 pytest
+websockets>=15.0.1
 git+https://github.com/flightctl/flightctl-python-client.git

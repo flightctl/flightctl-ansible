@@ -4,7 +4,54 @@ flightctl.core Release Notes
 
 .. contents:: Topics
 
-v1.0.0
+v0.7.0
+======
+
+Release Summary
+---------------
+
+Added support for FlightCTL API v0.7.
+
+Major Changes
+-------------
+
+- Added flight control console connection plugin
+- Added support for dynamic inventory plugin
+- Added support for new features in FlightCTL API v0.7.
+- Updated the Ansible collection to support FlightCTL API version 0.7.
+
+Bugfixes
+--------
+
+- auth documentation - fixed env var names to align with module usage
+
+New Plugins
+-----------
+
+Connection
+~~~~~~~~~~
+
+- flightctl_console - Connect to Flight Control managed devices.
+
+Inventory
+~~~~~~~~~
+
+- flightctl - Returns Ansible inventory using Flight Control as source.
+
+v0.6.0
+======
+
+Release Summary
+---------------
+
+Added support for FlightCTL API v0.6.
+
+Major Changes
+-------------
+
+- Updated the Ansible collection to support FlightCTL API version 0.6.
+
+v0.5.0
 ======
 
 Release Summary
@@ -15,8 +62,8 @@ Added support for FlightCTL API v0.5.
 Major Changes
 -------------
 
-- Updated the Ansible collection to support FlightCTL API version 0.5.
 - Added support for Device decommissioning.
+- Updated the Ansible collection to support FlightCTL API version 0.5.
 
 v0.2.0
 ======

@@ -404,7 +404,7 @@ class FlightctlAPIModule(FlightctlModule):
         else:
             api_instance = CertificatesigningrequestApi(self.client)
             try:
-                csr = self.call_api(api_instance.read_certificate_signing_request, input.name)
+                csr = self.call_api(api_instance.get_certificate_signing_request, input.name)
 
                 if csr.status is None:
                     csr.status = CertificateSigningRequestStatus(conditions=[])
