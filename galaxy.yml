@@ -51,7 +51,7 @@ dependencies: {}
 repository: https://github.com/flightctl/flightctl-ansible
 
 # The URL to any online docs
-documentation: https://github.com/flightctl/flightctl/blob/main/docs/user/README.md
+documentation: https://docs.redhat.com/en/documentation/red_hat_ansible_automation_platform/2.5/html/managing_device_fleets_with_the_red_hat_edge_manager/index
 
 # The URL to the homepage of the collection/project
 homepage: https://github.com/flightctl/flightctl-ansible
