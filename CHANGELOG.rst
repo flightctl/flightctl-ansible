@@ -1,8 +1,21 @@
-============================
-flightctl.core Release Notes
-============================
+==================================
+flightctl collection Release Notes
+==================================
 
 .. contents:: Topics
+
+v0.7.1
+======
+
+Release Summary
+---------------
+
+Added support for FlightCTL API v0.7.1.
+
+Minor Changes
+-------------
+
+- Updated the Ansible collection to support FlightCTL API version 0.7.1.
 
 v0.7.0
 ======
@@ -15,7 +28,7 @@ Added support for FlightCTL API v0.7.
 Major Changes
 -------------
 
-- Added flight control console connection plugin
+- Added Flight Control console connection plugin
 - Added support for dynamic inventory plugin
 - Added support for new features in FlightCTL API v0.7.
 - Updated the Ansible collection to support FlightCTL API version 0.7.

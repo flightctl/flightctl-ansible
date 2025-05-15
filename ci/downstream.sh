@@ -9,7 +9,7 @@
 #       - All functions are prefixed with f_ so it's obvious where they come
 #         from when in use throughout the script
 
-DOWNSTREAM_VERSION="1.0.0"
+DOWNSTREAM_VERSION="0.7.1"
 KEEP_DOWNSTREAM_TMPDIR="${KEEP_DOWNSTREAM_TMPDIR:-''}"
 INSTALL_DOWNSTREAM_COLLECTION_PATH="${INSTALL_DOWNSTREAM_COLLECTION_PATH:-}"
 _build_dir=""
@@ -37,6 +37,7 @@ f_text_sub()
     f_log_info "Substituting text in files"
 
     find "${_build_dir}" -type f -exec sed -i.bak "s/flightctl\.core/redhat.edge_manager/g" {} \;
+    find "${_build_dir}" -type f -exec sed -i.bak "s/Flight Control/Red Hat Edge Manager/g" {} \;
 
     sed -i.bak "s/Flight Control Collection/Red Hat Edge Manager Collection/g" "${_build_dir}/README.md"
     sed -i.bak "s/flightctl\/core/redhat\/edge_manager/g" "${_build_dir}/galaxy.yml"
