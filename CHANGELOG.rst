@@ -4,7 +4,7 @@ flightctl collection Release Notes
 
 .. contents:: Topics
 
-v0.7.1
+v1.0.0
 ======
 
 Release Summary
@@ -16,6 +16,7 @@ Minor Changes
 -------------
 
 - Updated the Ansible collection to support FlightCTL API version 0.7.1.
+- Version bump for Automation Hub publishing
 
 v0.7.0
 ======

@@ -56,13 +56,13 @@ A specific version of the collection can be installed by using the `version` key
 ---
 collections:
   - name: flightctl.core
-    version: 0.7.0
+    version: 1.0.0
 ```
 
 or using the ansible-galaxy command as follows
 
 ```shell
-ansible-galaxy collection install flightctl.core:0.7.0
+ansible-galaxy collection install flightctl.core:1.0.0
 ```
 
 The Python module dependencies are not installed by ansible-galaxy. They must be installed manually using pip:
@@ -164,7 +164,7 @@ The easiest way to run tests locally is to:
 
 ## Support
 
-flightctl.core collection v0.7.1 is for [Technical Preview](https://access.redhat.com/support/offerings/techpreview). If you encounter issues or have questions, you can submit a support request through the following channels:
+flightctl.core collection v1.0.0 is for [Technical Preview](https://access.redhat.com/support/offerings/techpreview). If you encounter issues or have questions, you can submit a support request through the following channels:
  - GitHub Issues: Report bugs, request features, or ask questions by opening an issue in the [GitHub repository](https://github.com/flightctl/flightctl-ansible/issues).
 
 ## Release notes
