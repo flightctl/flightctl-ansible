@@ -17,16 +17,16 @@ releases:
     changes:
       major_changes:
         - Added support for Device decommissioning.
-        - Updated the Ansible collection to support FlightCTL API version 0.5.
-      release_summary: Added support for FlightCTL API v0.5.
+        - Updated the Ansible collection to support Flight Control API version 0.5.
+      release_summary: Added support for Flight Control API v0.5.
     fragments:
       - flightctl_0.5_update.yml
     release_date: '2025-04-01'
   0.6.0:
     changes:
       major_changes:
-        - Updated the Ansible collection to support FlightCTL API version 0.6.
-      release_summary: Added support for FlightCTL API v0.6.
+        - Updated the Ansible collection to support Flight Control API version 0.6.
+      release_summary: Added support for Flight Control API v0.6.
     fragments:
       - flightctl_0.6_update.yml
     release_date: '2025-04-22'
@@ -37,9 +37,9 @@ releases:
       major_changes:
         - Added Flight Control console connection plugin
         - Added support for dynamic inventory plugin
-        - Added support for new features in FlightCTL API v0.7.
-        - Updated the Ansible collection to support FlightCTL API version 0.7.
-      release_summary: Added support for FlightCTL API v0.7.
+        - Added support for new features in Flight Control API v0.7.
+        - Updated the Ansible collection to support Flight Control API version 0.7.
+      release_summary: Added support for Flight Control API v0.7.
     fragments:
       - add-flightctl-console-connection-plugin.yml
       - flightctl_0.7_update.yml
@@ -56,9 +56,9 @@ releases:
   1.0.0:
     changes:
       minor_changes:
-        - Updated the Ansible collection to support FlightCTL API version 0.7.1.
+        - Updated the Ansible collection to support Flight Control API version 0.7.1.
         - Version bump for Automation Hub publishing
-      release_summary: Added support for FlightCTL API v0.7.1.
+      release_summary: Added support for Flight Control API v0.7.1.
     fragments:
       - flightctl_1.0.0_update.yml
     release_date: '2025-05-15'

@@ -17,8 +17,8 @@ jobs:
     strategy:
       matrix:
         versions:
-          - ansible: stable-2.16
-            python: "3.10"
+          - ansible: ${{ vars.ANSIBLE_VERSION || 'stable-2.16' }}
+            python: ${{ vars.PYTHON_VERSION || '3.12' }}
     steps:
       - name: Perform sanity testing
         uses: ansible-community/ansible-test-gh-action@release/v1
@@ -39,7 +39,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: ${{ vars.PYTHON_VERSION || '3.12' }}
 
       - name: Install dependencies
         run: |

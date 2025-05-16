@@ -10,12 +10,12 @@ v1.0.0
 Release Summary
 ---------------
 
-Added support for FlightCTL API v0.7.1.
+Added support for Flight Control API v0.7.1.
 
 Minor Changes
 -------------
 
-- Updated the Ansible collection to support FlightCTL API version 0.7.1.
+- Updated the Ansible collection to support Flight Control API version 0.7.1.
 - Version bump for Automation Hub publishing
 
 v0.7.0
@@ -24,15 +24,15 @@ v0.7.0
 Release Summary
 ---------------
 
-Added support for FlightCTL API v0.7.
+Added support for Flight Control API v0.7.
 
 Major Changes
 -------------
 
 - Added Flight Control console connection plugin
 - Added support for dynamic inventory plugin
-- Added support for new features in FlightCTL API v0.7.
-- Updated the Ansible collection to support FlightCTL API version 0.7.
+- Added support for new features in Flight Control API v0.7.
+- Updated the Ansible collection to support Flight Control API version 0.7.
 
 Bugfixes
 --------
@@ -58,12 +58,12 @@ v0.6.0
 Release Summary
 ---------------
 
-Added support for FlightCTL API v0.6.
+Added support for Flight Control API v0.6.
 
 Major Changes
 -------------
 
-- Updated the Ansible collection to support FlightCTL API version 0.6.
+- Updated the Ansible collection to support Flight Control API version 0.6.
 
 v0.5.0
 ======
@@ -71,13 +71,13 @@ v0.5.0
 Release Summary
 ---------------
 
-Added support for FlightCTL API v0.5.
+Added support for Flight Control API v0.5.
 
 Major Changes
 -------------
 
 - Added support for Device decommissioning.
-- Updated the Ansible collection to support FlightCTL API version 0.5.
+- Updated the Ansible collection to support Flight Control API version 0.5.
 
 v0.2.0
 ======

@@ -18,13 +18,11 @@ _build_dir=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="${SCRIPT_DIR}/.."
 
-f_log_info()
-{
+f_log_info() {
     printf "%s:LOG:INFO: %s\n" "${0}" "${1}"
 }
 
-f_show_help()
-{
+f_show_help() {
     printf "Usage: downstream.sh [OPTION]\n"
     printf "\t-s\t\tCreate a temporary downstream release and perform sanity tests.\n"
     printf "\t-u\t\tCreate a temporary downstream release and perform unit tests.\n"
@@ -32,8 +30,7 @@ f_show_help()
     printf "\t-b\t\tBuild the downstream release.\n"
 }
 
-f_text_sub()
-{
+f_text_sub() {
     f_log_info "Substituting text in files"
 
     find "${_build_dir}" -type f -exec sed -i.bak "s/flightctl\.core/redhat.edge_manager/g" {} \;
@@ -50,8 +47,7 @@ f_text_sub()
     find "${_build_dir}" -type f -name "*.bak" -delete
 }
 
-f_prep()
-{
+f_prep() {
     f_log_info "Creating temporary build directory"
     # Array of excluded files from downstream build (relative path)
     _file_exclude=(
@@ -81,8 +77,7 @@ f_prep()
     mkdir -p "${_build_dir}"
 }
 
-f_cleanup()
-{
+f_cleanup() {
     f_log_info "Cleaning up"
     if [[ -n "${_build_dir}" ]]; then
         if [[ -z ${KEEP_DOWNSTREAM_TMPDIR} ]]; then
@@ -96,14 +91,12 @@ f_cleanup()
 # Exit and handle cleanup processes if needed
 trap f_cleanup EXIT
 
-f_exit()
-{
+f_exit() {
     f_cleanup
     exit "$0"
 }
 
-f_create_collection_dir_structure()
-{
+f_create_collection_dir_structure() {
     f_log_info "Creating collection directory structure"
     # Create the Collection
     for f_name in "${_file_manifest[@]}";
@@ -124,8 +117,7 @@ f_create_collection_dir_structure()
     fi
 }
 
-f_copy_collection_to_working_dir()
-{
+f_copy_collection_to_working_dir() {
     f_log_info "Copying built collection to working dir"
     # Copy the Collection build result into original working dir
     f_log_info "Copying built collection *.tar.gz into ./"
@@ -138,16 +130,14 @@ f_copy_collection_to_working_dir()
     rm -f "${_build_dir}"/*.tar.gz
 }
 
-f_common_steps()
-{
+f_common_steps() {
     f_prep
     f_create_collection_dir_structure
     f_text_sub
 }
 
 # Run the test sanity scenario
-f_test_sanity_option()
-{
+f_test_sanity_option() {
     f_log_info "Running Sanity Tests"
     f_common_steps
     pushd "${_build_dir}" || return
@@ -157,8 +147,7 @@ f_test_sanity_option()
 }
 
 # Run the test integration
-f_test_integration_option()
-{
+f_test_integration_option() {
     f_log_info "Running Integration Tests"
     f_common_steps
     pushd "${_build_dir}" || return
@@ -168,8 +157,7 @@ f_test_integration_option()
 }
 
 # Run the test units
-f_test_units_option()
-{
+f_test_units_option() {
     f_log_info "Running Unit Tests"
     f_common_steps
     pushd "${_build_dir}" || return
@@ -179,8 +167,7 @@ f_test_units_option()
 }
 
 # Run the build scenario
-f_build_option()
-{
+f_build_option() {
     f_log_info "Building Collection"
     f_common_steps
     pushd "${_build_dir}" || return
