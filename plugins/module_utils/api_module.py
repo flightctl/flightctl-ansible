@@ -411,7 +411,7 @@ class FlightctlAPIModule(FlightctlModule):
 
                 expected_type = ConditionType.APPROVED if input.approved else ConditionType.DENIED
 
-                # Idempotency of certificate approval/denial is no longer handled in FlightCTL.
+                # Idempotency of certificate approval/denial is no longer handled in Flight Control.
                 # This logic will be enforced within the Ansible collection instead.
 
                 if any(cond.type == expected_type for cond in csr.status.conditions):  # Check if the condition already exists

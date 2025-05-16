@@ -32,5 +32,5 @@ sections:
     - Bugfixes
   - - known_issues
     - Known Issues
-title: flightctl.core
+title: flightctl collection
 trivial_section_name: trivial

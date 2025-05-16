@@ -369,7 +369,7 @@ def _get_data(
                 limit=limit
             )
         except Exception as e:
-            raise FlightctlApiException(f"Error retrieving data from FlightCTL API: {e}") from e
+            raise FlightctlApiException(f"Error retrieving data from Flight Control API: {e}") from e
         records: Sequence[T] = response.items
         all_records.extend(records)
         metadata = response.to_dict().get('metadata', {})

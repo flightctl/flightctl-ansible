@@ -17,8 +17,8 @@ jobs:
     strategy:
       matrix:
         versions:
-          - ansible: stable-2.16
-            python: "3.10"
+          - ansible: ${{ vars.ANSIBLE_VERSION || 'stable-2.16' }}
+            python: ${{ vars.PYTHON_VERSION || '3.12' }}
     steps:
       - name: Perform sanity testing
         uses: ansible-community/ansible-test-gh-action@release/v1
@@ -27,3 +27,26 @@ jobs:
           origin-python-version: ${{ matrix.versions.python }}
           target-python-version: ${{ matrix.versions.python }}
           testing-type: sanity
+
+  test-sanity-downstream:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    needs: test-sanity  # Ensure upstream tests pass before running downstream tests
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ vars.PYTHON_VERSION || '3.12' }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible ansible-lint
+
+      - name: Run downstream sanity tests
+        run: |
+          cd ci
+          ./downstream.sh -s
