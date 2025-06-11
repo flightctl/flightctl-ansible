@@ -1,0 +1,150 @@
+---
+# This playbook provides a comprehensive test suite for the flightctl.core.flightctl inventory plugin.
+# It uses the flightctl_resource module for setup/cleanup and ansible-inventory for testing.
+
+- name: 1. Prepare Test Resources (Idempotent)
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Set credential parameters for flightctl.core
+      ansible.builtin.set_fact:
+        connection_info: &connection_info
+          flightctl_token: "{{ flightctl_token | default(omit)}}"
+          flightctl_host: "{{ flightctl_host }}"
+          flightctl_validate_certs: False
+    - name: Ensure test fleets exist
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: Fleet
+        name: "{{ item.name }}"
+        resource_definition:
+          kind: Fleet
+          metadata:
+            name: "{{ item.name }}"
+          spec:
+            selector:
+              matchLabels:
+                fleet: "{{ item.name }}"
+            template:
+              spec:
+                os:
+                  image: "{{ item.os_image }}"
+                config:
+                  # This config is used by the inventory plugin's 'compose' feature.
+                  # It now uses a valid configType to pass schema validation.
+                  - name: ansible-vars
+                    configType: InlineConfigProviderSpec
+                    inline:
+                      - path: /etc/flightctl/ansible_user
+                        content: "core"
+      loop:
+        - { name: 'fleet-dev', os_image: 'quay.io/osbuild/fedora-iot:39' }
+        - { name: 'fleet-test', os_image: 'quay.io/osbuild/fedora-iot:40' }
+        - { name: 'fleet-prod', os_image: 'quay.io/osbuild/fedora-iot:stable' }
+
+    - name: Ensure test devices exist
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: Device
+        name: "{{ item.name }}"
+        resource_definition:
+          kind: Device
+          metadata:
+            name: "{{ item.name }}"
+            labels: "{{ item.labels }}"
+      loop:
+        - { name: 'device-dev-01', labels: { fleet: 'fleet-dev', arch: 'amd64' } }
+        - { name: 'device-dev-02', labels: { fleet: 'fleet-dev', arch: 'arm64' } }
+        - { name: 'device-test-01', labels: { fleet: 'fleet-test', arch: 'amd64' } }
+        - { name: 'device-unmanaged-01', labels: { location: 'lab' } }
+
+# --- Display devices from the inventory ---
+    - name: Display devices from the inventory
+      debug:
+        msg:
+          all_devices: "{{ groups['all'] | default([]) }}"
+          ungrouped_devices: "{{ groups['ungrouped'] | default([]) }}"
+          fleet_ansible_integration_test_devices: "{{ groups['ansible_integration_test_fleet'] | default([]) }}"
+          fleet_dev_devices: "{{ groups['dev_devices'] | default([]) }}"
+          fleet_test_devices: "{{ groups['test_devices'] | default([]) }}"
+          unmanaged_devices: "{{ groups['unmanaged_devices'] | default([]) }}"
+          label_group_devices: "{{ groups['device_specific_group'] | default([]) }}"
+
+    # --- ASSERTIONS ---
+
+    - name: Assert all expected devices are in 'all' group
+      assert:
+        that:
+          - "'ansible-integration-test-device' in groups['all']"
+          - "'ansible-integration-test-device-label-1' in groups['all']"
+          - "'ansible-integration-test-device-label-2' in groups['all']"
+          - "'device-dev-01' in groups['all']"
+          - "'device-dev-02' in groups['all']"
+          - "'device-test-01' in groups['all']"
+          - "'device-unmanaged-01' in groups['all']"
+
+    - name: Assert devices in fleet ansible-integration-test
+      assert:
+        that:
+          - groups['ansible_integration_test_fleet'] | default([]) | length == 1
+          - "'ansible-integration-test-device' in groups['ansible_integration_test_fleet']"
+
+    - name: Assert devices in fleet-dev
+      assert:
+        that:
+          - groups['dev_devices'] | default([]) | length == 2
+          - "'device-dev-01' in groups['dev_devices']"
+          - "'device-dev-02' in groups['dev_devices']"
+
+    - name: Assert devices in fleet-test
+      assert:
+        that:
+          - groups['test_devices'] | default([]) | length == 1
+          - "'device-test-01' in groups['test_devices']"
+
+    - name: Assert unmanaged devices
+      assert:
+        that:
+          - "'ansible-integration-test-device-label-1' in groups['unmanaged_devices']"
+          - "'ansible-integration-test-device-label-2' in groups['unmanaged_devices']"
+          - "'device-unmanaged-01' in groups['unmanaged_devices']"
+
+    - name: Assert device-specific group contains selected devices
+      assert:
+        that:
+          - "'device-dev-02' in groups['device_specific_group']"
+
+
+- name: 7. Cleanup Test Resources
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    # - name: Set credential parameters for flightctl.core
+    #   ansible.builtin.set_fact:
+    #     connection_info: &connection_info
+    #       flightctl_token: "{{ flightctl_token | default(omit)}}"
+    #       flightctl_host: "{{ flightctl_host }}"
+    #       flightctl_validate_certs: False
+
+    - name: Delete test devices
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        state: absent
+        kind: Device
+        name: "{{ item }}"
+      loop:
+        - 'device-dev-01'
+        - 'device-dev-02'
+        - 'device-test-01'
+        - 'device-unmanaged-01'
+
+    - name: Delete test fleets
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        state: absent
+        kind: Fleet
+        name: "{{ item }}"
+      loop:
+        - 'fleet-dev'
+        - 'fleet-test'
+        - 'fleet-prod'
