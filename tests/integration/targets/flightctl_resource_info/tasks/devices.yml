@@ -165,11 +165,19 @@
         - field_selector_result.result.data | length == 2
 
   always:
-    - name: Delete test devices
+    - name: Get all devices
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: Device
+      register: all_devices
+
+    - name: Delete all devices
       flightctl.core.flightctl_resource:
         <<: *connection_info
         kind: Device
         state: absent
+        name: "{{ item.metadata.name }}"
+      loop: "{{ all_devices.result.data }}"
 
     - name: Delete test fleet
       flightctl.core.flightctl_resource:

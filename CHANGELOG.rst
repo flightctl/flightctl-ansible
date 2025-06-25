@@ -4,6 +4,14 @@ flightctl collection Release Notes
 
 .. contents:: Topics
 
+v1.1.0
+======
+
+Release Summary
+---------------
+
+Added support for Flight Control API v0.8.0
+
 v1.0.0
 ======
 

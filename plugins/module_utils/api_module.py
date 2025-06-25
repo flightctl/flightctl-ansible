@@ -358,27 +358,19 @@ class FlightctlAPIModule(FlightctlModule):
                 - A boolean indicating whether the resource was deleted (changed).
                 - An optional response body of the delete operation.
         """
+        if not name:
+            raise FlightctlApiException("A resource name must be provided for deletion.")
+
         api_type = API_MAPPING[resource]
         api_instance = api_type.api(self.client)
-
-        if name:
-            delete_call = getattr(api_instance, api_type.delete)
-            try:
-                if resource is ResourceType.TEMPLATE_VERSION:
-                    response = self.call_api(delete_call, fleet_name, name)
-                else:
-                    response = self.call_api(delete_call, name)
-            except ApiException as e:
-                raise FlightctlApiException(f"Unable to delete {resource.value} - {name}: {e}")
-        else:
-            delete_call = getattr(api_instance, api_type.delete_all)
-            try:
-                if resource is ResourceType.TEMPLATE_VERSION:
-                    response = self.call_api(delete_call, fleet_name)
-                else:
-                    response = self.call_api(delete_call)
-            except ApiException as e:
-                raise FlightctlApiException(f"Unable to delete {resource.value} - {name}: {e}")
+        delete_call = getattr(api_instance, api_type.delete)
+        try:
+            if resource is ResourceType.TEMPLATE_VERSION:
+                response = self.call_api(delete_call, fleet_name, name)
+            else:
+                response = self.call_api(delete_call, name)
+        except ApiException as e:
+            raise FlightctlApiException(f"Unable to delete {resource.value} - {name}: {e}")
 
         return response
 
