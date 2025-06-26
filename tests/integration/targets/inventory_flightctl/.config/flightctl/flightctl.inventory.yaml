@@ -1,0 +1,23 @@
+---
+plugin: flightctl.core.flightctl
+host: "{{ flightctl_host | default('') }}"
+token: "{{ flightctl_token | default('') }}"
+verify_ssl: false
+config_file: ""  # Empty to indicate using inline configuration
+additional_groups:
+  - name: ansible_integration_test_fleet
+    field_selectors:
+      - metadata.owner = "Fleet/ansible-integration-test-fleet"
+  - name: dev_devices
+    field_selectors:
+      - metadata.owner = "Fleet/fleet-dev"
+  - name: test_devices
+    field_selectors:
+      - metadata.owner = "Fleet/fleet-test"
+  - name: unmanaged_devices
+    field_selectors:
+      - metadata.owner = null
+  - name: device_specific_group
+    field_selectors:
+      - metadata.name in ('ansible-integration-test-device-label-1', 'device-dev-02')
+request_timeout: 120

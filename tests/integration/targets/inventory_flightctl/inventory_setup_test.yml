@@ -1,0 +1,79 @@
+---
+# This playbook provides a comprehensive test suite for the flightctl.core.flightctl inventory plugin.
+# It uses the flightctl_resource module for setup/cleanup and ansible-inventory for testing.
+
+- name: 1. Prepare Test Resources (Idempotent)
+  hosts: localhost
+  gather_facts: false
+  vars:
+    connection_info: &connection_info
+      flightctl_token: "{{ flightctl_token | default(omit) }}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+  tasks:
+    - block:
+        - name: Ensure test fleets exist
+          flightctl.core.flightctl_resource:
+            <<: *connection_info
+            kind: Fleet
+            name: "{{ item.name }}"
+            resource_definition:
+              metadata:
+                name: "{{ item.name }}"
+              spec:
+                selector:
+                  matchLabels:
+                    fleet: "{{ item.name }}"
+                template:
+                  spec:
+                    os:
+                      image: "{{ item.os_image }}"
+                    config:
+                      # This config is used by the inventory plugin's 'compose' feature.
+                      # It now uses a valid configType to pass schema validation.
+                      - name: ansible-vars
+                        configType: InlineConfigProviderSpec
+                        inline:
+                          - path: /etc/flightctl/ansible_user
+                            content: "core"
+          loop:
+            - { name: 'ansible-integration-test-fleet', os_image: 'quay.io/osbuild/fedora-iot:39' }
+            - { name: 'fleet-dev', os_image: 'quay.io/osbuild/fedora-iot:39' }
+            - { name: 'fleet-test', os_image: 'quay.io/osbuild/fedora-iot:40' }
+            - { name: 'fleet-prod', os_image: 'quay.io/osbuild/fedora-iot:stable' }
+
+        - name: Ensure test devices exist
+          flightctl.core.flightctl_resource:
+            <<: *connection_info
+            kind: Device
+            name: "{{ item.name }}"
+            resource_definition:
+              metadata:
+                name: "{{ item.name }}"
+                labels: "{{ item.labels }}"
+          loop:
+            - { name: 'ansible-integration-test-device', labels: { fleet: 'ansible-integration-test-fleet' } }
+            - { name: 'ansible-integration-test-device-label-1', labels: { machine_type: 'forklift' } }
+            - { name: 'ansible-integration-test-device-label-2', labels: { machine_type: 'forklift' } }
+            - { name: 'device-dev-01', labels: { fleet: 'fleet-dev', arch: 'amd64' } }
+            - { name: 'device-dev-02', labels: { fleet: 'fleet-dev', arch: 'arm64' } }
+            - { name: 'device-test-01', labels: { fleet: 'fleet-test', arch: 'amd64' } }
+            - { name: 'device-unmanaged-01', labels: { location: 'lab' } }
+
+        - name: Wait for FlightCtl to process fleet assignments
+          pause:
+            seconds: 10
+            prompt: "Waiting for FlightCtl to process fleet assignments..."
+
+    # --- Display devices from the inventory ---
+        - name: Create client.yaml
+          no_log: true
+          ansible.builtin.copy:
+            dest: ".config/flightctl/client.yaml"
+            mode: "0600"
+            content: |
+              service:
+                server: "{{ flightctl_host }}"
+                insecureSkipVerify: true
+              authentication:
+                token: "{{ flightctl_token }}"

@@ -1,0 +1,77 @@
+---
+- name: Test Inventory Discovery and Host Groups
+  hosts: localhost
+  gather_facts: false
+  environment:
+    ANSIBLE_INVENTORY_PLUGINS: "{{ playbook_dir }}/../../../../plugins/inventory"
+    PYTHONPATH: "{{ playbook_dir }}/../../../../"
+  tasks:
+    - block:
+        - name: Assert all expected devices are in 'all' group
+          assert:
+            that:
+              - "'ansible-integration-test-device' in groups['all']"
+              - "'ansible-integration-test-device-label-1' in groups['all']"
+              - "'ansible-integration-test-device-label-2' in groups['all']"
+              - "'device-dev-01' in groups['all']"
+              - "'device-dev-02' in groups['all']"
+              - "'device-test-01' in groups['all']"
+              - "'device-unmanaged-01' in groups['all']"
+
+        - name: Assert devices in fleet ansible-integration-test
+          assert:
+            that:
+              - groups['ansible_integration_test_fleet'] | default([]) | length == 1
+
+        - name: Display inventory content
+          debug:
+            msg: "The 'all' group contains: {{ groups.all }}"
+        - name: Display all devices in the inventory
+          debug:
+            msg: "All devices: {{ groups.all }}"
+
+        - name: Assert devices in fleet ansible-integration-test
+          assert:
+            that:
+              - groups['ansible_integration_test_fleet'] | default([]) | length == 1
+              - "'ansible-integration-test-device' in groups['ansible_integration_test_fleet']"
+
+        - name: Display inventory content
+          debug:
+            msg: "The 'all' group contains: {{ groups.all }}"
+
+- name: Clean up Test Inventory Resources
+  hosts: localhost
+  gather_facts: false
+  vars:
+    connection_info: &connection_info
+      flightctl_token: "{{ flightctl_token | default(omit) }}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+  tasks:
+        - name: Delete test devices
+          flightctl.core.flightctl_resource:
+            <<: *connection_info
+            state: absent
+            kind: Device
+            name: "{{ item }}"
+          loop:
+            - 'ansible-integration-test-device'
+            - 'ansible-integration-test-device-label-1'
+            - 'ansible-integration-test-device-label-2'
+            - 'device-dev-01'
+            - 'device-dev-02'
+            - 'device-test-01'
+            - 'device-unmanaged-01'
+
+        - name: Delete test fleets
+          flightctl.core.flightctl_resource:
+            <<: *connection_info
+            state: absent
+            kind: Fleet
+            name: "{{ item }}"
+          loop:
+            - 'ansible-integration-test-fleet'
+            - 'fleet-dev'
+            - 'fleet-test'
+            - 'fleet-prod'
