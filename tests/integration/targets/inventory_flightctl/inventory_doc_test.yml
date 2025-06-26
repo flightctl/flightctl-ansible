@@ -1,0 +1,28 @@
+---
+- name: Test Flight Control inventory plugin
+  hosts: localhost
+  gather_facts: false
+  vars:
+    required_phrases:
+      - "FLIGHTCTL.CORE.FLIGHTCTL"
+      - "Returns Ansible inventory using Flight Control as source"
+      - "ADDED IN: version"
+      - "OPTIONS (= is mandatory):"
+      - "NAME: flightctl"
+  tasks:
+    - name: Run ansible-doc to get plugin help text
+      ansible.builtin.command: ansible-doc -t inventory flightctl.core.flightctl
+      register: doc_output
+      changed_when: false
+
+    - name: Check if all phrases are present
+      ansible.builtin.set_fact:
+        all_phrases_present: true
+      loop: "{{ required_phrases }}"
+      when: item in doc_output.stdout
+
+    - name: Assert all required phrases are present in ansible-doc output
+      ansible.builtin.assert:
+        that:
+          - all_phrases_present | default(false) | bool
+        fail_msg: "One or more expected phrases are missing in ansible-doc output"

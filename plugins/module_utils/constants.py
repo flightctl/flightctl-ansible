@@ -53,7 +53,6 @@ try:
         create: Optional[str] = None
         list: Optional[str] = None
         delete: Optional[str] = None
-        delete_all: Optional[str] = None
         patch: Optional[str] = None
         replace: Optional[str] = None
         rendered: Optional[str] = None
@@ -69,7 +68,6 @@ try:
             patch='patch_device',
             replace='replace_device',
             delete='delete_device',
-            delete_all='delete_devices',
             rendered='get_rendered_device',
             decommission='decommission_device'
 
@@ -83,7 +81,6 @@ try:
             patch='patch_fleet',
             replace='replace_fleet',
             delete='delete_fleet',
-            delete_all='delete_fleets'
         ),
         ResourceType.CSR: ApiResource(
             api=CertificatesigningrequestApi,
@@ -94,7 +91,6 @@ try:
             patch='patch_certificate_signing_request',
             replace='replace_certificate_signing_request',
             delete='delete_certificate_signing_request',
-            delete_all='delete_certificate_signing_requests',
         ),
         ResourceType.ENROLLMENT: ApiResource(
             api=EnrollmentrequestApi,
@@ -104,7 +100,6 @@ try:
             list='list_enrollment_requests',
             replace='replace_enrollment_request',
             delete='delete_enrollment_request',
-            delete_all='delete_enrollment_requests',
         ),
         ResourceType.REPOSITORY: ApiResource(
             api=RepositoryApi,
@@ -115,7 +110,6 @@ try:
             patch='patch_repository',
             replace='replace_repository',
             delete='delete_repository',
-            delete_all='delete_repositories',
         ),
         ResourceType.RESOURCE_SYNC: ApiResource(
             api=ResourcesyncApi,
@@ -126,7 +120,6 @@ try:
             patch='patch_resource_sync',
             replace='replace_resource_sync',
             delete='delete_resource_sync',
-            delete_all='delete_resource_syncs',
         ),
         ResourceType.ENROLLMENT_CONFIG: ApiResource(
             api=EnrollmentrequestApi,
