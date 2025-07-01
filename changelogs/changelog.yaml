@@ -62,3 +62,12 @@ releases:
     fragments:
       - flightctl_1.0.0_update.yml
     release_date: '2025-05-15'
+  1.1.0:
+    changes:
+      minor_changes:
+        - Updated the Ansible collection to support Flight Control API version 0.8.0.
+        - Version bump for Automation Hub publishing
+      release_summary: Added support for Flight Control API v0.8.0.
+    fragments:
+      - flightctl_1.1.0_update.yml
+    release_date: '2025-06-25'

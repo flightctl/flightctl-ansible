@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FLIGHTCTL_REF: v0.7.1
+  FLIGHTCTL_REF: v0.8.0
 
 jobs:
   integration-tests:
