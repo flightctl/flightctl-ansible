@@ -6,6 +6,19 @@
   hosts: localhost
   gather_facts: false
   tasks:
+    - name: Check if FlightCtl authentication is configured
+      fail:
+        msg: |
+          FlightCtl authentication is required for inventory tests.
+          Please set 'flightctl_token' in tests/integration/integration_config.yml
+          or pass it as an extra variable: -e "flightctl_token=YOUR_TOKEN"
+          
+          To get a token, authenticate with your FlightCtl server:
+          1. Set up a FlightCtl development environment
+          2. Get an API token from the server
+          3. Update integration_config.yml with the token
+      when: flightctl_token is not defined or flightctl_token == "" or flightctl_token is none
+
     - name: Set credential parameters for flightctl.core
       ansible.builtin.set_fact:
         connection_info: &connection_info
@@ -37,6 +50,7 @@
                       - path: /etc/flightctl/ansible_user
                         content: "core"
       loop:
+        - { name: 'ansible-integration-test-fleet', os_image: 'quay.io/osbuild/fedora-iot:39' }
         - { name: 'fleet-dev', os_image: 'quay.io/osbuild/fedora-iot:39' }
         - { name: 'fleet-test', os_image: 'quay.io/osbuild/fedora-iot:40' }
         - { name: 'fleet-prod', os_image: 'quay.io/osbuild/fedora-iot:stable' }
@@ -51,12 +65,34 @@
             name: "{{ item.name }}"
             labels: "{{ item.labels }}"
       loop:
+        - { name: 'ansible-integration-test-device', labels: { fleet: 'ansible-integration-test-fleet' } }
+        - { name: 'ansible-integration-test-device-label-1', labels: { machine_type: 'forklift' } }
+        - { name: 'ansible-integration-test-device-label-2', labels: { machine_type: 'forklift' } }
         - { name: 'device-dev-01', labels: { fleet: 'fleet-dev', arch: 'amd64' } }
         - { name: 'device-dev-02', labels: { fleet: 'fleet-dev', arch: 'arm64' } }
         - { name: 'device-test-01', labels: { fleet: 'fleet-test', arch: 'amd64' } }
         - { name: 'device-unmanaged-01', labels: { location: 'lab' } }
 
+    - name: Wait for FlightCtl to process fleet assignments
+      pause:
+        seconds: 10
+        prompt: "Waiting for FlightCtl to process fleet assignments..."
+
 # --- Display devices from the inventory ---
+    - name: Run ansible-inventory to see what devices are discovered
+      ansible.builtin.command:
+        cmd: ansible-inventory -i ./.config/flightctl/flightctl.inventory.yml --list
+      register: inventory_output
+      failed_when: false
+      changed_when: false
+
+    - name: Display ansible-inventory output
+      debug:
+        msg:
+          inventory_stdout: "{{ inventory_output.stdout }}"
+          inventory_stderr: "{{ inventory_output.stderr }}"
+          inventory_rc: "{{ inventory_output.rc }}"
+
     - name: Display devices from the inventory
       debug:
         msg:
@@ -131,6 +167,9 @@
         kind: Device
         name: "{{ item }}"
       loop:
+        - 'ansible-integration-test-device'
+        - 'ansible-integration-test-device-label-1'
+        - 'ansible-integration-test-device-label-2'
         - 'device-dev-01'
         - 'device-dev-02'
         - 'device-test-01'
@@ -143,6 +182,7 @@
         kind: Fleet
         name: "{{ item }}"
       loop:
+        - 'ansible-integration-test-fleet'
         - 'fleet-dev'
         - 'fleet-test'
         - 'fleet-prod'

@@ -7,6 +7,8 @@ flightctl_config_file: tests/integration/integration_config.yml
 # e.g. export FLIGHTCTL_SERVICE_URL and FLIGHTCTL_TOKEN
 # If credentials are only in client.yaml, plugin may auto-detect it.
 
+host: "{{ flightctl_host }}"
+token: "{{ flightctl_token | default(omit) }}"
 flightctl_validate_certs: false
 verify_ssl: false
 
