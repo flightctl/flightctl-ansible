@@ -59,7 +59,268 @@
         that:
           - "'This is a test file for FlightCtl connection plugin' in lookup('file', playbook_dir + '/fetched-file.txt')"
 
-    - name: Clean up test file
+    - name: Test raw command execution (echo)
+      ansible.builtin.raw: echo "Raw command test successful"
+      register: raw_result
+
+    - name: Assert raw command output
+      ansible.builtin.assert:
+        that:
+          - raw_result.rc == 0
+          - "'Raw command test successful' in raw_result.stdout"
+
+    - name: Test gathering facts from the device
+      ansible.builtin.setup:
+        gather_subset:
+          - network
+      register: facts_result
+
+    - name: Assert that facts were gathered (check for some common fact)
+      ansible.builtin.assert:
+        that:
+          - facts_result.ansible_facts is defined
+          - facts_result.ansible_facts.ansible_default_ipv4 is defined # A common fact that should exist
+
+    - name: Create a test file for lineinfile module
+      ansible.builtin.copy:
+        content: |
+          Line 1
+          Line 2
+          Line 3
+        dest: "/tmp/lineinfile_test.txt"
+        mode: '0644'
+
+    - name: Test lineinfile module (add a new line)
+      ansible.builtin.lineinfile:
+        path: "/tmp/lineinfile_test.txt"
+        line: "Added by lineinfile"
+        insertafter: EOF # Insert at the end of the file
+      register: lineinfile_add_result
+
+    - name: Assert lineinfile added the line successfully
+      ansible.builtin.assert:
+        that:
+          - lineinfile_add_result is success
+
+    - name: Verify content after lineinfile (add)
+      ansible.builtin.command: cat /tmp/lineinfile_test.txt
+      register: lineinfile_cat_add_result
+
+    - name: Assert added line is present
+      ansible.builtin.assert:
+        that:
+          - "'Added by lineinfile' in lineinfile_cat_add_result.stdout"
+
+    - name: Test lineinfile module (replace an existing line)
+      ansible.builtin.lineinfile:
+        path: "/tmp/lineinfile_test.txt"
+        regexp: '^Line 2$'
+        line: "Replaced Line 2"
+      register: lineinfile_replace_result
+
+    - name: Assert lineinfile replaced the line successfully
+      ansible.builtin.assert:
+        that:
+          - lineinfile_replace_result is success
+
+    - name: Verify content after lineinfile (replace)
+      ansible.builtin.command: cat /tmp/lineinfile_test.txt
+      register: lineinfile_cat_replace_result
+
+    - name: Assert replaced line is present and original is gone
+      ansible.builtin.assert:
+        that:
+          - "'Replaced Line 2' in lineinfile_cat_replace_result.stdout"
+          - "'Line 2' not in lineinfile_cat_replace_result.stdout_lines"
+
+    - name: Test directory creation on device
+      ansible.builtin.file:
+        path: /tmp/test-flightctl-dir
+        state: directory
+        mode: '0755'
+      register: dir_create_result
+
+    - name: Assert directory creation was successful
+      ansible.builtin.assert:
+        that:
+          - dir_create_result is success
+
+    - name: Test stat module on created directory
+      ansible.builtin.stat:
+        path: /tmp/test-flightctl-dir
+      register: stat_dir_result
+
+    - name: Assert that stat on directory is successful and is a directory
+      ansible.builtin.assert:
+        that:
+          - stat_dir_result.stat.exists == true
+          - stat_dir_result.stat.isdir == true
+
+    - name: Test script execution on device (using shell)
+      ansible.builtin.shell: |
+        #!/bin/bash
+        echo "Hello from flightctl script!" > /tmp/flightctl-script-output.txt
+      register: script_result
+
+    - name: Assert script execution was successful
+      ansible.builtin.assert:
+        that:
+          - script_result.rc == 0
+
+    - name: Verify script output file content
+      ansible.builtin.command: cat /tmp/flightctl-script-output.txt
+      register: script_output_cat_result
+
+    - name: Assert that script output file contains expected text
+      ansible.builtin.assert:
+        that:
+          - "'Hello from flightctl script!' in script_output_cat_result.stdout"
+
+    - name: Test temporary file creation via command (using ansible_remote_tmp)
+      ansible.builtin.command: mktemp --tmpdir={{ ansible_remote_tmp }} flightctl-XXXXXX.tmp
+      register: temp_file_create_result
+
+    - name: Assert temporary file path is returned and in correct directory
+      ansible.builtin.assert:
+        that:
+          - temp_file_create_result.rc == 0
+          - temp_file_create_result.stdout is search('^' + ansible_remote_tmp + '/flightctl-') # Check it's in the tmp dir
+
+    - name: Get stat on the newly created temporary file
+      ansible.builtin.stat:
+        path: "{{ temp_file_create_result.stdout | trim }}"
+      register: temp_file_stat_result
+
+    - name: Assert temporary file exists
+      ansible.builtin.assert:
+        that:
+          - temp_file_stat_result.stat.exists == true
+
+    - name: Test Echo with variables and multiple args
+      ansible.builtin.command: echo "Device name {{ inventory_hostname }} and version {{ ansible_facts.ansible_distribution_version | default('N/A') }}"
+      register: result_echo_var
+      no_log: false
+
+    - name: Assert echo with variables worked
+      ansible.builtin.assert:
+        that:
+          - result_echo_var.rc == 0
+          - "'Device name' in result_echo_var.stdout"
+          - "'localhost' in result_echo_var.stdout" # Assuming localhost for this playbook run
+
+    - name: Test Shell with piping and redirection
+      ansible.builtin.shell: 'echo "test123" | grep "123" > /tmp/test_shell_output.txt'
+      register: shell_redirect
+
+    - name: Assert shell command worked (redirection command itself)
+      ansible.builtin.assert:
+        that:
+          - shell_redirect.rc == 0
+
+    - name: Verify content of redirected file
+      ansible.builtin.command: cat /tmp/test_shell_output.txt
+      register: redirected_file_content
+
+    - name: Assert redirected file contains expected text
+      ansible.builtin.assert:
+        that:
+          - "'test123' in redirected_file_content.stdout"
+
+    - name: Generate large output (looped echo)
+      ansible.builtin.shell: |
+        for i in $(seq 1 500); do echo "Line $i"; done
+      register: result_large_output
+
+    - name: Assert large output is handled
+      ansible.builtin.assert:
+        that:
+          - result_large_output.rc == 0
+          - result_large_output.stdout_lines | length == 500
+          - "'Line 1' in result_large_output.stdout"
+          - "'Line 500' in result_large_output.stdout"
+
+    - name: Run a command that sleeps (long-running process)
+      ansible.builtin.command: sleep 3
+      register: result_sleep
+
+    - name: Assert long command completes
+      ansible.builtin.assert:
+        that:
+          - result_sleep.rc == 0
+
+    - name: Transfer small file to device for permission test
+      ansible.builtin.copy:
+        content: "test content for permissions"
+        dest: /tmp/device_test_file_perms.txt
+        mode: '0666' # Start with broader permissions
+      register: small_file_result
+
+    - name: Assert initial file transfer success for permission test
+      ansible.builtin.assert:
+        that:
+          - small_file_result is success
+          - small_file_result.dest == '/tmp/device_test_file_perms.txt'
+
+    - name: Set file permission on device to 0600
+      ansible.builtin.file:
+        path: /tmp/device_test_file_perms.txt
+        mode: '0600'
+      register: set_perms_result
+
+    - name: Assert file permission was changed
+      ansible.builtin.assert:
+        that:
+          - set_perms_result.changed == true
+
+    - name: Verify file permissions with stat
+      ansible.builtin.stat:
+        path: /tmp/device_test_file_perms.txt
+      register: stat_perms_result
+
+    - name: Assert file has correct 0600 permissions
+      ansible.builtin.assert:
+        that:
+          - stat_perms_result.stat.exists == true
+          - stat_perms_result.stat.mode == '0600' # Octal representation
+
+    - name: Test plugin config via inventory (basic connectivity check with whoami)
+      ansible.builtin.command: whoami
+      register: inv_config_result
+      no_log: false
+
+    - name: Assert inventory config worked (whoami executed)
+      ansible.builtin.assert:
+        that:
+          - inv_config_result.rc == 0
+          - inv_config_result.stdout
+
+    - name: Test plugin config via environment
+      ansible.builtin.shell: env | grep FLIGHTCTL_CONSOLE_OPTS || true # Use env to show it, || true to avoid failure if not found
+      environment:
+        FLIGHTCTL_CONSOLE_OPTS: "--some-env-config-value"
+      register: env_config_result
+      no_log: false
+
+    - name: Assert env config worked (environment variable seen by command)
+      ansible.builtin.assert:
+        that:
+          - env_config_result.rc == 0
+          - "'FLIGHTCTL_CONSOLE_OPTS=--some-env-config-value' in env_config_result.stdout"
+
+    - name: Test secrets handling (simulate token usage with no_log is true)
+      ansible.builtin.command: echo "token is {{ fake_token }}"
+      vars:
+        fake_token: "super-secret-token-that-should-be-hidden"
+      no_log: true
+      register: token_echo
+
+    - ansible.builtin.assert:
+        that:
+          - token_echo.rc == 0
+      no_log: true
+
+    # --- Clean up all test artifacts ---
+    - name: Clean up initial test file
       ansible.builtin.file:
         path: /tmp/test-flightctl-file.txt
         state: absent
@@ -67,4 +328,35 @@
     - name: Clean up fetched file
       ansible.builtin.file:
         path: "{{ playbook_dir }}/fetched-file.txt"
+        state: absent
+
+    - name: Clean up lineinfile test file
+      ansible.builtin.file:
+        path: /tmp/lineinfile_test.txt
+        state: absent
+
+    - name: Clean up script output file
+      ansible.builtin.file:
+        path: /tmp/flightctl-script-output.txt
+        state: absent
+
+    - name: Clean up temporary file created during test
+      ansible.builtin.file:
+        path: "{{ temp_file_create_result.stdout | trim }}"
+        state: absent
+      when: temp_file_create_result.stdout is defined and temp_file_create_result.stdout != "" # Only attempt if variable is set
+
+    - name: Clean up shell redirection output file
+      ansible.builtin.file:
+        path: /tmp/test_shell_output.txt
+        state: absent
+
+    - name: Clean up permission test file
+      ansible.builtin.file:
+        path: /tmp/device_test_file_perms.txt
+        state: absent
+
+    - name: Clean up test directory
+      ansible.builtin.file:
+        path: /tmp/test-flightctl-dir
         state: absent
