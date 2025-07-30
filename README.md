@@ -154,8 +154,8 @@ Run locally via `make sanity-test`
 ### Integration Tests
 
 Integration tests are dependent on:
-- A flightctl instance the tests can hit
-- The flightctl_host var inside integration_config.yml set to the running flightctl api service
+- A Flight Control instance the tests can hit
+- The flightctl_host var inside integration_config.yml set to the running Flight Control API service
 
 The easiest way to run tests locally is to:
 - Run `make deploy` from the main flightctl repository
