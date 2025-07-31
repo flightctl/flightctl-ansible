@@ -10,12 +10,12 @@ __metaclass__ = type
 
 DOCUMENTATION = r"""
 module: flightctl_enrollment_config_info
-short_description: Get information about enrollment configuration.
+short_description: Get information about enrollment configuration for Flight Control.
 version_added: 0.1.0
 author:
   - "Dakota Crowder (@dakcrowder)"
 description:
-  - Get information about enrollment configuration.
+  - Get information about enrollment configuration for Flight Control.
   - Configuration is only returned for approved certificate signing requests.
 options:
   name:

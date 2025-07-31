@@ -15,7 +15,7 @@ version_added: 0.1.0
 author:
   - "Dakota Crowder (@dakcrowder)"
 description:
-  - Manage approving or denying certificate signing or enrollment requests.
+  - Manage approving or denying certificate signing or enrollment requests for Flight Control.
 options:
   kind:
     description:

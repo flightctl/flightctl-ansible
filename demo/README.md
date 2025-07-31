@@ -1,10 +1,10 @@
 # Demos
 
-This directory contains demo playbooks for creating and deleting various resources within the flightctl service.
+This directory contains demo playbooks for creating and deleting various resources within the Flight Control service.
 
-## Running demo playbooks with a locally running flightctl instance
+## Running demo playbooks with a locally running Flight Control instance
 
-The following steps assume that you have a locally running flightctl cluster via the steps described in the [flightctl repo](https://github.com/flightctl/flightctl/blob/main/docs/user/getting-started.md) - e.g. `make deploy`.
+The following steps assume that you have a locally running Flight Control cluster via the steps described in the [flightctl repo](https://github.com/flightctl/flightctl/blob/main/docs/user/getting-started.md) - e.g. `make deploy`.
 
 1.  Begin by creating a python virtual environment with the necessary dependencies.
 
@@ -23,7 +23,7 @@ ansible-galaxy collection install . --force
 ansible-playbook demo/create.yml --extra-vars "flightctl_config_file='~/.config/flightctl/client.yaml'" --extra-vars "flightctl_validate_certs=False"
 ```
 
-The `--extra-vars` allows us to pass variables into the playbooks.  In this case the create playbook is dependent on the flightctl_config_file variable pointing towards the generated client.yaml used when deploying the local flightctl services.  Default values for this are:
+The `--extra-vars` allows us to pass variables into the playbooks.  In this case the create playbook is dependent on the flightctl_config_file variable pointing towards the generated client.yaml used when deploying the local Flight Control services.  Default values for this are:
 
 - OSX: "~/Library/Application\ Support/flightctl/client.yaml"
 - Linux: "~/.config/flightctl/client.yaml"
@@ -32,9 +32,9 @@ Note that the `create.yml` playbook makes assertations around when certain entit
 
 ### Running demo playbooks with authentication enabled
 
-If running against flightctl services using authentication an authentication token can be passed to the modules.  Currently the easiest way to get a token is to login to flightctl via the cli.
+If running against Flight Control services using authentication an authentication token can be passed to the modules.  Currently the easiest way to get a token is to login to flightctl via the cli.
 
-The following steps will work for a locally deployed flightctl instance run by `AUTH=true make deploy` running keycloak.
+The following steps will work for a locally deployed Flight Control instance run by `AUTH=true make deploy` running keycloak.
 
 1.  Get your password for the default keycloak demouser:
 ```
@@ -53,7 +53,7 @@ cat ~/.config/flightctl/client.yaml | grep server | awk '{print $2}'
 Note: The default access tokens provisioned have a ttl and you will need to refresh them by re-running the login step every couple of hours.
 
 
-If you followed the above steps the `client.yaml` file can now be used for authentication with the flightctl services.
+If you followed the above steps the `client.yaml` file can now be used for authentication with the Flight Control services.
 ```
 ansible-playbook demo/create.yml --extra-vars "flightctl_config_file='~/.config/flightctl/client.yaml'"
 ```
@@ -97,7 +97,7 @@ ansible-playbook demo/create.yml \
 
 ## Connection Plugin
 
-Requires a running flightctl server and an onboarded and currently running device.
+Requires a running Flight Control server and an onboarded and currently running device.
 
 To run with a static inventory file, update demo/connection/inventory to have the correct ansible_flightctl_device_name for your running device.  Update the ansible_flightctl_config_file to point towards an updated client config file or configure the other options like host, token, ca_path as needed.
 
