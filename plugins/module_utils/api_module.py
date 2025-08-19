@@ -406,8 +406,16 @@ class FlightctlAPIModule(FlightctlModule):
                 # Idempotency of certificate approval/denial is no longer handled in Flight Control.
                 # This logic will be enforced within the Ansible collection instead.
 
-                if any(cond.type == expected_type for cond in csr.status.conditions):  # Check if the condition already exists
-                    return csr
+                approved_denied_types = {ConditionType.APPROVED, ConditionType.DENIED}
+                existing_conditions = [c for c in csr.status.conditions if c.type in approved_denied_types]
+                if existing_conditions:
+                    # If all existing AD conditions match the expected type it's an Idempotent case.
+                    unique_types = {c.type for c in existing_conditions}
+                    if unique_types == {expected_type}:
+                        return
+
+                    # Otherwise, remove all AD conditions to allow a clean state change.
+                    csr.status.conditions = [c for c in csr.status.conditions if c.type not in approved_denied_types]
 
                 approval_type = Condition(
                     type=expected_type,
