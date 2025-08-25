@@ -21,6 +21,7 @@ sanity-test:
 	ansible-test sanity --docker -v --color --python $(PYTHON_VERSION) $(?TEST_ARGS)
 
 write-integration-config:
+	cp ~/.config/flightctl/client.yaml ./tests/integration/client.yaml; \
 	@token="$$(grep '^  token:' ~/.config/flightctl/client.yaml | awk '{print $$2}')"; \
 	service_addr="$$(awk '/^service:/,/^  server:/' ~/.config/flightctl/client.yaml | grep 'server:' | awk '{print $$2}')"; \
 	echo "flightctl_token: $$token" > ./tests/integration/integration_config.yml; \
