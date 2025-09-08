@@ -4,13 +4,41 @@ flightctl collection Release Notes
 
 .. contents:: Topics
 
+v1.2.1
+======
+
+Release Summary
+---------------
+
+This release focuses on improving the FlightCtl inventory plugin robustness and configuration clarity.
+Highlights include proper header handling, optional config file usage, and better URL handling.
+
+Minor Changes
+-------------
+
+- Added support for Basic auth (username/password) in the inventory plugin for environments with proxies that accept HTTP Basic.
+- Improved documentation and examples for `flightctl_config_file` (FlightCtl config) and config precedence.
+
+Bugfixes
+--------
+
+- Inventory plugin now sends Authorization headers explicitly for list operations, resolving authentication failures when the client library does not auto-attach tokens.
+- Remove noisy warning when no configuration file is provided; plugin proceeds quietly without a config file.
+- Treat `host` as a string (not a path) to prevent URLs from being coerced into file paths, fixing "No host specified" errors.
+
 v1.2.0
 ======
 
 Release Summary
 ---------------
 
-Added support for Flight Control API v0.9.0
+Added support for Flight Control API v0.9.0.
+
+Minor Changes
+-------------
+
+- Updated the Ansible collection to support Flight Control API version 0.9.0.
+- Version bump for Automation Hub publishing
 
 v1.1.0
 ======
@@ -18,7 +46,13 @@ v1.1.0
 Release Summary
 ---------------
 
-Added support for Flight Control API v0.8.0
+Added support for Flight Control API v0.8.0.
+
+Minor Changes
+-------------
+
+- Updated the Ansible collection to support Flight Control API version 0.8.0.
+- Version bump for Automation Hub publishing
 
 v1.0.0
 ======
