@@ -15,7 +15,7 @@ description:
   - Returns Ansible inventory using Flight Control as source.
   - Uses the same API as other modules in this collection.
   - The plugin uses collection's API.
-  - You can reuse parameters by supplying a flightctl_config_file. Those parameters will be overridden when specified in inventory configuration file.
+  - You can optionally supply a C(flightctl_config_file) pointing to the FlightCtl config file (for example, C(~/.config/flightctl/client.yaml)). Values specified in the inventory override values loaded from that file.
 options:
     plugin:
       description: Name of the plugin
@@ -39,7 +39,7 @@ options:
     host:
       description: URL to Flight Control server. A token or username/password must be also provided.
       default: null
-      type: path
+      type: str
     username:
       description: Username for your Flight Control service. Please note that this only works with proxies configured to use HTTP Basic Auth.
       default: null
@@ -82,8 +82,10 @@ options:
       type: float
       default: 120.0
     flightctl_config_file:
-      description: Path to the config file.
-                        host, username, password, token, ca_path and ca_data will be taken from there.
+      description: |
+        - Path to the FlightCtl config file (for example, C(~/.config/flightctl/client.yaml)).
+        - Reads the following keys from that file: C(authentication.token), C(service.server), C(service.insecureSkipVerify), and C(service.certificate-authority-data) (base64-encoded PEM).
+        - Any values defined in the inventory override values from this file.
       type: path
 requirements:
     - "python >= 3.6"
@@ -185,9 +187,13 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
 
     def _load_config_file(self) -> ConfigLoader | None:
         """ Load configuration files using ConfigLoader. """
-        config_file = self.get_option("flightctl_config_file") or self.get_option("config_file")
+        # Only support flightctl_config_file
+        config_file = None
+        try:
+            config_file = self.get_option("flightctl_config_file")
+        except Exception:
+            config_file = None
         if not config_file:
-            self.warning("No configuration file name was supplied", min_verbosity_level=1)
             return None
 
         try:
@@ -353,7 +359,9 @@ def _get_data(
         list_func: Callable[..., Any],
         label_list: str | None = None,
         field_list: str | None = None,
-        limit: int | None = 1000
+        limit: int | None = 1000,
+        headers: Dict[str, str] | None = None,
+        request_timeout: float | None = None,
 ) -> List[T]:
     """ Repeatedly call `list_func` until exhausted; return combined list """
     all_records: list[T] = []
@@ -366,7 +374,9 @@ def _get_data(
                 var_continue=continue_token,  # Pass the current continuation token, if any
                 label_selector=label_list,
                 field_selector=field_list,
-                limit=limit
+                limit=limit,
+                _headers=headers,
+                _request_timeout=request_timeout,
             )
         except Exception as e:
             raise FlightctlApiException(f"Error retrieving data from Flight Control API: {e}") from e
@@ -480,7 +490,22 @@ def _fetch_fleet_devices(fleet_id: str, config, limit_per_page: int) -> List[Any
     """ Retrieve devices belonging to a fleet """
     field_list = f"metadata.owner = Fleet/{fleet_id}"
     with flightctl_apis(config) as (device_api, fleet_api):
-        devices = _get_data(device_api.list_devices, field_list=field_list, limit=limit_per_page)
+        bearer = getattr(config, 'access_token', None)
+        headers = {'Authorization': f'Bearer {bearer}'} if bearer else None
+        if headers is None:
+            username = getattr(config, 'username', None)
+            password = getattr(config, 'password', None)
+            if username and password:
+                basic_credentials = f"{username}:{password}"
+                encoded_credentials = base64.b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
+                headers = {'Authorization': f'Basic {encoded_credentials}'}
+        devices = _get_data(
+            device_api.list_devices,
+            field_list=field_list,
+            limit=limit_per_page,
+            headers=headers,
+            request_timeout=getattr(config, 'request_timeout', None)
+        )
     return devices
 
 
@@ -491,9 +516,28 @@ def _get_devices_and_fleets(config, limit_per_page: int) -> Tuple[List[DeviceLis
     Note: Device may present in many groups
     """
     with flightctl_apis(config) as (device_api, fleet_api):
+        bearer = getattr(config, 'access_token', None)
+        headers = {'Authorization': f'Bearer {bearer}'} if bearer else None
+        if headers is None:
+            username = getattr(config, 'username', None)
+            password = getattr(config, 'password', None)
+            if username and password:
+                basic_credentials = f"{username}:{password}"
+                encoded_credentials = base64.b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
+                headers = {'Authorization': f'Basic {encoded_credentials}'}
         # We're **always** fetching a full list of devices and fleets
-        all_devices = _get_data(device_api.list_devices, limit=limit_per_page)
-        all_fleets = _get_data(fleet_api.list_fleets, limit=limit_per_page)
+        all_devices = _get_data(
+            device_api.list_devices,
+            limit=limit_per_page,
+            headers=headers,
+            request_timeout=getattr(config, 'request_timeout', None)
+        )
+        all_fleets = _get_data(
+            fleet_api.list_fleets,
+            limit=limit_per_page,
+            headers=headers,
+            request_timeout=getattr(config, 'request_timeout', None)
+        )
 
     return all_devices, all_fleets
 
@@ -504,7 +548,22 @@ def _get_devices_by_labels_and_fields(config, label_selectors: str | None, field
     label_selectors = None if label_selectors == "" else label_selectors
     field_selectors = None if field_selectors == "" else field_selectors
     with flightctl_apis(config) as (device_api, fleet_api):
-        devices = _get_data(device_api.list_devices,
-                            label_list=label_selectors, field_list=field_selectors, limit=limit_per_page)
+        bearer = getattr(config, 'access_token', None)
+        headers = {'Authorization': f'Bearer {bearer}'} if bearer else None
+        if headers is None:
+            username = getattr(config, 'username', None)
+            password = getattr(config, 'password', None)
+            if username and password:
+                basic_credentials = f"{username}:{password}"
+                encoded_credentials = base64.b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
+                headers = {'Authorization': f'Basic {encoded_credentials}'}
+        devices = _get_data(
+            device_api.list_devices,
+            label_list=label_selectors,
+            field_list=field_selectors,
+            limit=limit_per_page,
+            headers=headers,
+            request_timeout=getattr(config, 'request_timeout', None)
+        )
 
     return devices
