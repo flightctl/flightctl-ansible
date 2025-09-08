@@ -10,8 +10,7 @@ v1.2.1
 Release Summary
 ---------------
 
-This release focuses on improving the FlightCtl inventory plugin robustness and configuration clarity.
-Highlights include proper header handling, optional config file usage, and better URL handling.
+Improved the FlightCtl inventory plugin robustness and configuration clarity.
 
 Minor Changes
 -------------
