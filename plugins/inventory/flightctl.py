@@ -15,7 +15,9 @@ description:
   - Returns Ansible inventory using Flight Control as source.
   - Uses the same API as other modules in this collection.
   - The plugin uses collection's API.
-  - You can optionally supply a C(flightctl_config_file) pointing to the FlightCtl config file (for example, C(~/.config/flightctl/client.yaml)). Values specified in the inventory override values loaded from that file.
+  - You can optionally supply a C(flightctl_config_file) pointing to the FlightCtl
+    config file (for example, C(~/.config/flightctl/client.yaml)). Values specified
+    in the inventory override values loaded from that file.
 options:
     plugin:
       description: Name of the plugin
@@ -84,7 +86,9 @@ options:
     flightctl_config_file:
       description: |
         - Path to the FlightCtl config file (for example, C(~/.config/flightctl/client.yaml)).
-        - Reads the following keys from that file: C(authentication.token), C(service.server), C(service.insecureSkipVerify), and C(service.certificate-authority-data) (base64-encoded PEM).
+        - Reads the following keys from that file: C(authentication.token),
+          C(service.server), C(service.insecureSkipVerify), and
+          C(service.certificate-authority-data) (base64-encoded PEM).
         - Any values defined in the inventory override values from this file.
       type: path
 requirements:
@@ -145,12 +149,18 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
         self.config = None
         self._display = Display()
 
-    def warning(self, message, min_verbosity_level: int = 0):
-        if self._display.verbosity >= min_verbosity_level:
-            self._display.warning(message)
-
     def error(self, message):
         self._display.error(message)
+
+    def info(self, message, min_verbosity_level: int = 0):
+        if self._display.verbosity >= min_verbosity_level:
+            msg = str(message)
+            if min_verbosity_level >= 2:
+                self._display.vvv(msg)
+            elif min_verbosity_level == 1:
+                self._display.vv(msg)
+            else:
+                self._display.v(msg)
 
     def verify_file(self, path: str) -> bool:
         """ Verify that the source file can be processed correctly. """
@@ -177,8 +187,8 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
 
         # Fetch devices and fleets
         devices, fleets = _get_devices_and_fleets(self.config, self.LIMIT_PER_PAGE)
-        self.warning(f"Retrieved {len(devices)} devices")
-        self.warning(f"Retrieved {len(fleets)} fleets")
+        self.info(f"Retrieved {len(devices)} devices")
+        self.info(f"Retrieved {len(fleets)} fleets")
 
         # Process devices, fleets and additional groups to inventory data
         self._populate_inventory_devices(devices)
@@ -198,7 +208,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
 
         try:
             # Use ConfigLoader to load config from file or fallback to defaults
-            self.warning(f"Loading configuration file {config_file}", min_verbosity_level=1)
+            self.info(f"Loading configuration file {config_file}", min_verbosity_level=1)
             return ConfigLoader(config_file=config_file)
         except Exception as e:
             raise FlightctlException(f"Failed to load the config file: {e}") from e
@@ -210,7 +220,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
             temp_file.write(decoded_data)
             temp_file.flush()
             self.ca_path = temp_file.name
-            self.warning(f"crt file {temp_file.name} was created", min_verbosity_level=1)
+            self.info(f"crt file {temp_file.name} was created", min_verbosity_level=1)
 
             # Ensure the created temp file is deleted when our module exits
             self.add_cleanup_file(temp_file.name)
@@ -274,7 +284,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
         for fleet in [fleet.to_dict() for fleet in fleets]:
             fleet_id = _validate_fleet(fleet)
             devices = _fetch_fleet_devices(fleet_id, config, self.LIMIT_PER_PAGE) or []
-            self.warning(f"Retrieved {len(devices)} devices from fleet {fleet_id}")
+            self.info(f"Retrieved {len(devices)} devices from fleet {fleet_id}")
             for device in devices:
                 if hasattr(device, 'to_dict'):
                     device = device.to_dict()
@@ -292,9 +302,10 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
             return
 
         # Process devices
-        for device in [device.to_dict() for device in devices]:
+        for raw in devices:
+            device = raw.to_dict() if hasattr(raw, 'to_dict') else raw
             device_id, metadata = _validate_device(device)
-            self.warning(f"Populating inventory with device {device}", min_verbosity_level=1)
+            self.info(f"Populating inventory with device {device}", min_verbosity_level=1)
 
             # add host
             self.inventory.add_host(device_id)  # Add host to Ansible inventory
@@ -325,14 +336,15 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
         """
         # handle additional groups
         additional_groups_info = _prepare_additional_groups_info(additional_groups)
-        self.warning(f"Additional groups info: {additional_groups_info}", min_verbosity_level=1)
+        self.info(f"Additional groups info: {additional_groups_info}", min_verbosity_level=1)
         for group_name, selectors in additional_groups_info.items():
             label_selectors, field_selectors = selectors
             devices = _get_devices_by_labels_and_fields(self.config, label_selectors, field_selectors,
                                                         self.LIMIT_PER_PAGE)
-            self.warning(
+            self.info(
                 f"Retrieved {len(devices)} devices for group {group_name} by labels {label_selectors} and fields {field_selectors}")
-            for device in [device.to_dict() for device in devices]:
+            for raw in devices:
+                device = raw.to_dict() if hasattr(raw, 'to_dict') else raw
                 device_id, metadata = _validate_device(device)
                 self._add_to_group(group_name, device_id)
 
@@ -341,9 +353,9 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
         group_name = _sanitize_group_name(group_name)
         if group_name not in self.inventory.groups:
             self.inventory.add_group(group_name)
-            self.warning(f"Group {group_name} added to inventory", min_verbosity_level=1)
+            self.info(f"Group {group_name} added to inventory", min_verbosity_level=1)
         self.inventory.add_child(group_name, device_id)
-        self.warning(f"Added device {device_id} to group {group_name}", min_verbosity_level=1)
+        self.info(f"Added device {device_id} to group {group_name}", min_verbosity_level=1)
 
 
 # ---------------------- Custom context manager ------------------
@@ -352,6 +364,19 @@ def flightctl_apis(config: Configuration) -> Generator[tuple[DeviceApi, FleetApi
     """ Context manager yielding both API clients (device_api, fleet_api) """
     with ApiClient(configuration=config) as client:
         yield DeviceApi(client), FleetApi(client)
+
+
+def _build_auth_headers(config: Configuration) -> Dict[str, str] | None:
+    token = getattr(config, 'access_token', None)
+    if token:
+        return {'Authorization': f'Bearer {token}'}
+    username = getattr(config, 'username', None)
+    password = getattr(config, 'password', None)
+    if username and password:
+        basic_credentials = f"{username}:{password}"
+        encoded_credentials = base64.b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
+        return {'Authorization': f'Basic {encoded_credentials}'}
+    return None
 
 
 # ---------------------- Static methods --------------------------
@@ -490,15 +515,7 @@ def _fetch_fleet_devices(fleet_id: str, config, limit_per_page: int) -> List[Any
     """ Retrieve devices belonging to a fleet """
     field_list = f"metadata.owner = Fleet/{fleet_id}"
     with flightctl_apis(config) as (device_api, fleet_api):
-        bearer = getattr(config, 'access_token', None)
-        headers = {'Authorization': f'Bearer {bearer}'} if bearer else None
-        if headers is None:
-            username = getattr(config, 'username', None)
-            password = getattr(config, 'password', None)
-            if username and password:
-                basic_credentials = f"{username}:{password}"
-                encoded_credentials = base64.b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
-                headers = {'Authorization': f'Basic {encoded_credentials}'}
+        headers = _build_auth_headers(config)
         devices = _get_data(
             device_api.list_devices,
             field_list=field_list,
@@ -516,15 +533,7 @@ def _get_devices_and_fleets(config, limit_per_page: int) -> Tuple[List[DeviceLis
     Note: Device may present in many groups
     """
     with flightctl_apis(config) as (device_api, fleet_api):
-        bearer = getattr(config, 'access_token', None)
-        headers = {'Authorization': f'Bearer {bearer}'} if bearer else None
-        if headers is None:
-            username = getattr(config, 'username', None)
-            password = getattr(config, 'password', None)
-            if username and password:
-                basic_credentials = f"{username}:{password}"
-                encoded_credentials = base64.b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
-                headers = {'Authorization': f'Basic {encoded_credentials}'}
+        headers = _build_auth_headers(config)
         # We're **always** fetching a full list of devices and fleets
         all_devices = _get_data(
             device_api.list_devices,
@@ -548,15 +557,7 @@ def _get_devices_by_labels_and_fields(config, label_selectors: str | None, field
     label_selectors = None if label_selectors == "" else label_selectors
     field_selectors = None if field_selectors == "" else field_selectors
     with flightctl_apis(config) as (device_api, fleet_api):
-        bearer = getattr(config, 'access_token', None)
-        headers = {'Authorization': f'Bearer {bearer}'} if bearer else None
-        if headers is None:
-            username = getattr(config, 'username', None)
-            password = getattr(config, 'password', None)
-            if username and password:
-                basic_credentials = f"{username}:{password}"
-                encoded_credentials = base64.b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
-                headers = {'Authorization': f'Basic {encoded_credentials}'}
+        headers = _build_auth_headers(config)
         devices = _get_data(
             device_api.list_devices,
             label_list=label_selectors,

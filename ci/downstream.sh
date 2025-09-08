@@ -4,7 +4,7 @@
 # upstream components that will not ship in the downstream release
 
 DOWNSTREAM_VERSION="${DOWNSTREAM_VERSION:-}"
-KEEP_DOWNSTREAM_TMPDIR="${KEEP_DOWNSTREAM_TMPDIR:-''}"
+KEEP_DOWNSTREAM_TMPDIR="${KEEP_DOWNSTREAM_TMPDIR:-}"
 INSTALL_DOWNSTREAM_COLLECTION_PATH="${INSTALL_DOWNSTREAM_COLLECTION_PATH:-}"
 _build_dir=""
 
@@ -42,7 +42,6 @@ f_text_sub() {
     fi
     sed -i.bak "s/^namespace\:.*$/namespace: redhat/" "${_build_dir}/galaxy.yml"
     sed -i.bak "s/^name\:.*$/name: edge_manager/" "${_build_dir}/galaxy.yml"
-    sed -i.bak "s/core/edge_manager/g" "${_build_dir}/meta/runtime.yml"
 
     find "${_build_dir}" -type f -name "*.bak" -delete
 }
@@ -79,12 +78,8 @@ f_prep() {
 
 f_cleanup() {
     f_log_info "Cleaning up"
-    if [[ -n "${_build_dir}" ]]; then
-        if [[ -z ${KEEP_DOWNSTREAM_TMPDIR} ]]; then
-            if [[ -d ${_build_dir} ]]; then
-                rm -fr "${_build_dir}"
-            fi
-        fi
+    if [[ -n "${_build_dir}" && -z "${KEEP_DOWNSTREAM_TMPDIR}" && -d "${_build_dir}" ]]; then
+        rm -fr "${_build_dir}"
     fi
 }
 
@@ -92,8 +87,8 @@ f_cleanup() {
 trap f_cleanup EXIT
 
 f_exit() {
-    f_cleanup
-    exit "$0"
+    local code="${1:-0}"
+    exit "${code}"
 }
 
 f_create_collection_dir_structure() {
