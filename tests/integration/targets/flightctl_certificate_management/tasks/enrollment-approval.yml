@@ -96,15 +96,6 @@
         - idempotency_result.changed == False
 
   always:
-    - name: Delete enrollment request
-      flightctl.core.flightctl_resource:
-        <<: *connection_info
-        kind: EnrollmentRequest
-        name: "{{ enrollment_name }}"
-        state: absent
-      ignore_errors: yes
-
-    # Approving an enrollment request attempts to create a device, clean it up here as well
     - name: Delete test device
       flightctl.core.flightctl_resource:
         <<: *connection_info
