@@ -365,6 +365,7 @@ def flightctl_apis(config: Configuration) -> Generator[tuple[DeviceApi, FleetApi
     with ApiClient(configuration=config) as client:
         yield DeviceApi(client), FleetApi(client)
 
+
 def _build_auth_headers(config: Configuration) -> Dict[str, str] | None:
     token = getattr(config, 'access_token', None)
     if token:
