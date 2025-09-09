@@ -302,7 +302,8 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
             return
 
         # Process devices
-        for device in [device.to_dict() for device in devices]:
+        for raw in devices:
+            device = raw.to_dict() if hasattr(raw, 'to_dict') else raw
             device_id, metadata = _validate_device(device)
             self.info(f"Populating inventory with device {device}", min_verbosity_level=1)
 
@@ -342,7 +343,8 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
                                                         self.LIMIT_PER_PAGE)
             self.info(
                 f"Retrieved {len(devices)} devices for group {group_name} by labels {label_selectors} and fields {field_selectors}")
-            for device in [device.to_dict() for device in devices]:
+            for raw in devices:
+                device = raw.to_dict() if hasattr(raw, 'to_dict') else raw
                 device_id, metadata = _validate_device(device)
                 self._add_to_group(group_name, device_id)
 
@@ -362,6 +364,18 @@ def flightctl_apis(config: Configuration) -> Generator[tuple[DeviceApi, FleetApi
     """ Context manager yielding both API clients (device_api, fleet_api) """
     with ApiClient(configuration=config) as client:
         yield DeviceApi(client), FleetApi(client)
+
+def _build_auth_headers(config: Configuration) -> Dict[str, str] | None:
+    token = getattr(config, 'access_token', None)
+    if token:
+        return {'Authorization': f'Bearer {token}'}
+    username = getattr(config, 'username', None)
+    password = getattr(config, 'password', None)
+    if username and password:
+        basic_credentials = f"{username}:{password}"
+        encoded_credentials = base64.b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
+        return {'Authorization': f'Basic {encoded_credentials}'}
+    return None
 
 
 # ---------------------- Static methods --------------------------
@@ -500,15 +514,7 @@ def _fetch_fleet_devices(fleet_id: str, config, limit_per_page: int) -> List[Any
     """ Retrieve devices belonging to a fleet """
     field_list = f"metadata.owner = Fleet/{fleet_id}"
     with flightctl_apis(config) as (device_api, fleet_api):
-        bearer = getattr(config, 'access_token', None)
-        headers = {'Authorization': f'Bearer {bearer}'} if bearer else None
-        if headers is None:
-            username = getattr(config, 'username', None)
-            password = getattr(config, 'password', None)
-            if username and password:
-                basic_credentials = f"{username}:{password}"
-                encoded_credentials = base64.b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
-                headers = {'Authorization': f'Basic {encoded_credentials}'}
+        headers = _build_auth_headers(config)
         devices = _get_data(
             device_api.list_devices,
             field_list=field_list,
@@ -526,15 +532,7 @@ def _get_devices_and_fleets(config, limit_per_page: int) -> Tuple[List[DeviceLis
     Note: Device may present in many groups
     """
     with flightctl_apis(config) as (device_api, fleet_api):
-        bearer = getattr(config, 'access_token', None)
-        headers = {'Authorization': f'Bearer {bearer}'} if bearer else None
-        if headers is None:
-            username = getattr(config, 'username', None)
-            password = getattr(config, 'password', None)
-            if username and password:
-                basic_credentials = f"{username}:{password}"
-                encoded_credentials = base64.b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
-                headers = {'Authorization': f'Basic {encoded_credentials}'}
+        headers = _build_auth_headers(config)
         # We're **always** fetching a full list of devices and fleets
         all_devices = _get_data(
             device_api.list_devices,
@@ -558,15 +556,7 @@ def _get_devices_by_labels_and_fields(config, label_selectors: str | None, field
     label_selectors = None if label_selectors == "" else label_selectors
     field_selectors = None if field_selectors == "" else field_selectors
     with flightctl_apis(config) as (device_api, fleet_api):
-        bearer = getattr(config, 'access_token', None)
-        headers = {'Authorization': f'Bearer {bearer}'} if bearer else None
-        if headers is None:
-            username = getattr(config, 'username', None)
-            password = getattr(config, 'password', None)
-            if username and password:
-                basic_credentials = f"{username}:{password}"
-                encoded_credentials = base64.b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
-                headers = {'Authorization': f'Basic {encoded_credentials}'}
+        headers = _build_auth_headers(config)
         devices = _get_data(
             device_api.list_devices,
             label_list=label_selectors,
