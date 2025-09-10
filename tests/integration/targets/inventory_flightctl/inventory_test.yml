@@ -1,0 +1,88 @@
+---
+- name: Setup Test Resources
+  hosts: localhost
+  gather_facts: false
+  vars:
+    device_name: ansible-integration-test-device
+    fleet_name: ansible-integration-test-fleet
+    connection_info: &connection_info
+      flightctl_token: "{{ flightctl_token | default(omit)}}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: False
+  tasks:
+    - name: Create a test fleet
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: Fleet
+        name: "{{ fleet_name }}"
+        resource_definition:
+          spec:
+            selector:
+              matchLabels:
+                fleet: "{{ fleet_name }}"
+            template:
+              spec:
+                os:
+                  image: quay.io/redhat/rhde:9.2
+
+    - name: Create test device
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: Device
+        name: "{{ device_name }}"
+        resource_definition:
+          metadata:
+            labels:
+              fleet: "{{ fleet_name }}"
+              test: integration
+      no_log: true
+
+- name: Test Inventory Discovery and Host Groups
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Assert all expected devices are in 'all' group
+      ansible.builtin.assert:
+        that:
+          - "'ansible-integration-test-device' in groups['all']"
+        fail_msg: "Expected device 'ansible-integration-test-device' not found in 'all' group. Available hosts: {{ groups['all'] }}"
+
+    - name: Assert device is in test_group (from additional_groups config)
+      ansible.builtin.assert:
+        that:
+          - "'ansible-integration-test-device' in groups['test_group']"
+        fail_msg: "Expected device 'ansible-integration-test-device' not found in 'test_group' group. Available groups: {{ groups.keys() }}"
+
+    - name: Display inventory groups for debugging
+      ansible.builtin.debug:
+        msg:
+          all_hosts: "{{ groups['all'] | default([]) }}"
+          all_groups: "{{ groups.keys() | list }}"
+          test_group_hosts: "{{ groups['test_group'] | default([]) }}"
+
+- name: Cleanup Test Resources
+  hosts: localhost
+  gather_facts: false
+  vars:
+    device_name: ansible-integration-test-device
+    fleet_name: ansible-integration-test-fleet
+    connection_info: &connection_info
+      flightctl_token: "{{ flightctl_token | default(omit)}}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: False
+  tasks:
+    - name: Delete test device
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: Device
+        name: "{{ device_name }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Delete test fleet
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: Fleet
+        name: "{{ fleet_name }}"
+        state: absent
+      ignore_errors: true
