@@ -1,0 +1,16 @@
+---
+plugin: flightctl.core.flightctl
+flightctl_validate_certs: False
+verify_ssl: False
+additional_groups:
+  - name: group0
+    label_selectors:
+      - fleet = 'fleet-00'
+    field_selectors:
+      - metadata.name = 'device-03'
+      - metadata.name in ('device-03', 'device-01')
+  - name: group6
+    field_selectors:
+      - metadata.owner = "Fleet/fleet-06"
+request_timeout: 120
+flightctl_config_file: /home/amalykhi/.config/flightctl/client.yaml

@@ -1,0 +1,22 @@
+---
+- name: Test Flight Control inventory plugin
+  hosts: localhost
+  gather_facts: false
+  vars:
+    required_phrases:
+      - "flightctl.core.flightctl"
+      - "returns ansible inventory"
+      - "flightctl_config_file"
+      - "flightctl-python-client"
+  tasks:
+    - name: Run ansible-doc to get plugin help text
+      ansible.builtin.command: ansible-doc -t inventory flightctl.core.flightctl
+      register: doc_output
+      changed_when: false
+
+    - name: Assert every required phrase is present in ansible-doc output
+      ansible.builtin.assert:
+        that:
+          - "item in (doc_output.stdout | lower)"
+        fail_msg: "Required phrase '{{ item }}' is missing in ansible-doc output"
+      loop: "{{ required_phrases }}"
