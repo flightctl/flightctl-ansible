@@ -30,13 +30,13 @@ options:
       type: path
     ca_data:
       description: CertificateAuthorityData contains PEM-encoded certificate authority certificates.
-                            It will be written into a temporary file to enable underlying code to use ca_path.
+                           It will be written into a temporary file to enable underlying code to use ca_path.
       default: null
       type: path
     verify_ssl:
       description: Whether to allow insecure connections to Flight Control service.
-                            If `false', SSL certificates will not be validated.
-                            This should only be used on personally controlled sites using self-signed certificates.
+                           If `false', SSL certificates will not be validated.
+                           This should only be used on personally controlled sites using self-signed certificates.
       type: bool
     host:
       description: URL to Flight Control server. A token or username/password must be also provided.
@@ -91,6 +91,13 @@ options:
           C(service.certificate-authority-data) (base64-encoded PEM).
         - Any values defined in the inventory override values from this file.
       type: path
+    device_name:
+      description: |
+        Dotted path of the device field to use as the Ansible inventory hostname (for example, C(metadata.name) or C(status.systemInfo.hostname)).
+        If the specified field is not present or empty for a device, it will default to C(metadata.name).
+      type: str
+      required: false
+      default: null
 requirements:
     - "python >= 3.6"
     - "flightctl-python-client"
@@ -148,6 +155,8 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
         super(InventoryModule, self).__init__(*args, **kwargs)
         self.config = None
         self._display = Display()
+        # The device field path (dot notation) to use for inventory hostname when present
+        self.device_name: Optional[str] = None
 
     def error(self, message):
         self._display.error(message)
@@ -184,6 +193,11 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
         # Load configuration parameters from the inventory file
         self._read_config_data(path)
         self.config = self._setup_connection_configuration()
+        # Read device name field (optional)
+        try:
+            self.device_name = self.get_option('device_name')
+        except Exception:
+            self.device_name = None
 
         # Fetch devices and fleets
         devices, fleets = _get_devices_and_fleets(self.config, self.LIMIT_PER_PAGE)
@@ -288,7 +302,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
             for device in devices:
                 if hasattr(device, 'to_dict'):
                     device = device.to_dict()
-                device_id, metadata = _validate_device(device)
+                device_id, metadata = _validate_device(device, self.device_name)
                 if device_id not in self.inventory.hosts:
                     self._populate_inventory_devices([device])
                 self._add_to_group(fleet_id, device_id)
@@ -304,7 +318,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
         # Process devices
         for raw in devices:
             device = raw.to_dict() if hasattr(raw, 'to_dict') else raw
-            device_id, metadata = _validate_device(device)
+            device_id, metadata = _validate_device(device, self.device_name)
             self.info(f"Populating inventory with device {device}", min_verbosity_level=1)
 
             # add host
@@ -345,7 +359,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
                 f"Retrieved {len(devices)} devices for group {group_name} by labels {label_selectors} and fields {field_selectors}")
             for raw in devices:
                 device = raw.to_dict() if hasattr(raw, 'to_dict') else raw
-                device_id, metadata = _validate_device(device)
+                device_id, metadata = _validate_device(device, self.device_name)
                 self._add_to_group(group_name, device_id)
 
     def _add_to_group(self, group_name: str, device_id: str):
@@ -479,17 +493,46 @@ def _prepare_additional_groups_info(additional_groups: List[Dict[str, Any]]) -> 
     return additional_groups_info
 
 
-def _validate_device(device):
-    """ Validate device has required structure """
+def _get_value_by_dotted_path(data: Dict[str, Any], dotted_path: str | None) -> Optional[Any]:
+    """Retrieve a nested value from a dict using a dotted path like 'metadata.name'."""
+    if not dotted_path:
+        return None
+    current: Any = data
+    for key in dotted_path.split('.'):
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+        if current is None:
+            return None
+    return current
+
+
+def _validate_device(device, name_field: Optional[str] = None):
+    """ Validate device has required structure and determine the inventory hostname """
     metadata = device.get('metadata', None)
     if not metadata:
         raise ValidationException(f"device {device} got an invalid structure")
-    # Use device name or host name as the Ansible inventory hostname
-    device_id = metadata.get('name', None) or (
-        device.get('status', {})
-        .get('systemInfo', {})
-        .get('hostname')
-    )
+
+    # If a preferred field path is configured, try to use it
+    candidate_name: Optional[str] = None
+    if name_field:
+        value = _get_value_by_dotted_path(device, name_field)
+        candidate_name = value if isinstance(value, str) and value.strip() != '' else None
+
+    if candidate_name:
+        device_id = candidate_name
+    else:
+        # Backwards compatibility: when no name_field is set, keep previous fallback to hostname
+        if name_field is None:
+            device_id = metadata.get('name', None) or (
+                device.get('status', {})
+                .get('systemInfo', {})
+                .get('hostname')
+            )
+        else:
+            # name_field was provided but missing for this device: default to metadata.name
+            device_id = metadata.get('name', None)
+
     if not device_id:
         raise ValidationException(f"device {device} got neither name nor hostname")
     return device_id, metadata
