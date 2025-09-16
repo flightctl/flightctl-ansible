@@ -60,9 +60,14 @@ options:
       elements: dict
       suboptions:
         name:
-          description: Group name (should be unique)
+          description: Group name (should be unique). Ignored if C(group_by) is provided.
           type: str
-          required: true
+          required: false
+        group_by:
+          description: |
+            Dotted path on the device object used to create groups (e.g. C(metadata.labels.site)). When provided,
+            devices are grouped by the value(s) at this path. Also accepts C(keyed_by) for backward compatibility.
+          type: str
         label_selectors:
           description: list of label selectors in format "key = value" or "key != value"
           type: list
@@ -91,7 +96,7 @@ options:
           C(service.certificate-authority-data) (base64-encoded PEM).
         - Any values defined in the inventory override values from this file.
       type: path
-    device_name:
+    hostnames:
       description: |
         Dotted path of the device field to use as the Ansible inventory hostname (for example, C(metadata.name) or C(status.systemInfo.hostname)).
         If the specified field is not present or empty for a device, it will default to C(metadata.name).
@@ -143,7 +148,8 @@ from typing import (
 
 T = TypeVar('T')
 LabelsType: TypeAlias = Dict[str, str]
-AdditionalGroupInfoType: TypeAlias = Dict[str, Tuple[str, str]]
+StaticAdditionalGroupsType: TypeAlias = Dict[str, Tuple[str, str]]
+KeyedAdditionalGroupsType: TypeAlias = List[Tuple[str, str, str]]
 
 
 class InventoryModule(BaseInventoryPlugin, Constructable):
@@ -195,7 +201,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
         self.config = self._setup_connection_configuration()
         # Read device name field (optional)
         try:
-            self.device_name = self.get_option('device_name')
+            self.device_name = self.get_option('hostnames')
         except Exception:
             self.device_name = None
 
@@ -341,17 +347,22 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
                 .get('netIpDefault')
             )
             if net_ip_default:
-                self.inventory.set_variable(device_id, 'ansible_host', net_ip_default)
+                # Strip CIDR suffix if present
+                ansible_host_value = str(net_ip_default).split('/', 1)[0].strip()
+                self.inventory.set_variable(device_id, 'ansible_host', ansible_host_value)
 
     def _populate_inventory_additional_groups(self, additional_groups: List[Dict[str, Any]]) -> None:
         """
         Given lists of additional_groups, populate self.inventory
-        - additional_groups: list of dicts with keys 'name', 'label_selectors', 'field_selectors'
+        - additional_groups: list of dicts with keys 'name' (ignored if group_by), 'group_by', 'label_selectors', 'field_selectors'
         """
         # handle additional groups
-        additional_groups_info = _prepare_additional_groups_info(additional_groups)
-        self.info(f"Additional groups info: {additional_groups_info}", min_verbosity_level=1)
-        for group_name, selectors in additional_groups_info.items():
+        static_groups, keyed_groups = _prepare_additional_groups_info(additional_groups)
+        self.info(f"Additional groups (static): {static_groups}", min_verbosity_level=1)
+        self.info(f"Additional groups (keyed): {keyed_groups}", min_verbosity_level=1)
+
+        # Process static groups
+        for group_name, selectors in static_groups.items():
             label_selectors, field_selectors = selectors
             devices = _get_devices_by_labels_and_fields(self.config, label_selectors, field_selectors,
                                                         self.LIMIT_PER_PAGE)
@@ -362,13 +373,35 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
                 device_id, metadata = _validate_device(device, self.device_name)
                 self._add_to_group(group_name, device_id)
 
+        # Process keyed groups
+        for group_by, label_selectors, field_selectors in keyed_groups:
+            devices = _get_devices_by_labels_and_fields(self.config, label_selectors, field_selectors,
+                                                        self.LIMIT_PER_PAGE)
+            self.info(
+                f"Retrieved {len(devices)} devices for grouping by {group_by} with labels {label_selectors} and fields {field_selectors}")
+            for raw in devices:
+                device = raw.to_dict() if hasattr(raw, 'to_dict') else raw
+                device_id, metadata = _validate_device(device, self.device_name)
+                value = _get_value_by_dotted_path(device, group_by)
+                if value is None:
+                    continue
+                if isinstance(value, (list, tuple, set)):
+                    values = [str(v).strip() for v in value if v is not None and str(v).strip() != ""]
+                else:
+                    values = [str(value).strip()]
+                for group_value in values:
+                    if not group_value:
+                        continue
+                    self._add_to_group(group_value, device_id)
+
     def _add_to_group(self, group_name: str, device_id: str):
         """ Add a host into the given group (creating it if necessary) """
         group_name = _sanitize_group_name(group_name)
         if group_name not in self.inventory.groups:
             self.inventory.add_group(group_name)
             self.info(f"Group {group_name} added to inventory", min_verbosity_level=1)
-        self.inventory.add_child(group_name, device_id)
+        # Ensure the device is associated to the group as a host, not as a subgroup
+        self.inventory.add_host(device_id, group=group_name)
         self.info(f"Added device {device_id} to group {group_name}", min_verbosity_level=1)
 
 
@@ -436,13 +469,13 @@ def _sanitize_group_name(group_name: str) -> str:
     return re.sub(r'^.*/', '', group_name)
 
 
-def _prepare_additional_groups_info(additional_groups: List[Dict[str, Any]]) -> AdditionalGroupInfoType:
+def _prepare_additional_groups_info(additional_groups: List[Dict[str, Any]]) -> Tuple[StaticAdditionalGroupsType, KeyedAdditionalGroupsType]:
     """
     Validate & normalize the additional_groups list from the inventory YAML.
-    Each entry must have at least one non-empty fleet/label_selectors/field_selectors:
-      - 'name': str
-      - 'label_selector': List[str]
-      - 'field_selector': List[str]
+    Each entry may specify either:
+      - Static group membership with 'name' and optional selectors, or
+      - Grouped-by with 'group_by' and optional selectors (name is ignored in this case).
+    Returns a tuple: (static_groups_map, keyed_groups_list)
     """
 
     display = Display()
@@ -459,38 +492,46 @@ def _prepare_additional_groups_info(additional_groups: List[Dict[str, Any]]) -> 
                                        "status.updated.status",
                                        ])
 
-    additional_groups_info: AdditionalGroupInfoType = {}
+    static_groups: StaticAdditionalGroupsType = {}
+    keyed_groups: KeyedAdditionalGroupsType = []
     for group_cfg in additional_groups:
         group_name = group_cfg.get('name', "")
-        if group_name == "":
-            display.error(f"additional_group {group_cfg} must contain a non-empty name")
-            continue
+        group_by = group_cfg.get('group_by', group_cfg.get('keyed_by', ""))
 
         # Process label_selectors
         lbl_sel = group_cfg.get("label_selectors", [])
-        # Type-guard: must be list of dicts
         if not isinstance(lbl_sel, list):
-            continue
-        # Join all label selectors into a comma-separated string
+            lbl_sel = []
         label_selectors: str = ",".join(lbl_sel)
 
+        # Process field_selectors
         fld_sel = group_cfg.get("field_selectors", [])
         if not all(selector.startswith(supported_field_selectors) for selector in fld_sel):
-            display.error(f"additional group {group_name} must contain only supported field_selectors, {fld_sel} found")
+            display.error(f"additional group {group_name or group_by} must contain only supported field_selectors, {fld_sel} found")
             continue
-        # Join all field selectors into a comma-separated string
         field_selectors: str = ",".join(fld_sel)
-
-        if not label_selectors and not field_selectors:
-            continue
 
         if label_selectors:
             label_selectors = remove_quotes(label_selectors)
         if field_selectors:
             field_selectors = remove_quotes(field_selectors)
-        additional_groups_info[group_name] = (label_selectors, field_selectors)
 
-    return additional_groups_info
+        if isinstance(group_by, str) and group_by.strip() != "":
+            keyed_groups.append((group_by, label_selectors, field_selectors))
+            continue
+
+        # Static group requires non-empty name
+        if group_name == "":
+            display.error(f"additional_group {group_cfg} must contain a non-empty name")
+            continue
+
+        if not label_selectors and not field_selectors:
+            # No selectors means nothing to add for static group
+            continue
+
+        static_groups[group_name] = (label_selectors, field_selectors)
+
+    return static_groups, keyed_groups
 
 
 def _get_value_by_dotted_path(data: Dict[str, Any], dotted_path: str | None) -> Optional[Any]:

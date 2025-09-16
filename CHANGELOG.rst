@@ -17,6 +17,8 @@ Minor Changes
 
 - Added support for Basic auth (username/password) in the inventory plugin for environments with proxies that accept HTTP Basic.
 - Improved documentation and examples for `flightctl_config_file` (FlightCtl config) and config precedence.
+- Added `hostnames` option for selecting the device field (dot path) as the inventory hostname.
+- Inventory plugin now supports `group_by` option for grouping devices by a field value.
 
 Bugfixes
 --------
