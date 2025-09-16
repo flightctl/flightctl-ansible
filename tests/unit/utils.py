@@ -45,7 +45,7 @@ def find_working_profile():
             if name.startswith('_') and not ispkg:
                 # Remove the underscore prefix to get the profile name
                 profile_name = name[1:]
-                
+
                 try:
                     # Actually test if this profile works
                     decoder = _json.get_module_decoder(profile_name, _json.Direction.CONTROLLER_TO_MODULE)
