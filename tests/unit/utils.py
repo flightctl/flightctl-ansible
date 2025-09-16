@@ -9,10 +9,10 @@ def find_working_profile():
     # Strategy 1: Test common profiles by actually trying to use them
     # Order profiles by likelihood of working
     test_profiles = [
-        'basic',           # Most basic profile 
+        'basic',           # Most basic profile
         'default',         # Default profile
         'minimal',         # Minimal profile
-        'standard',        # Standard profile  
+        'standard',        # Standard profile
         'simple',          # Simple profile
         'Ansible',         # Original working profile
     ]
