@@ -4,9 +4,34 @@ from ansible.module_utils.common.text.converters import to_bytes
 
 
 def find_working_profile():
-    """Find a working Ansible serialization profile by trying different approaches"""
+    """Find a working Ansible serialization profile by actually testing them"""
 
-    # Strategy 1: Try to directly inspect available profiles in the system
+    # Strategy 1: Test common profiles by actually trying to use them
+    # Order profiles by likelihood of working
+    test_profiles = [
+        'basic',           # Most basic profile 
+        'default',         # Default profile
+        'minimal',         # Minimal profile
+        'standard',        # Standard profile  
+        'simple',          # Simple profile
+        'Ansible',         # Original working profile
+    ]
+
+    for profile_name in test_profiles:
+        try:
+            from ansible.module_utils._internal import _json
+            # Actually test if we can get a working decoder for this profile
+            # This is the definitive test - if this works, the profile is usable
+            decoder = _json.get_module_decoder(profile_name, _json.Direction.CONTROLLER_TO_MODULE)
+            if decoder:
+                return profile_name
+
+        except (ImportError, AttributeError, ValueError, ModuleNotFoundError, Exception):
+            # If any error occurs, this profile doesn't work
+            continue
+
+    # Strategy 2: Try to discover what profiles actually exist and work
+    # Only as fallback since we prefer known good profiles
     try:
         from ansible.module_utils._internal import _json
         from ansible.module_utils._internal._json import _profiles
@@ -15,33 +40,23 @@ def find_working_profile():
         import pkgutil
         profiles_path = _profiles.__path__
 
-        # Find all profile modules
-        available_profiles = []
+        # Find all profile modules and test each one
         for loader, name, ispkg in pkgutil.iter_modules(profiles_path):  # pylint: disable=unused-variable
             if name.startswith('_') and not ispkg:
                 # Remove the underscore prefix to get the profile name
                 profile_name = name[1:]
-                available_profiles.append(profile_name)
+                
+                try:
+                    # Actually test if this profile works
+                    decoder = _json.get_module_decoder(profile_name, _json.Direction.CONTROLLER_TO_MODULE)
+                    if decoder:
+                        return profile_name
+                except (ImportError, AttributeError, ValueError, ModuleNotFoundError, Exception):
+                    # This profile doesn't work, try the next one
+                    continue
 
-        if available_profiles:
-            return available_profiles[0]
-
-    except (ImportError, AttributeError, ModuleNotFoundError):
+    except (ImportError, AttributeError, ModuleNotFoundError, Exception):
         pass
-
-    # Strategy 2: Try to test profiles by actually attempting to use them
-    test_profiles = ['basic', 'default', 'minimal', 'standard', 'Ansible', 'simple']
-
-    for profile_name in test_profiles:
-        try:
-            from ansible.module_utils._internal import _json
-            # Try to get the actual decoder - if this works, the profile exists
-            decoder = _json.get_module_decoder(profile_name, _json.Direction.CONTROLLER_TO_MODULE)
-            if decoder:
-                return profile_name
-
-        except (ImportError, AttributeError, ValueError, ModuleNotFoundError):
-            continue
 
     # Strategy 3: Return None to let Ansible use its default behavior
     return None
