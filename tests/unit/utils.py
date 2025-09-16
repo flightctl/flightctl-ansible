@@ -64,15 +64,19 @@ def find_working_profile():
 
 def set_module_args(args):
     """prepare arguments so that they will be picked up during module creation"""
-    # Set arguments in the expected format
-    basic._ANSIBLE_ARGS = to_bytes(json.dumps({'ANSIBLE_MODULE_ARGS': args}))
+    # Prefer letting Ansible determine the correct serialization/profile via its
+    # debugging loader to match the runtime/container version.
+    import sys  # local import to avoid unused in other paths
 
-    # Try to find and use a working profile
-    working_profile = find_working_profile()
+    # Clear any pre-set globals so basic._load_params() calls _debugging.load_params()
+    basic._ANSIBLE_ARGS = None
+    basic._ANSIBLE_PROFILE = None
 
-    if working_profile:
-        basic._ANSIBLE_PROFILE = working_profile
-    else:
-        # Fallback to the approach that worked originally
-        # Use 'Ansible' as it was working before the profile system changes
-        basic._ANSIBLE_PROFILE = 'Ansible'
+    # Provide args on argv in the expected wrapped format
+    argv_payload = json.dumps({'ANSIBLE_MODULE_ARGS': args})
+    sys.argv = ['ansible_module', argv_payload]
+
+    # As a safety net (older cores may not read argv), also set the buffer
+    # but still allow Ansible to select the profile itself
+    basic._ANSIBLE_ARGS = to_bytes(argv_payload)
+    # Do not set basic._ANSIBLE_PROFILE here; let core choose dynamically
