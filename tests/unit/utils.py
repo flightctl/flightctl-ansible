@@ -13,11 +13,5 @@ def set_module_args(args):
     args_json = json.dumps({'ANSIBLE_MODULE_ARGS': args})
     basic._ANSIBLE_ARGS = to_bytes(args_json)
 
-    # Don't set a profile - let Ansible determine it automatically
-    # or try the minimal profile that should exist
-    try:
-        # This should use the system default serialization
-        pass
-    except Exception:
-        # Fallback: try to avoid the serialization system entirely
-        basic._ANSIBLE_PROFILE = None
+    # Set a basic profile that should be available in most Ansible versions
+    basic._ANSIBLE_PROFILE = 'base'
