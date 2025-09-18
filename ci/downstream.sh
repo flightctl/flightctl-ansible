@@ -1,25 +1,206 @@
-#!/usr/bin/env bash
-set -e
+#!/bin/bash -eu
 
-# Get the desired version from a third argument, or default to a fixed version
-DESIRED_VERSION="${1:-1.1.0}" 
+# This script will build or test a downstream collection, removing any
+# upstream components that will not ship in the downstream release
 
-# Output directory for the built collection artifact
-_tmp_dir=$(mktemp -d)
-OUTPUT_DIR="${_tmp_dir}/ansible_collections/redhat/edge_manager"
+DOWNSTREAM_VERSION="${DOWNSTREAM_VERSION:-}"
+KEEP_DOWNSTREAM_TMPDIR="${KEEP_DOWNSTREAM_TMPDIR:-}"
+INSTALL_DOWNSTREAM_COLLECTION_PATH="${INSTALL_DOWNSTREAM_COLLECTION_PATH:-}"
+_build_dir=""
 
 # Get the absolute path of the script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COLLECTION_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-ABSOLUTE_COLLECTION_DIR="${2:-$COLLECTION_ROOT}"
+ROOT_DIR="${SCRIPT_DIR}/.."
 
-GALAXY_YML_PATH="$ABSOLUTE_COLLECTION_DIR/galaxy.yml"
-echo "Updating version in $GALAXY_YML_PATH to $DESIRED_VERSION..."
-sed -i "s/^version: .*/version: $DESIRED_VERSION/" "$GALAXY_YML_PATH"
+f_log_info() {
+    printf "%s:LOG:INFO: %s\n" "${0}" "${1}"
+}
 
-mkdir -p "$OUTPUT_DIR"
-ansible-galaxy collection build "$ABSOLUTE_COLLECTION_DIR" --output-path "$OUTPUT_DIR"
-echo "Collection build complete. Artifact(s) in $OUTPUT_DIR:"
+f_show_help() {
+    printf "Usage: downstream.sh [OPTION]\n"
+    printf "\t-s\t\tCreate a temporary downstream release and perform sanity tests.\n"
+    printf "\t-u\t\tCreate a temporary downstream release and perform unit tests.\n"
+    printf "\t-i\t\tCreate a temporary downstream release and perform integration tests.\n"
+    printf "\t-b\t\tBuild the downstream release.\n"
+    printf "\t-v VERSION\tOptionally set downstream version; if omitted, upstream version is preserved.\n"
+}
 
-ls -lh "$OUTPUT_DIR"/*.tar.gz
-echo "Done."
+f_text_sub() {
+    f_log_info "Substituting text in files"
+
+    find "${_build_dir}" -type f -exec sed -i.bak "s/flightctl\.core/redhat.edge_manager/g" {} \;
+    find "${_build_dir}" -type f -exec sed -i.bak "s/Flight Control/Red Hat Edge Manager/g" {} \;
+
+    sed -i.bak "s/Flight Control Collection/Red Hat Edge Manager Collection/g" "${_build_dir}/README.md"
+    sed -i.bak "s/flightctl\/core/redhat\/edge_manager/g" "${_build_dir}/galaxy.yml"
+    sed -i.bak "s/flightctl\/core/redhat\/edge_manager/g" "${_build_dir}/README.md"
+    if [[ -n "${DOWNSTREAM_VERSION}" ]]; then
+        sed -i.bak "s/^version\:.*/version: ${DOWNSTREAM_VERSION}/" "${_build_dir}/galaxy.yml"
+        f_log_info "Set downstream version to ${DOWNSTREAM_VERSION}"
+    else
+        f_log_info "No downstream version provided; preserving upstream version"
+    fi
+    sed -i.bak "s/^namespace\:.*$/namespace: redhat/" "${_build_dir}/galaxy.yml"
+    sed -i.bak "s/^name\:.*$/name: edge_manager/" "${_build_dir}/galaxy.yml"
+
+    find "${_build_dir}" -type f -name "*.bak" -delete
+}
+
+f_prep() {
+    f_log_info "Creating temporary build directory"
+    # Array of excluded files from downstream build (relative path)
+    _file_exclude=(
+    )
+
+    # Files to copy downstream (relative repo root dir path)
+    _file_manifest=(
+        CHANGELOG.rst
+        galaxy.yml
+        LICENSE
+        README.md
+        Makefile
+        requirements.txt
+    )
+
+    # Directories to recursively copy downstream (relative repo root dir path)
+    _dir_manifest=(
+        changelogs
+        meta
+        plugins
+        tests
+    )
+
+    # Temp build dir
+    _tmp_dir=$(mktemp -d)
+    _build_dir="${_tmp_dir}/ansible_collections/redhat/edge_manager"
+    mkdir -p "${_build_dir}"
+}
+
+f_cleanup() {
+    f_log_info "Cleaning up"
+    if [[ -n "${_build_dir}" && -z "${KEEP_DOWNSTREAM_TMPDIR}" && -d "${_build_dir}" ]]; then
+        rm -fr "${_build_dir}"
+    fi
+}
+
+# Exit and handle cleanup processes if needed
+trap f_cleanup EXIT
+
+f_exit() {
+    local code="${1:-0}"
+    exit "${code}"
+}
+
+f_create_collection_dir_structure() {
+    f_log_info "Creating collection directory structure"
+    # Create the Collection
+    for f_name in "${_file_manifest[@]}";
+    do
+        cp "${ROOT_DIR}/${f_name}" "${_build_dir}/${f_name}"
+    done
+    for d_name in "${_dir_manifest[@]}";
+    do
+        cp -r "${ROOT_DIR}/${d_name}" "${_build_dir}/${d_name}"
+    done
+    if [ -n "${_file_exclude:-}" ]; then
+        for exclude_file in "${_file_exclude[@]}";
+        do
+            if [[ -f "${_build_dir}/${exclude_file}" ]]; then
+                rm -f "${_build_dir}/${exclude_file}"
+            fi
+        done
+    fi
+}
+
+f_copy_collection_to_working_dir() {
+    f_log_info "Copying built collection to working dir"
+    # Copy the Collection build result into original working dir
+    f_log_info "Copying built collection *.tar.gz into ./"
+    cp "${_build_dir}"/*.tar.gz "${ROOT_DIR}/"
+    # Install downstream collection into provided path
+    if [[ -n ${INSTALL_DOWNSTREAM_COLLECTION_PATH} ]]; then
+        f_log_info "Installing built collection *.tar.gz into ${INSTALL_DOWNSTREAM_COLLECTION_PATH}"
+        ansible-galaxy collection install -p "${INSTALL_DOWNSTREAM_COLLECTION_PATH}" "${_build_dir}"/*.tar.gz
+    fi
+    rm -f "${_build_dir}"/*.tar.gz
+}
+
+f_common_steps() {
+    f_prep
+    f_create_collection_dir_structure
+    f_text_sub
+}
+
+# Run the test sanity scenario
+f_test_sanity_option() {
+    f_log_info "Running Sanity Tests"
+    f_common_steps
+    pushd "${_build_dir}" || return
+        make sanity-test
+    popd || return
+    f_cleanup
+}
+
+# Run the test integration
+f_test_integration_option() {
+    f_log_info "Running Integration Tests"
+    f_common_steps
+    pushd "${_build_dir}" || return
+        make integration-test
+    popd || return
+    f_cleanup
+}
+
+# Run the test units
+f_test_units_option() {
+    f_log_info "Running Unit Tests"
+    f_common_steps
+    pushd "${_build_dir}" || return
+        make unit-test
+    popd || return
+    f_cleanup
+}
+
+# Run the build scenario
+f_build_option() {
+    f_log_info "Building Collection"
+    f_common_steps
+    pushd "${_build_dir}" || return
+        ansible-galaxy collection build
+    popd || return
+    f_copy_collection_to_working_dir
+    f_cleanup
+}
+
+# If no options are passed, display usage and exit
+if [[ "${#}" -eq "0" ]]; then
+    f_show_help
+    f_exit 0
+fi
+
+# Handle options
+while getopts ":siubv:" option
+do
+  case $option in
+    s)
+        f_test_sanity_option
+        ;;
+    i)
+        f_test_integration_option
+        ;;
+    u)
+        f_test_units_option
+        ;;
+    b)
+        f_build_option
+        ;;
+    v)
+        DOWNSTREAM_VERSION="${OPTARG}"
+        ;;
+    *)
+        printf "ERROR: Unimplemented option chosen.\n"
+        f_show_help
+        f_exit 1
+        ;;
+  esac
+done

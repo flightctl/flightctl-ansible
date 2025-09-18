@@ -99,12 +99,12 @@ class TestFlightCtlInventoryModule(unittest.TestCase):
         # Verify add_group was called
         mock_inventory.add_group.assert_called_once_with('test_group')
 
-        # Verify add_child was called
-        mock_inventory.add_child.assert_called_once_with('test_group', 'test_host')
+        # Verify add_host(group=...) was called
+        mock_inventory.add_host.assert_called_once_with('test_host', group='test_group')
 
         # Reset for testing with an existing group
         mock_inventory.add_group.reset_mock()
-        mock_inventory.add_child.reset_mock()
+        mock_inventory.add_host.reset_mock()
 
         # Add the group to our mock groups dict
         mock_groups['existing_group'] = True
@@ -115,8 +115,8 @@ class TestFlightCtlInventoryModule(unittest.TestCase):
         # Verify add_group was NOT called (group already exists)
         mock_inventory.add_group.assert_not_called()
 
-        # Verify add_child was called
-        mock_inventory.add_child.assert_called_once_with('existing_group', 'test_host')
+        # Verify add_host(group=...) was called
+        mock_inventory.add_host.assert_called_once_with('test_host', group='existing_group')
 
     def test_add_to_group_standalone(self):
         """Test _add_to_group method in isolation"""
@@ -142,8 +142,8 @@ class TestFlightCtlInventoryModule(unittest.TestCase):
         group_names = [call[0][0] for call in calls if call[0]]
         self.assertIn('test_group', group_names)
 
-        # Verify add_child was called with the correct arguments
-        mock_inventory.add_child.assert_called_with('test_group', 'test_host')
+        # Verify add_host(group=...) was called with the correct arguments
+        mock_inventory.add_host.assert_called_with('test_host', group='test_group')
 
     @patch('plugins.inventory.flightctl._get_devices_and_fleets')
     def test_error_handling(self, mock_get_devices):
@@ -226,6 +226,28 @@ class TestFlightCtlInventoryModule(unittest.TestCase):
 
         # Verify metadata is returned correctly
         self.assertEqual(metadata, device['metadata'])
+
+    def test_ansible_host_strips_cidr_from_netIpDefault(self):
+        """ansible_host should be set to raw IP when netIpDefault includes CIDR"""
+        inventory = InventoryModule()
+        mock_inventory = MagicMock()
+        inventory.inventory = mock_inventory
+
+        device = {
+            'metadata': {
+                'name': 'device-1'
+            },
+            'status': {
+                'systemInfo': {
+                    'netIpDefault': '192.168.2.73/24'
+                }
+            }
+        }
+
+        inventory._populate_inventory_devices([device])
+
+        # Assert ansible_host was set to IP without CIDR
+        mock_inventory.set_variable.assert_any_call('device-1', 'ansible_host', '192.168.2.73')
 
 
 if __name__ == '__main__':

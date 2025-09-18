@@ -15,7 +15,9 @@ description:
   - Returns Ansible inventory using Flight Control as source.
   - Uses the same API as other modules in this collection.
   - The plugin uses collection's API.
-  - You can reuse parameters by supplying a flightctl_config_file. Those parameters will be overridden when specified in inventory configuration file.
+  - You can optionally supply a C(flightctl_config_file) pointing to the FlightCtl
+    config file (for example, C(~/.config/flightctl/client.yaml)). Values specified
+    in the inventory override values loaded from that file.
 options:
     plugin:
       description: Name of the plugin
@@ -28,18 +30,18 @@ options:
       type: path
     ca_data:
       description: CertificateAuthorityData contains PEM-encoded certificate authority certificates.
-                            It will be written into a temporary file to enable underlying code to use ca_path.
+                           It will be written into a temporary file to enable underlying code to use ca_path.
       default: null
       type: path
     verify_ssl:
       description: Whether to allow insecure connections to Flight Control service.
-                            If `false', SSL certificates will not be validated.
-                            This should only be used on personally controlled sites using self-signed certificates.
+                           If `false', SSL certificates will not be validated.
+                           This should only be used on personally controlled sites using self-signed certificates.
       type: bool
     host:
       description: URL to Flight Control server. A token or username/password must be also provided.
       default: null
-      type: path
+      type: str
     username:
       description: Username for your Flight Control service. Please note that this only works with proxies configured to use HTTP Basic Auth.
       default: null
@@ -58,9 +60,14 @@ options:
       elements: dict
       suboptions:
         name:
-          description: Group name (should be unique)
+          description: Group name (should be unique). Ignored if C(group_by) is provided.
           type: str
-          required: true
+          required: false
+        group_by:
+          description: |
+            Dotted path on the device object used to create groups (e.g. C(metadata.labels.site)). When provided,
+            devices are grouped by the value(s) at this path. Also accepts C(keyed_by) for backward compatibility.
+          type: str
         label_selectors:
           description: list of label selectors in format "key = value" or "key != value"
           type: list
@@ -82,9 +89,20 @@ options:
       type: float
       default: 120.0
     flightctl_config_file:
-      description: Path to the config file.
-                        host, username, password, token, ca_path and ca_data will be taken from there.
+      description: |
+        - Path to the FlightCtl config file (for example, C(~/.config/flightctl/client.yaml)).
+        - Reads the following keys from that file: C(authentication.token),
+          C(service.server), C(service.insecureSkipVerify), and
+          C(service.certificate-authority-data) (base64-encoded PEM).
+        - Any values defined in the inventory override values from this file.
       type: path
+    hostnames:
+      description: |
+        Dotted path of the device field to use as the Ansible inventory hostname (for example, C(metadata.name) or C(status.systemInfo.hostname)).
+        If the specified field is not present or empty for a device, it will default to C(metadata.name).
+      type: str
+      required: false
+      default: null
 requirements:
     - "python >= 3.6"
     - "flightctl-python-client"
@@ -130,7 +148,8 @@ from typing import (
 
 T = TypeVar('T')
 LabelsType: TypeAlias = Dict[str, str]
-AdditionalGroupInfoType: TypeAlias = Dict[str, Tuple[str, str]]
+StaticAdditionalGroupsType: TypeAlias = Dict[str, Tuple[str, str]]
+KeyedAdditionalGroupsType: TypeAlias = List[Tuple[str, str, str]]
 
 
 class InventoryModule(BaseInventoryPlugin, Constructable):
@@ -142,13 +161,21 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
         super(InventoryModule, self).__init__(*args, **kwargs)
         self.config = None
         self._display = Display()
-
-    def warning(self, message, min_verbosity_level: int = 0):
-        if self._display.verbosity >= min_verbosity_level:
-            self._display.warning(message)
+        # The device field path (dot notation) to use for inventory hostname when present
+        self.device_name: Optional[str] = None
 
     def error(self, message):
         self._display.error(message)
+
+    def info(self, message, min_verbosity_level: int = 0):
+        if self._display.verbosity >= min_verbosity_level:
+            msg = str(message)
+            if min_verbosity_level >= 2:
+                self._display.vvv(msg)
+            elif min_verbosity_level == 1:
+                self._display.vv(msg)
+            else:
+                self._display.v(msg)
 
     def verify_file(self, path: str) -> bool:
         """ Verify that the source file can be processed correctly. """
@@ -172,11 +199,16 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
         # Load configuration parameters from the inventory file
         self._read_config_data(path)
         self.config = self._setup_connection_configuration()
+        # Read device name field (optional)
+        try:
+            self.device_name = self.get_option('hostnames')
+        except Exception:
+            self.device_name = None
 
         # Fetch devices and fleets
         devices, fleets = _get_devices_and_fleets(self.config, self.LIMIT_PER_PAGE)
-        self.warning(f"Retrieved {len(devices)} devices")
-        self.warning(f"Retrieved {len(fleets)} fleets")
+        self.info(f"Retrieved {len(devices)} devices")
+        self.info(f"Retrieved {len(fleets)} fleets")
 
         # Process devices, fleets and additional groups to inventory data
         self._populate_inventory_devices(devices)
@@ -185,14 +217,18 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
 
     def _load_config_file(self) -> ConfigLoader | None:
         """ Load configuration files using ConfigLoader. """
-        config_file = self.get_option("flightctl_config_file") or self.get_option("config_file")
+        # Only support flightctl_config_file
+        config_file = None
+        try:
+            config_file = self.get_option("flightctl_config_file")
+        except Exception:
+            config_file = None
         if not config_file:
-            self.warning("No configuration file name was supplied", min_verbosity_level=1)
             return None
 
         try:
             # Use ConfigLoader to load config from file or fallback to defaults
-            self.warning(f"Loading configuration file {config_file}", min_verbosity_level=1)
+            self.info(f"Loading configuration file {config_file}", min_verbosity_level=1)
             return ConfigLoader(config_file=config_file)
         except Exception as e:
             raise FlightctlException(f"Failed to load the config file: {e}") from e
@@ -204,7 +240,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
             temp_file.write(decoded_data)
             temp_file.flush()
             self.ca_path = temp_file.name
-            self.warning(f"crt file {temp_file.name} was created", min_verbosity_level=1)
+            self.info(f"crt file {temp_file.name} was created", min_verbosity_level=1)
 
             # Ensure the created temp file is deleted when our module exits
             self.add_cleanup_file(temp_file.name)
@@ -268,11 +304,11 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
         for fleet in [fleet.to_dict() for fleet in fleets]:
             fleet_id = _validate_fleet(fleet)
             devices = _fetch_fleet_devices(fleet_id, config, self.LIMIT_PER_PAGE) or []
-            self.warning(f"Retrieved {len(devices)} devices from fleet {fleet_id}")
+            self.info(f"Retrieved {len(devices)} devices from fleet {fleet_id}")
             for device in devices:
                 if hasattr(device, 'to_dict'):
                     device = device.to_dict()
-                device_id, metadata = _validate_device(device)
+                device_id, metadata = _validate_device(device, self.device_name)
                 if device_id not in self.inventory.hosts:
                     self._populate_inventory_devices([device])
                 self._add_to_group(fleet_id, device_id)
@@ -286,9 +322,10 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
             return
 
         # Process devices
-        for device in [device.to_dict() for device in devices]:
-            device_id, metadata = _validate_device(device)
-            self.warning(f"Populating inventory with device {device}", min_verbosity_level=1)
+        for raw in devices:
+            device = raw.to_dict() if hasattr(raw, 'to_dict') else raw
+            device_id, metadata = _validate_device(device, self.device_name)
+            self.info(f"Populating inventory with device {device_id}", min_verbosity_level=1)
 
             # add host
             self.inventory.add_host(device_id)  # Add host to Ansible inventory
@@ -310,34 +347,62 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
                 .get('netIpDefault')
             )
             if net_ip_default:
-                self.inventory.set_variable(device_id, 'ansible_host', net_ip_default)
+                # Strip CIDR suffix if present
+                ansible_host_value = str(net_ip_default).split('/', 1)[0].strip()
+                self.inventory.set_variable(device_id, 'ansible_host', ansible_host_value)
 
     def _populate_inventory_additional_groups(self, additional_groups: List[Dict[str, Any]]) -> None:
         """
         Given lists of additional_groups, populate self.inventory
-        - additional_groups: list of dicts with keys 'name', 'label_selectors', 'field_selectors'
+        - additional_groups: list of dicts with keys 'name' (ignored if group_by), 'group_by', 'label_selectors', 'field_selectors'
         """
         # handle additional groups
-        additional_groups_info = _prepare_additional_groups_info(additional_groups)
-        self.warning(f"Additional groups info: {additional_groups_info}", min_verbosity_level=1)
-        for group_name, selectors in additional_groups_info.items():
+        static_groups, keyed_groups = _prepare_additional_groups_info(additional_groups)
+        self.info(f"Additional groups (static): {static_groups}", min_verbosity_level=1)
+        self.info(f"Additional groups (keyed): {keyed_groups}", min_verbosity_level=1)
+
+        # Process static groups
+        for group_name, selectors in static_groups.items():
             label_selectors, field_selectors = selectors
             devices = _get_devices_by_labels_and_fields(self.config, label_selectors, field_selectors,
                                                         self.LIMIT_PER_PAGE)
-            self.warning(
+            self.info(
                 f"Retrieved {len(devices)} devices for group {group_name} by labels {label_selectors} and fields {field_selectors}")
-            for device in [device.to_dict() for device in devices]:
-                device_id, metadata = _validate_device(device)
+            for raw in devices:
+                device = raw.to_dict() if hasattr(raw, 'to_dict') else raw
+                device_id, metadata = _validate_device(device, self.device_name)
                 self._add_to_group(group_name, device_id)
+
+        # Process keyed groups
+        for group_by, label_selectors, field_selectors in keyed_groups:
+            devices = _get_devices_by_labels_and_fields(self.config, label_selectors, field_selectors,
+                                                        self.LIMIT_PER_PAGE)
+            self.info(
+                f"Retrieved {len(devices)} devices for grouping by {group_by} with labels {label_selectors} and fields {field_selectors}")
+            for raw in devices:
+                device = raw.to_dict() if hasattr(raw, 'to_dict') else raw
+                device_id, metadata = _validate_device(device, self.device_name)
+                value = _get_value_by_dotted_path(device, group_by)
+                if value is None:
+                    continue
+                if isinstance(value, (list, tuple, set)):
+                    values = [str(v).strip() for v in value if v is not None and str(v).strip() != ""]
+                else:
+                    values = [str(value).strip()]
+                for group_value in values:
+                    if not group_value:
+                        continue
+                    self._add_to_group(group_value, device_id)
 
     def _add_to_group(self, group_name: str, device_id: str):
         """ Add a host into the given group (creating it if necessary) """
         group_name = _sanitize_group_name(group_name)
         if group_name not in self.inventory.groups:
             self.inventory.add_group(group_name)
-            self.warning(f"Group {group_name} added to inventory", min_verbosity_level=1)
-        self.inventory.add_child(group_name, device_id)
-        self.warning(f"Added device {device_id} to group {group_name}", min_verbosity_level=1)
+            self.info(f"Group {group_name} added to inventory", min_verbosity_level=1)
+        # Ensure the device is associated to the group as a host, not as a subgroup
+        self.inventory.add_host(device_id, group=group_name)
+        self.info(f"Added device {device_id} to group {group_name}", min_verbosity_level=1)
 
 
 # ---------------------- Custom context manager ------------------
@@ -348,12 +413,27 @@ def flightctl_apis(config: Configuration) -> Generator[tuple[DeviceApi, FleetApi
         yield DeviceApi(client), FleetApi(client)
 
 
+def _build_auth_headers(config: Configuration) -> Dict[str, str] | None:
+    token = getattr(config, 'access_token', None)
+    if token:
+        return {'Authorization': f'Bearer {token}'}
+    username = getattr(config, 'username', None)
+    password = getattr(config, 'password', None)
+    if username and password:
+        basic_credentials = f"{username}:{password}"
+        encoded_credentials = base64.b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
+        return {'Authorization': f'Basic {encoded_credentials}'}
+    return None
+
+
 # ---------------------- Static methods --------------------------
 def _get_data(
         list_func: Callable[..., Any],
         label_list: str | None = None,
         field_list: str | None = None,
-        limit: int | None = 1000
+        limit: int | None = 1000,
+        headers: Dict[str, str] | None = None,
+        request_timeout: float | None = None,
 ) -> List[T]:
     """ Repeatedly call `list_func` until exhausted; return combined list """
     all_records: list[T] = []
@@ -366,7 +446,9 @@ def _get_data(
                 var_continue=continue_token,  # Pass the current continuation token, if any
                 label_selector=label_list,
                 field_selector=field_list,
-                limit=limit
+                limit=limit,
+                _headers=headers,
+                _request_timeout=request_timeout,
             )
         except Exception as e:
             raise FlightctlApiException(f"Error retrieving data from Flight Control API: {e}") from e
@@ -387,13 +469,13 @@ def _sanitize_group_name(group_name: str) -> str:
     return re.sub(r'^.*/', '', group_name)
 
 
-def _prepare_additional_groups_info(additional_groups: List[Dict[str, Any]]) -> AdditionalGroupInfoType:
+def _prepare_additional_groups_info(additional_groups: List[Dict[str, Any]]) -> Tuple[StaticAdditionalGroupsType, KeyedAdditionalGroupsType]:
     """
     Validate & normalize the additional_groups list from the inventory YAML.
-    Each entry must have at least one non-empty fleet/label_selectors/field_selectors:
-      - 'name': str
-      - 'label_selector': List[str]
-      - 'field_selector': List[str]
+    Each entry may specify either:
+      - Static group membership with 'name' and optional selectors, or
+      - Grouped-by with 'group_by' and optional selectors (name is ignored in this case).
+    Returns a tuple: (static_groups_map, keyed_groups_list)
     """
 
     display = Display()
@@ -410,51 +492,88 @@ def _prepare_additional_groups_info(additional_groups: List[Dict[str, Any]]) -> 
                                        "status.updated.status",
                                        ])
 
-    additional_groups_info: AdditionalGroupInfoType = {}
+    static_groups: StaticAdditionalGroupsType = {}
+    keyed_groups: KeyedAdditionalGroupsType = []
     for group_cfg in additional_groups:
         group_name = group_cfg.get('name', "")
-        if group_name == "":
-            display.error(f"additional_group {group_cfg} must contain a non-empty name")
-            continue
+        group_by = group_cfg.get('group_by', group_cfg.get('keyed_by', ""))
 
         # Process label_selectors
         lbl_sel = group_cfg.get("label_selectors", [])
-        # Type-guard: must be list of dicts
         if not isinstance(lbl_sel, list):
-            continue
-        # Join all label selectors into a comma-separated string
+            lbl_sel = []
         label_selectors: str = ",".join(lbl_sel)
 
+        # Process field_selectors
         fld_sel = group_cfg.get("field_selectors", [])
         if not all(selector.startswith(supported_field_selectors) for selector in fld_sel):
-            display.error(f"additional group {group_name} must contain only supported field_selectors, {fld_sel} found")
+            display.error(f"additional group {group_name or group_by} must contain only supported field_selectors, {fld_sel} found")
             continue
-        # Join all field selectors into a comma-separated string
         field_selectors: str = ",".join(fld_sel)
-
-        if not label_selectors and not field_selectors:
-            continue
 
         if label_selectors:
             label_selectors = remove_quotes(label_selectors)
         if field_selectors:
             field_selectors = remove_quotes(field_selectors)
-        additional_groups_info[group_name] = (label_selectors, field_selectors)
 
-    return additional_groups_info
+        if isinstance(group_by, str) and group_by.strip() != "":
+            keyed_groups.append((group_by, label_selectors, field_selectors))
+            continue
+
+        # Static group requires non-empty name
+        if group_name == "":
+            display.error(f"additional_group {group_cfg} must contain a non-empty name")
+            continue
+
+        if not label_selectors and not field_selectors:
+            # No selectors means nothing to add for static group
+            continue
+
+        static_groups[group_name] = (label_selectors, field_selectors)
+
+    return static_groups, keyed_groups
 
 
-def _validate_device(device):
-    """ Validate device has required structure """
+def _get_value_by_dotted_path(data: Dict[str, Any], dotted_path: str | None) -> Optional[Any]:
+    """Retrieve a nested value from a dict using a dotted path like 'metadata.name'."""
+    if not dotted_path:
+        return None
+    current: Any = data
+    for key in dotted_path.split('.'):
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+        if current is None:
+            return None
+    return current
+
+
+def _validate_device(device, name_field: Optional[str] = None):
+    """ Validate device has required structure and determine the inventory hostname """
     metadata = device.get('metadata', None)
     if not metadata:
         raise ValidationException(f"device {device} got an invalid structure")
-    # Use device name or host name as the Ansible inventory hostname
-    device_id = metadata.get('name', None) or (
-        device.get('status', {})
-        .get('systemInfo', {})
-        .get('hostname')
-    )
+
+    # If a preferred field path is configured, try to use it
+    candidate_name: Optional[str] = None
+    if name_field:
+        value = _get_value_by_dotted_path(device, name_field)
+        candidate_name = value if isinstance(value, str) and value.strip() != '' else None
+
+    if candidate_name:
+        device_id = candidate_name
+    else:
+        # Backwards compatibility: when no name_field is set, keep previous fallback to hostname
+        if name_field is None:
+            device_id = metadata.get('name', None) or (
+                device.get('status', {})
+                .get('systemInfo', {})
+                .get('hostname')
+            )
+        else:
+            # name_field was provided but missing for this device: default to metadata.name
+            device_id = metadata.get('name', None)
+
     if not device_id:
         raise ValidationException(f"device {device} got neither name nor hostname")
     return device_id, metadata
@@ -480,7 +599,14 @@ def _fetch_fleet_devices(fleet_id: str, config, limit_per_page: int) -> List[Any
     """ Retrieve devices belonging to a fleet """
     field_list = f"metadata.owner = Fleet/{fleet_id}"
     with flightctl_apis(config) as (device_api, fleet_api):
-        devices = _get_data(device_api.list_devices, field_list=field_list, limit=limit_per_page)
+        headers = _build_auth_headers(config)
+        devices = _get_data(
+            device_api.list_devices,
+            field_list=field_list,
+            limit=limit_per_page,
+            headers=headers,
+            request_timeout=getattr(config, 'request_timeout', None)
+        )
     return devices
 
 
@@ -491,9 +617,20 @@ def _get_devices_and_fleets(config, limit_per_page: int) -> Tuple[List[DeviceLis
     Note: Device may present in many groups
     """
     with flightctl_apis(config) as (device_api, fleet_api):
+        headers = _build_auth_headers(config)
         # We're **always** fetching a full list of devices and fleets
-        all_devices = _get_data(device_api.list_devices, limit=limit_per_page)
-        all_fleets = _get_data(fleet_api.list_fleets, limit=limit_per_page)
+        all_devices = _get_data(
+            device_api.list_devices,
+            limit=limit_per_page,
+            headers=headers,
+            request_timeout=getattr(config, 'request_timeout', None)
+        )
+        all_fleets = _get_data(
+            fleet_api.list_fleets,
+            limit=limit_per_page,
+            headers=headers,
+            request_timeout=getattr(config, 'request_timeout', None)
+        )
 
     return all_devices, all_fleets
 
@@ -504,7 +641,14 @@ def _get_devices_by_labels_and_fields(config, label_selectors: str | None, field
     label_selectors = None if label_selectors == "" else label_selectors
     field_selectors = None if field_selectors == "" else field_selectors
     with flightctl_apis(config) as (device_api, fleet_api):
-        devices = _get_data(device_api.list_devices,
-                            label_list=label_selectors, field_list=field_selectors, limit=limit_per_page)
+        headers = _build_auth_headers(config)
+        devices = _get_data(
+            device_api.list_devices,
+            label_list=label_selectors,
+            field_list=field_selectors,
+            limit=limit_per_page,
+            headers=headers,
+            request_timeout=getattr(config, 'request_timeout', None)
+        )
 
     return devices
