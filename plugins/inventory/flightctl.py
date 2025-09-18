@@ -325,7 +325,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
         for raw in devices:
             device = raw.to_dict() if hasattr(raw, 'to_dict') else raw
             device_id, metadata = _validate_device(device, self.device_name)
-            self.info(f"Populating inventory with device {device}", min_verbosity_level=1)
+            self.info(f"Populating inventory with device {device_id}", min_verbosity_level=1)
 
             # add host
             self.inventory.add_host(device_id)  # Add host to Ansible inventory
