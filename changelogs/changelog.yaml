@@ -80,7 +80,7 @@ releases:
     fragments:
       - flightctl_1.2.0_update.yml
     release_date: '2025-08-14'
-  1.2.1:
+  1.3.0:
     changes:
       bugfixes:
         - Inventory plugin now sends Authorization headers explicitly for list operations,
@@ -91,13 +91,14 @@ releases:
         - Treat `host` as a string (not a path) to prevent URLs from being coerced into
           file paths, fixing "No host specified" errors.
       minor_changes:
+        - Updated the Ansible collection to support Flight Control API version 0.10.0.
         - Added support for Basic auth (username/password) in the inventory plugin for
           environments with proxies that accept HTTP Basic.
         - Improved documentation and examples for `flightctl_config_file` (FlightCtl
           config) and config precedence.
         - Added `hostnames` option for selecting the device field (dot path) as the inventory hostname.
         - Inventory plugin now supports `group_by` option for grouping devices by a field value.
-      release_summary: Improved the FlightCtl inventory plugin robustness and configuration clarity.
+      release_summary: Added support for Flight Control API v0.10.0 and improved the FlightCtl inventory plugin robustness.
     fragments:
-      - flightctl_1.2.1_update.yml
-    release_date: '2025-09-08'
+      - flightctl_1.3.0_update.yml
+    release_date: '2025-09-30'
