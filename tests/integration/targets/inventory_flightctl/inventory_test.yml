@@ -1,0 +1,127 @@
+---
+- name: Test Inventory Discovery and Host Groups
+  hosts: localhost
+  gather_facts: false
+  environment:
+    ANSIBLE_INVENTORY_PLUGINS: "{{ playbook_dir }}/../../../../plugins/inventory"
+    PYTHONPATH: "{{ playbook_dir }}/../../../../"
+  tasks:
+    - block:
+        - name: Display all inventory groups for debugging
+          debug:
+            msg: 
+              all_groups: "{{ groups.keys() | list }}"
+              all_hosts: "{{ groups['all'] | default([]) }}"
+
+        - name: Assert all expected devices are in 'all' group
+          assert:
+            that:
+              - "'ansible-integration-test-device' in groups['all']"
+              - "'ansible-integration-test-device-label-1' in groups['all']"
+              - "'ansible-integration-test-device-label-2' in groups['all']"
+              - "'device-dev-01' in groups['all']"
+              - "'device-dev-02' in groups['all']"
+              - "'device-test-01' in groups['all']"
+              - "'device-unmanaged-01' in groups['all']"
+
+        # Test automatic fleet grouping
+        - name: Assert devices in fleet ansible-integration-test
+          assert:
+            that:
+              - groups['ansible_integration_test_fleet'] | default([]) | length == 1
+              - "'ansible-integration-test-device' in groups['ansible_integration_test_fleet']"
+
+        # Test label-based groups
+        - name: Assert forklift machines group
+          assert:
+            that:
+              - "'ansible-integration-test-device-label-1' in groups['forklift_machines'] | default([])"
+              - "'ansible-integration-test-device-label-2' in groups['forklift_machines'] | default([])"
+              - groups['forklift_machines'] | default([]) | length == 2
+
+        - name: Assert architecture groups
+          assert:
+            that:
+              - "'device-dev-01' in groups['amd64_devices'] | default([])"
+              - "'device-test-01' in groups['amd64_devices'] | default([])"
+              - "'device-dev-02' in groups['arm64_devices'] | default([])"
+
+        - name: Assert location groups
+          assert:
+            that:
+              - "'device-unmanaged-01' in groups['lab_devices'] | default([])"
+
+        # Test field selector groups
+        - name: Assert fleet field selector groups
+          assert:
+            that:
+              - "'device-dev-01' in groups['fleet_dev_devices'] | default([])"
+              - "'device-dev-02' in groups['fleet_dev_devices'] | default([])"
+              - "'device-test-01' in groups['fleet_test_devices'] | default([])"
+              - "'ansible-integration-test-device' in groups['integration_test_fleet_devices'] | default([])"
+
+        # Test specific name-based groups
+        - name: Assert test group
+          assert:
+            that:
+              - "'ansible-integration-test-device' in groups['test_group'] | default([])"
+              - groups['test_group'] | default([]) | length == 1
+
+        - name: Assert integration test devices group
+          assert:
+            that:
+              - "'ansible-integration-test-device' in groups['integration_test_devices'] | default([])"
+              - "'ansible-integration-test-device-label-1' in groups['integration_test_devices'] | default([])"
+              - "'ansible-integration-test-device-label-2' in groups['integration_test_devices'] | default([])"
+              - groups['integration_test_devices'] | default([]) | length == 3
+
+        # Test mixed selector groups
+        - name: Assert mixed selector groups
+          assert:
+            that:
+              - "'device-dev-01' in groups['dev_amd64_devices'] | default([])"
+              - "'ansible-integration-test-device-label-1' in groups['forklift_devices_by_name'] | default([])"
+              - "'ansible-integration-test-device-label-2' in groups['forklift_devices_by_name'] | default([])"
+
+        - name: Display final inventory content summary
+          debug:
+            msg:
+              total_groups: "{{ groups.keys() | list | length }}"
+              total_hosts: "{{ groups['all'] | default([]) | length }}"
+              custom_groups: "{{ groups.keys() | list | reject('match', '^(all|ungrouped)$') | list }}"
+
+- name: Clean up Test Inventory Resources
+  hosts: localhost
+  gather_facts: false
+  vars:
+    connection_info: &connection_info
+      flightctl_token: "{{ flightctl_token | default(omit) }}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_validate_certs: false
+  tasks:
+        - name: Delete test devices
+          flightctl.core.flightctl_resource:
+            <<: *connection_info
+            state: absent
+            kind: Device
+            name: "{{ item }}"
+          loop:
+            - 'ansible-integration-test-device'
+            - 'ansible-integration-test-device-label-1'
+            - 'ansible-integration-test-device-label-2'
+            - 'device-dev-01'
+            - 'device-dev-02'
+            - 'device-test-01'
+            - 'device-unmanaged-01'
+
+        - name: Delete test fleets
+          flightctl.core.flightctl_resource:
+            <<: *connection_info
+            state: absent
+            kind: Fleet
+            name: "{{ item }}"
+          loop:
+            - 'ansible-integration-test-fleet'
+            - 'fleet-dev'
+            - 'fleet-test'
+            - 'fleet-prod'
