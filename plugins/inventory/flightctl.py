@@ -99,6 +99,8 @@ options:
     hostnames:
       description: |
         Dotted path of the device field to use as the Ansible inventory hostname (for example, C(metadata.name) or C(status.systemInfo.hostname)).
+        Alternatively, a simple concatenation expression is supported using C(+) to join dotted fields and quoted
+        literals (for example, C(metadata.name + '_' + metadata.uid)).
         If the specified field is not present or empty for a device, it will default to C(metadata.name).
       type: str
       required: false
@@ -548,6 +550,50 @@ def _get_value_by_dotted_path(data: Dict[str, Any], dotted_path: str | None) -> 
     return current
 
 
+def _render_hostname_expression(device: Dict[str, Any], expr: str) -> Optional[str]:
+    """
+    Render a minimal concatenation expression of the form:
+      metadata.name + '_' + metadata.uid
+    Parts may be dotted paths or quoted string literals.
+    Returns a non-empty string on success, or None if it cannot be rendered.
+    """
+    if not isinstance(expr, str) or '+' not in expr:
+        return None
+    parts = expr.split('+')
+    rendered_parts: List[str] = []
+    resolved_value = False
+    for raw in parts:
+        token = raw.strip()
+        if token == '':
+            continue
+        if (token.startswith("'") and token.endswith("'")) or (token.startswith('"') and token.endswith('"')):
+            rendered_parts.append(token[1:-1])
+            continue
+        value = _get_value_by_dotted_path(device, token)
+        if value is None:
+            rendered_parts.append("")
+            continue
+        value_str = str(value)
+        if value_str.strip():
+            resolved_value = True
+        rendered_parts.append(value_str)
+    result = "".join(rendered_parts).strip()
+    if not resolved_value:
+        return None
+    return result if result else None
+
+
+def _resolve_hostname(device: Dict[str, Any], name_field: str) -> Optional[str]:
+    """Resolve hostname from a dotted path or a minimal '+' concatenation expression."""
+    value = _render_hostname_expression(device, name_field)
+    if value:
+        return value
+    raw = _get_value_by_dotted_path(device, name_field)
+    if isinstance(raw, str) and raw.strip() != '':
+        return raw.strip()
+    return None
+
+
 def _validate_device(device, name_field: Optional[str] = None):
     """ Validate device has required structure and determine the inventory hostname """
     metadata = device.get('metadata', None)
@@ -557,8 +603,7 @@ def _validate_device(device, name_field: Optional[str] = None):
     # If a preferred field path is configured, try to use it
     candidate_name: Optional[str] = None
     if name_field:
-        value = _get_value_by_dotted_path(device, name_field)
-        candidate_name = value if isinstance(value, str) and value.strip() != '' else None
+        candidate_name = _resolve_hostname(device, name_field)
 
     if candidate_name:
         device_id = candidate_name
