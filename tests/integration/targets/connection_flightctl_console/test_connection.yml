@@ -8,6 +8,7 @@
     ansible_flightctl_device_name: gb3uh5qn7d6r6og410toti8pinhs860t5ggb6npafikqrsl7nlng
     ansible_flightctl_token: "{{ flightctl_token | default(omit)}}"
     ansible_flightctl_host: "{{ flightctl_host }}"
+    ansible_flightctl_organization: "{{ flightctl_organization | default(omit)}}"
     ansible_flightctl_validate_certs: false
     ansible_python_interpreter: /usr/bin/python3
   tasks:

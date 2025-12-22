@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FLIGHTCTL_REF: v0.10.0
+  FLIGHTCTL_REF: v1.0.0
 
 jobs:
   integration-tests:
@@ -33,6 +33,15 @@ jobs:
         uses: ./.github/actions/setup-dependencies
         with:
           setup_podman4: yes
+
+      - name: Free disk space (runner)
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          large-packages: true
+
+      - name: Free disk space (podman)
+        run: podman system prune -af || true
 
       - name: Start flightctl services
         run: make deploy
@@ -75,6 +84,15 @@ jobs:
         uses: ./.github/actions/setup-dependencies
         with:
           setup_podman4: yes
+
+      - name: Free disk space (runner)
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          large-packages: true
+
+      - name: Free disk space (podman)
+        run: podman system prune -af || true
 
       - name: Start flightctl services
         run: make deploy

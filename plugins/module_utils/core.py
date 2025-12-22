@@ -12,7 +12,7 @@ import tempfile
 from typing import Any, Callable, Dict, Optional
 
 from ansible.module_utils.basic import AnsibleModule, env_fallback
-from ansible.module_utils.six.moves.urllib.parse import urlparse
+from urllib.parse import urlparse
 
 from .config_loader import ConfigLoader
 from .exceptions import FlightctlException
@@ -22,6 +22,9 @@ class FlightctlModule(AnsibleModule):
     AUTH_ARGSPEC: Dict[str, Any] = dict(
         flightctl_host=dict(
             required=False, fallback=(env_fallback, ["FLIGHTCTL_HOST"])
+        ),
+        flightctl_organization=dict(
+            required=False, fallback=(env_fallback, ["FLIGHTCTL_ORGANIZATION"])
         ),
         flightctl_username=dict(
             required=False, fallback=(env_fallback, ["FLIGHTCTL_USERNAME"])
@@ -62,6 +65,7 @@ class FlightctlModule(AnsibleModule):
     )
     short_params: Dict[str, str] = {
         "host": "flightctl_host",
+        "organization": "flightctl_organization",
         "username": "flightctl_username",
         "password": "flightctl_password",
         "verify_ssl": "flightctl_validate_certs",
@@ -71,6 +75,7 @@ class FlightctlModule(AnsibleModule):
     }
     # Default attribute values
     host: Optional[str] = None
+    organization: Optional[str] = None
     url: Optional[Any] = None
     username: Optional[str] = None
     password: Optional[str] = None
@@ -146,7 +151,7 @@ class FlightctlModule(AnsibleModule):
 
         try:
             # Use ConfigLoader to load config from file or fallback to defaults
-            config_loader = ConfigLoader(config_file=config_file)
+            config_loader = ConfigLoader(config_file=config_file, warn_callback=self.warn)
 
             # Map the loaded config to this module's attributes
             self.map_loaded_config(config_loader)

@@ -15,8 +15,6 @@ except ImportError as imp_exc:
 else:
     PYYAML_IMPORT_ERROR = None
 
-from ansible.module_utils.six import string_types
-
 
 class ResourceDefinition(Dict[str, Any]):
     """
@@ -43,11 +41,11 @@ def from_yaml(definition: Union[str, List, Dict]) -> Iterable[Dict]:
         raise PYYAML_IMPORT_ERROR
 
     definitions: List[Dict] = []
-    if isinstance(definition, string_types):
+    if isinstance(definition, str):
         definitions += yaml.safe_load_all(definition)
     elif isinstance(definition, list):
         for item in definition:
-            if isinstance(item, string_types):
+            if isinstance(item, str):
                 definitions += yaml.safe_load_all(item)
             else:
                 definitions.append(item)

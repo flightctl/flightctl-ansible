@@ -56,13 +56,13 @@ A specific version of the collection can be installed by using the `version` key
 ---
 collections:
   - name: flightctl.core
-    version: 1.3.0
+    version: 1.4.0
 ```
 
 or using the ansible-galaxy command as follows
 
 ```shell
-ansible-galaxy collection install flightctl.core:1.3.0
+ansible-galaxy collection install flightctl.core:1.4.0
 ```
 
 The Python module dependencies are not installed by ansible-galaxy. They must be installed manually using pip:
@@ -85,7 +85,7 @@ You can either call modules, rulebooks and playbooks by their Fully Qualified Co
     flightctl.core.flightctl_resource:
       kind: Device
       name: "test-ansible-device"
-      api_version: flightctl.io/v1alpha1
+      api_version: flightctl.io/v1beta1
 
   - name: Create a new device
     flightctl.core.flightctl_resource:
@@ -93,13 +93,20 @@ You can either call modules, rulebooks and playbooks by their Fully Qualified Co
       name: "test-ansible-device-2"
       resource_definition: "{{ lookup('file', 'device.yml') | from_yaml }}"
 
+  - name: Create a new device in a specific organization
+    flightctl.core.flightctl_resource:
+      flightctl_organization: "my-org"
+      kind: Device
+      name: "test-ansible-device-3"
+      api_version: flightctl.io/v1beta1
+
   - name: Update new test device
     flightctl.core.flightctl_resource:
       kind: Device
       name: "test-ansible-device"
-      api_version: flightctl.io/v1alpha1
+      api_version: flightctl.io/v1beta1
       resource_definition:
-        apiVersion: flightctl.io/v1alpha1
+        apiVersion: flightctl.io/v1beta1
         kind: Device
         metadata:
           labels:

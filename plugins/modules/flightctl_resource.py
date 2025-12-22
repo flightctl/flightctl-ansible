@@ -24,7 +24,7 @@ options:
       - If O(resource_definition) is provided, the C(apiVersion) value from the O(resource_definition)
         will override this option.
     type: str
-    default: flightctl.io/v1alpha1
+    default: flightctl.io/v1beta1
   kind:
     description:
       - Use to specify an object model.
@@ -66,13 +66,13 @@ EXAMPLES = r"""
   flightctl.core.flightctl_resource:
     kind: Device
     name: "Example"
-    api_version: flightctl.io/v1alpha1
+    api_version: flightctl.io/v1beta1
 
 - name: Create a device
   flightctl.core.flightctl_resource:
     kind: Device
     resource_definition:
-      apiVersion: flightctl.io/v1alpha1
+      apiVersion: flightctl.io/v1beta1
       kind: Device
       metadata:
         name: "Example"
@@ -127,7 +127,7 @@ def main():
         kind=dict(type="str"),
         name=dict(type="str"),
         fleet_name=dict(type="str"),
-        api_version=dict(type="str", default="flightctl.io/v1alpha1"),
+        api_version=dict(type="str", default="flightctl.io/v1beta1"),
         resource_definition=dict(type="raw"),
         **STATE_ARG_SPEC
     )

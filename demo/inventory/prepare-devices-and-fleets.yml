@@ -11,6 +11,7 @@
         credential_defaults: &credential_defaults
           flightctl_config_file: "{{ flightctl_config_file | default(omit) }}"
           flightctl_ca_path: "{{ flightctl_ca_path | default(omit)}}"
+          flightctl_organization: "{{ flightctl_organization | default(omit)}}"
           flightctl_token: "{{ flightctl_token | default(omit)}}"
           flightctl_host: "{{ flightctl_host | default(omit)}}"
           flightctl_validate_certs: "{{ flightctl_validate_certs | default(True)}}"
@@ -23,7 +24,7 @@
         name: device-01
         state: present
         resource_definition:
-          apiVersion: flightctl.io/v1alpha1
+          apiVersion: flightctl.io/v1beta1
           kind: Device
           metadata:
             labels:
@@ -44,7 +45,7 @@
         name: device-02
         state: present
         resource_definition:
-          apiVersion: flightctl.io/v1alpha1
+          apiVersion: flightctl.io/v1beta1
           kind: Device
           metadata:
             labels:
@@ -65,7 +66,7 @@
         name: device-03
         state: present
         resource_definition:
-          apiVersion: flightctl.io/v1alpha1
+          apiVersion: flightctl.io/v1beta1
           kind: Device
           metadata:
             labels:
@@ -87,7 +88,7 @@
         name: device-ansible-example
         state: present
         resource_definition:
-          apiVersion: flightctl.io/v1alpha1
+          apiVersion: flightctl.io/v1beta1
           kind: Device
           metadata:
             labels:
@@ -107,7 +108,7 @@
         name: device-ansible-example-2
         state: present
         resource_definition:
-          apiVersion: flightctl.io/v1alpha1
+          apiVersion: flightctl.io/v1beta1
           kind: Device
           metadata:
             labels:
@@ -127,7 +128,7 @@
         name: device-ansible-example-3
         state: present
         resource_definition:
-          apiVersion: flightctl.io/v1alpha1
+          apiVersion: flightctl.io/v1beta1
           kind: Device
           metadata:
             labels:
@@ -146,7 +147,7 @@
         kind: Fleet
         name: "fleet-06"
         resource_definition:
-          apiVersion: flightctl.io/v1alpha1
+          apiVersion: flightctl.io/v1beta1
           kind: Fleet
           metadata:
             name: fleet-06
@@ -198,7 +199,7 @@
         kind: Fleet
         name: "fleet-ansible-example"
         resource_definition:
-          apiVersion: flightctl.io/v1alpha1
+          apiVersion: flightctl.io/v1beta1
           kind: Fleet
           metadata:
             name: fleet-ansible-example

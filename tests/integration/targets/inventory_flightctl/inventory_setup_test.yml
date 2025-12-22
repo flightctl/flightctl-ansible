@@ -9,6 +9,7 @@
     connection_info: &connection_info
       flightctl_token: "{{ flightctl_token | default(omit) }}"
       flightctl_host: "{{ flightctl_host }}"
+      flightctl_organization: "{{ flightctl_organization | default(omit) }}"
       flightctl_validate_certs: false
   tasks:
     - block:
@@ -72,6 +73,7 @@
             dest: ".config/flightctl/client.yaml"
             mode: "0600"
             content: |
+              organization: "{{ flightctl_organization | default(omit) }}"
               service:
                 server: "{{ flightctl_host }}"
                 insecureSkipVerify: true
