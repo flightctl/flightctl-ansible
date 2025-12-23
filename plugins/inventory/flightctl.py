@@ -42,6 +42,10 @@ options:
       description: URL to Flight Control server. A token or username/password must be also provided.
       default: null
       type: str
+    organization:
+      description: Organization to scope Flight Control requests to.
+      default: null
+      type: str
     username:
       description: Username for your Flight Control service. Please note that this only works with proxies configured to use HTTP Basic Auth.
       default: null
@@ -273,6 +277,9 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
             raise ValidationException(
                 "Authentication is required: provide either access_token or both username and password")
 
+        organization = (self.get_option('organization')
+                        or (getattr(config_file, 'organization', None) if config_file else None))
+
         ca_path = (self.get_option('ca_path')
                    or (getattr(config_file, 'ca_path', None) if config_file else None)
                    or (getattr(config_file, 'flightctl_ca_path', None) if config_file else None))
@@ -291,6 +298,8 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
             password=password,
             ssl_ca_cert=ca_path,
         )
+        if organization:
+            config.organization = organization
         config.request_timeout = request_timeout
         config.verify_ssl = verify_ssl
         return config

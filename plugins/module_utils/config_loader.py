@@ -24,11 +24,13 @@ from ansible.module_utils.parsing.convert_bool import boolean as strtobool
 
 
 class ConfigLoader:
-    def __init__(self, config_file=None):
+    def __init__(self, config_file=None, warn_callback=None):
         if JSONSCHEMA_IMPORT_ERROR:
             raise JSONSCHEMA_IMPORT_ERROR
         if PYYAML_IMPORT_ERROR:
             raise PYYAML_IMPORT_ERROR
+
+        self._warn_callback = warn_callback
 
         # Assign token from config if it exists
         # Load from config file if provided
@@ -46,10 +48,13 @@ class ConfigLoader:
         schema = {
             "type": "object",
             "properties": {
+                "organization": {"type": "string"},
                 "authentication": {
                     "type": "object",
                     "properties": {
-                        "token": {"type": "string"}  # token must be a string
+                        "access-token": {"type": "string"},
+                        "refresh-token": {"type": "string"},
+                        "token-to-use": {"type": "string"},
                     },
                 },
                 "service": {
@@ -97,8 +102,39 @@ class ConfigLoader:
         """Parses and assigns values from config_data."""
 
         # Assign token from config if it exists
-        if config_data["authentication"].get("token"):
-            setattr(self, "token", config_data["authentication"]["token"])
+        auth = config_data.get("authentication") or {}
+
+        token_to_use = auth.get("token-to-use")
+        access_token = auth.get("access-token")
+        refresh_token = auth.get("refresh-token")
+
+        if token_to_use == "refresh":
+            if refresh_token:
+                setattr(self, "token", refresh_token)
+            elif access_token:
+                setattr(self, "token", access_token)
+            else:
+                self._warn(
+                    "Config file: token-to-use is 'refresh' but neither refresh-token nor access-token is set."
+                )
+        elif token_to_use == "access":
+            if access_token:
+                setattr(self, "token", access_token)
+            elif refresh_token:
+                setattr(self, "token", refresh_token)
+            else:
+                self._warn(
+                    "Config file: token-to-use is 'access' but neither access-token nor refresh-token is set."
+                )
+        elif access_token:
+            setattr(self, "token", access_token)
+
+        # Assign organization if present in any supported location
+        organization = (
+            config_data.get("organization")
+        )
+        if organization:
+            setattr(self, "organization", organization)
 
         # Assign verify_ssl with proper type conversion
         if config_data["service"].get("insecureSkipVerify") is not None:
@@ -114,6 +150,10 @@ class ConfigLoader:
 
         if config_data["service"].get("certificate-authority-data"):
             setattr(self, "ca_data", config_data["service"]["certificate-authority-data"])
+
+    def _warn(self, message):
+        if callable(self._warn_callback):
+            self._warn_callback(message)
 
     def __repr__(self):
         """Represent the current configuration state."""

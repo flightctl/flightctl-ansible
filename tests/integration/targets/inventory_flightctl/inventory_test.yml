@@ -97,6 +97,7 @@
     connection_info: &connection_info
       flightctl_token: "{{ flightctl_token | default(omit) }}"
       flightctl_host: "{{ flightctl_host }}"
+      flightctl_organization: "{{ flightctl_organization | default(omit) }}"
       flightctl_validate_certs: false
   tasks:
         - name: Delete test devices

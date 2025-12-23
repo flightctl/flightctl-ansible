@@ -117,6 +117,30 @@ class FlightctlAPIModule(FlightctlModule):
         self.set_auth()
 
         self.client = ApiClient(client_config)
+        self._set_org_id_query_param()
+
+    def _set_org_id_query_param(self) -> None:
+        """
+        Inject the optional Flight Control org selector as a query parameter `org_id`.
+        """
+        if not self.organization:
+            return
+
+        org_id = str(self.organization)
+        original_param_serialize = self.client.param_serialize
+
+        def param_serialize_with_org_id(*args: Any, **kwargs: Any):
+            query_params = kwargs.get('query_params')
+            if query_params is None:
+                query_params = []
+                kwargs['query_params'] = query_params
+
+            if not any(k == 'org_id' for k, _v in query_params):
+                query_params.append(('org_id', org_id))
+
+            return original_param_serialize(*args, **kwargs)
+
+        self.client.param_serialize = param_serialize_with_org_id
 
     def set_auth(self) -> None:
         """
@@ -401,12 +425,12 @@ class FlightctlAPIModule(FlightctlModule):
                 if csr.status is None:
                     csr.status = CertificateSigningRequestStatus(conditions=[])
 
-                expected_type = ConditionType.APPROVED if input.approved else ConditionType.DENIED
+                expected_type = ConditionType.CertificateSigningRequestApproved if input.approved else ConditionType.CertificateSigningRequestDenied
 
                 # Idempotency of certificate approval/denial is no longer handled in Flight Control.
                 # This logic will be enforced within the Ansible collection instead.
 
-                approved_denied_types = {ConditionType.APPROVED, ConditionType.DENIED}
+                approved_denied_types = {ConditionType.CertificateSigningRequestApproved, ConditionType.CertificateSigningRequestDenied}
                 existing_conditions = [c for c in csr.status.conditions if c.type in approved_denied_types]
                 if existing_conditions:
                     # If all existing AD conditions match the expected type it's an Idempotent case.
@@ -419,7 +443,7 @@ class FlightctlAPIModule(FlightctlModule):
 
                 approval_type = Condition(
                     type=expected_type,
-                    status=ConditionStatus.TRUE,
+                    status=ConditionStatus.ConditionStatusTrue,
                     observed_generation=1,
                     last_transition_time=datetime.now().isoformat() + "Z",
                     message="The request has been approved." if input.approved else "The request has been denied.",

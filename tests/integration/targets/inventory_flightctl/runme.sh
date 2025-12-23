@@ -9,6 +9,7 @@ echo "Running inventory test with args: ${CMD_ARGS[*]}"
 # Parse flightctl_host from the integration_config.yml file and pass it to the playbook
 FLIGHTCTL_HOST=$(grep -oP 'flightctl_host:\s*\K.*' "../../integration_config.yml")
 FLIGHTCTL_TOKEN=$(grep -oP 'flightctl_token:\s*\K.*' "../../integration_config.yml")
+FLIGHTCTL_ORGANIZATION="$(grep -oP 'flightctl_organization:\s*\K.*' "../../integration_config.yml" || true)"
 
 # Create inventory config directory
 mkdir -p .config/flightctl
@@ -20,6 +21,7 @@ plugin: flightctl.core.flightctl
 verify_ssl: False
 host: ${FLIGHTCTL_HOST}
 token: ${FLIGHTCTL_TOKEN}
+organization: ${FLIGHTCTL_ORGANIZATION}
 request_timeout: 120
 additional_groups:
   # Group devices by machine type
@@ -84,13 +86,13 @@ echo "Step 1: Testing inventory plugin documentation..."
 ansible-playbook ./inventory_doc_test.yml "${CMD_ARGS[@]}"
 
 echo "Step 2: Setting up test resources..."
-ansible-playbook ./inventory_setup_test.yml -e "flightctl_host=${FLIGHTCTL_HOST}" -e "flightctl_token=${FLIGHTCTL_TOKEN}" "${CMD_ARGS[@]}"
+ansible-playbook ./inventory_setup_test.yml -e "flightctl_host=${FLIGHTCTL_HOST}" -e "flightctl_token=${FLIGHTCTL_TOKEN}" -e "flightctl_organization=${FLIGHTCTL_ORGANIZATION}" "${CMD_ARGS[@]}"
 
 # Wait a bit for resources to be fully created
 echo "Waiting for resources to be ready..."
 sleep 5
 
 echo "Step 3: Testing inventory discovery..."
-ansible-playbook ./inventory_test.yml -i ./.config/flightctl/inventory.yml -e "flightctl_host=${FLIGHTCTL_HOST}" -e "flightctl_token=${FLIGHTCTL_TOKEN}" "${CMD_ARGS[@]}"
+ansible-playbook ./inventory_test.yml -i ./.config/flightctl/inventory.yml -e "flightctl_host=${FLIGHTCTL_HOST}" -e "flightctl_token=${FLIGHTCTL_TOKEN}" -e "flightctl_organization=${FLIGHTCTL_ORGANIZATION}" "${CMD_ARGS[@]}"
 
 echo "DONE"

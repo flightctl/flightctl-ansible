@@ -96,9 +96,23 @@ releases:
           environments with proxies that accept HTTP Basic.
         - Improved documentation and examples for `flightctl_config_file` (FlightCtl
           config) and config precedence.
-        - Added `hostnames` option for selecting the device field (dot path) as the inventory hostname.
-        - Inventory plugin now supports `group_by` option for grouping devices by a field value.
-      release_summary: Added support for Flight Control API v0.10.0 and improved the FlightCtl inventory plugin robustness.
+        - Added `hostnames` option for selecting the device field (dot path) as the
+          inventory hostname.
+        - Inventory plugin now supports `group_by` option for grouping devices by a
+          field value.
+        
+      release_summary: Added support for Flight Control API v0.10.0 and improved the
+        FlightCtl inventory plugin robustness.
     fragments:
       - flightctl_1.3.0_update.yml
     release_date: '2025-09-30'
+  1.4.0:
+    changes:
+      major_changes:
+        - Added support for new features in Flight Control API v1.0.
+        - Updated the Ansible collection to support Flight Control API version 1.0.
+      release_summary: Added support for Flight Control API v1.0.
+    fragments:
+      - flightctl_1.4.0_update.yml
+    release_date: '2025-12-21'
+    

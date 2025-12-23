@@ -9,6 +9,7 @@
         credential_defaults: &credential_defaults
           flightctl_config_file: "{{ flightctl_config_file | default(omit) }}"
           flightctl_ca_path: "{{ flightctl_ca_path | default(omit)}}"
+          flightctl_organization: "{{ flightctl_organization | default(omit)}}"
           flightctl_token: "{{ flightctl_token | default(omit)}}"
           flightctl_host: "{{ flightctl_host | default(omit)}}"
           flightctl_validate_certs: "{{ flightctl_validate_certs | default(True)}}"
@@ -42,7 +43,7 @@
         kind: Device
         name: "device-ansible-example"
         resource_definition:
-          apiVersion: flightctl.io/v1alpha1
+          apiVersion: flightctl.io/v1beta1
           kind: Device
           metadata:
             name: "device-ansible-example"
@@ -57,7 +58,7 @@
         kind: Device
         name: "device-ansible-example"
         resource_definition:
-          apiVersion: flightctl.io/v1alpha1
+          apiVersion: flightctl.io/v1beta1
           kind: Device
           metadata:
             name: "device-ansible-example"
@@ -78,7 +79,7 @@
         kind: Device
         name: "device-ansible-example"
         resource_definition:
-          apiVersion: flightctl.io/v1alpha1
+          apiVersion: flightctl.io/v1beta1
           kind: Device
           metadata:
             name: "device-ansible-example"
@@ -98,7 +99,7 @@
         <<: *credential_defaults
         kind: Device
         name: "device-ansible-example-2"
-        api_version: flightctl.io/v1alpha1
+        api_version: flightctl.io/v1beta1
       register: _result
 
     - name: Assert that Device was created
@@ -112,9 +113,9 @@
         <<: *credential_defaults
         kind: Device
         name: "device-ansible-example-2"
-        api_version: flightctl.io/v1alpha1
+        api_version: flightctl.io/v1beta1
         resource_definition:
-          apiVersion: flightctl.io/v1alpha1
+          apiVersion: flightctl.io/v1beta1
           kind: Device
           metadata:
             labels:
@@ -182,7 +183,7 @@
         kind: Repository
         name: "repository-ansible-example"
         resource_definition:
-          apiVersion: flightctl.io/v1alpha1
+          apiVersion: flightctl.io/v1beta1
           kind: Repository
           metadata:
             name: repository-ansible-example

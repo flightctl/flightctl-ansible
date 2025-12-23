@@ -30,6 +30,11 @@ options:
     - This value can be in one of two formats.
     - If value not set, will try environment variable C(FLIGHTCTL_TOKEN)
     type: str
+  flightctl_organization:
+    description:
+    - Organization to scope Flight Control requests to.
+    - If value not set, will try environment variable C(FLIGHTCTL_ORGANIZATION)
+    type: str
   flightctl_validate_certs:
     description:
     - Whether to allow insecure connections to Flight Control service.

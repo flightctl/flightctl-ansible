@@ -4,6 +4,20 @@ flightctl collection Release Notes
 
 .. contents:: Topics
 
+v1.4.0
+======
+
+Release Summary
+---------------
+
+Added support for Flight Control API v1.0.
+
+Major Changes
+-------------
+
+- Added support for new features in Flight Control API v1.0.
+- Updated the Ansible collection to support Flight Control API version 1.0.
+
 v1.3.0
 ======
 
@@ -20,6 +34,7 @@ Minor Changes
 - Improved documentation and examples for `flightctl_config_file` (FlightCtl config) and config precedence.
 - Added `hostnames` option for selecting the device field (dot path) as the inventory hostname.
 - Inventory plugin now supports `group_by` option for grouping devices by a field value.
+
 
 Bugfixes
 --------
