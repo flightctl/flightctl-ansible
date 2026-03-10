@@ -1,0 +1,105 @@
+---
+- name: Test flightctl_resource idempotency (Device and Fleet present)
+  vars:
+    device_name: ansible-integration-test-device-idempotency
+    fleet_name: ansible-integration-test-fleet-idempotency
+    connection_info: &connection_info
+      flightctl_token: "{{ flightctl_token | default(omit)}}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_organization: "{{ flightctl_organization | default(omit)}}"
+      flightctl_validate_certs: False
+  block:
+    - name: Create a test device (first run)
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: Device
+        name: "{{ device_name }}"
+        api_version: flightctl.io/v1beta1
+        resource_definition:
+          spec:
+            os:
+              image: quay.io/redhat/rhde:9.2
+      register: device_create_1
+
+    - name: Assert device was created
+      ansible.builtin.assert:
+        that:
+          - device_create_1 is success
+          - device_create_1.changed | default(true) | bool
+
+    - name: Run same device present again (idempotency)
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: Device
+        name: "{{ device_name }}"
+        api_version: flightctl.io/v1beta1
+        resource_definition:
+          spec:
+            os:
+              image: quay.io/redhat/rhde:9.2
+      register: device_create_2
+
+    - name: Assert second run did not report change
+      ansible.builtin.assert:
+        that:
+          - device_create_2 is success
+          - not (device_create_2.changed | default(false) | bool)
+
+    - name: Create a test fleet (first run)
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: Fleet
+        name: "{{ fleet_name }}"
+        resource_definition:
+          spec:
+            selector:
+              matchLabels:
+                fleet: "{{ fleet_name }}"
+            template:
+              spec:
+                os:
+                  image: quay.io/redhat/rhde:9.2
+      register: fleet_create_1
+
+    - name: Assert fleet was created
+      ansible.builtin.assert:
+        that:
+          - fleet_create_1 is success
+          - fleet_create_1.changed | default(true) | bool
+
+    - name: Run same fleet present again (idempotency)
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: Fleet
+        name: "{{ fleet_name }}"
+        resource_definition:
+          spec:
+            selector:
+              matchLabels:
+                fleet: "{{ fleet_name }}"
+            template:
+              spec:
+                os:
+                  image: quay.io/redhat/rhde:9.2
+      register: fleet_create_2
+
+    - name: Assert second run did not report change
+      ansible.builtin.assert:
+        that:
+          - fleet_create_2 is success
+          - not (fleet_create_2.changed | default(false) | bool)
+
+  always:
+    - name: Delete test device
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: Device
+        name: "{{ device_name }}"
+        state: absent
+
+    - name: Delete test fleet
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: Fleet
+        name: "{{ fleet_name }}"
+        state: absent

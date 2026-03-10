@@ -89,10 +89,14 @@ class GetOptions:
         params = dict()
         if self.label_selector:
             params['label_selector'] = self.label_selector
+        # API has no 'owner' query param; use field_selector (metadata.owner=Kind/name)
+        field_parts = []
         if self.field_selector:
-            params['field_selector'] = self.field_selector
+            field_parts.append(self.field_selector)
         if self.owner:
-            params['owner'] = self.owner
+            field_parts.append(f"metadata.owner={self.owner}")
+        if field_parts:
+            params['field_selector'] = ",".join(field_parts)
         if self.summary:
             params['add_devices_summary'] = self.summary
         if self.summary_only:
