@@ -123,6 +123,9 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 changed |= True
             except Exception as e:
                 raise FlightctlException(f"Failed to delete resource: {e}") from e
+        else:
+            # Resource does not exist; idempotent no-op
+            result = existing_result
 
     elif state == "present":
         if existing_result.data:
