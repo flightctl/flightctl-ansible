@@ -28,7 +28,11 @@ options:
     type: str
   fleet_name:
     description:
-      - Use to specify a fleet name that owns the associated resources. Only applicable when O(kind=TemplateVersions).
+      - Use to specify a fleet name that owns the associated resources. Only applicable when O(kind=TemplateVersion).
+    type: str
+  catalog_name:
+    description:
+      - Use to specify a catalog name that owns the associated resources. Only applicable when O(kind=CatalogItem).
     type: str
   label_selector:
     description:
@@ -188,6 +192,7 @@ def main():
         label_selector=dict(type="str"),
         field_selector=dict(type="str"),
         fleet_name=dict(type="str"),
+        catalog_name=dict(type="str"),
         owner=dict(type="str"),
         rendered=dict(type="bool"),
         summary=dict(type="bool"),
@@ -212,6 +217,7 @@ def main():
         label_selector=module.params.get("label_selector"),
         field_selector=module.params.get("field_selector"),
         fleet_name=module.params.get("fleet_name"),
+        catalog_name=module.params.get("catalog_name"),
         owner=module.params.get("owner"),
         rendered=module.params.get("rendered"),
         summary=module.params.get("summary"),

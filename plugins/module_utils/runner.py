@@ -97,6 +97,8 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
 
     name = definition["metadata"].get("name")
     fleet_name = module.params.get("fleet_name")
+    catalog_name = module.params.get("catalog_name")
+    parent_name = fleet_name or catalog_name
     label_selector = module.params.get("label_selector")
     state = module.params.get("state")
     changed: bool = False
@@ -107,6 +109,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
             resource=resource,
             name=name,
             fleet_name=fleet_name,
+            catalog_name=catalog_name,
             label_selector=label_selector,
         )
         existing_result = module.get_one_or_many(get_options)
@@ -119,7 +122,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 module.exit_json(**{"changed": True})
 
             try:
-                result = module.delete(resource, name, fleet_name)
+                result = module.delete(resource, name, parent_name)
                 changed |= True
             except Exception as e:
                 raise FlightctlException(f"Failed to delete resource: {e}") from e
@@ -135,10 +138,10 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
 
             try:
                 if module.params.get("force_update"):
-                    result = module.replace(resource, definition)
+                    result = module.replace(resource, definition, parent_name)
                     changed |= True
                 else:
-                    changed, result = module.update(resource, existing_result.data[0], definition)
+                    changed, result = module.update(resource, existing_result.data[0], definition, parent_name)
             except Exception as e:
                 raise FlightctlException(f"Failed to update resource: {e}") from e
         else:
@@ -147,7 +150,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
                 module.exit_json(**{"changed": True})
 
             try:
-                result = module.create(resource, definition)
+                result = module.create(resource, definition, parent_name)
                 changed |= True
             except Exception as e:
                 raise FlightctlException(f"Failed to create resource: {e}") from e

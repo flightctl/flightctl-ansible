@@ -3,4 +3,4 @@ pyyaml>=6.0.1
 jsonpatch
 jsonschema
 websockets>=15.0.1
-git+https://github.com/flightctl/flightctl-python-client.git
+git+https://github.com/flightctl/flightctl-python-client.git@v1.1.0

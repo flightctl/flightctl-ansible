@@ -115,4 +115,23 @@ releases:
     fragments:
       - flightctl_1.4.0_update.yml
     release_date: '2025-12-21'
-    
+  1.5.0:
+    changes:
+      major_changes:
+        - Added ``flightctl_image_builder`` and ``flightctl_image_builder_info`` modules.
+        - Added v1alpha1 API support for Catalog and CatalogItem resources.
+        - Added support for AuthProvider, Catalog, CatalogItem, Event, Organization,
+          and EnrollmentConfig resource types.
+        - Updated the Ansible collection to support Flight Control API version 1.1.
+      release_summary: Added Image Builder modules, v1alpha1 API support, and new
+        resource types for Flight Control API v1.1.
+    fragments:
+      - flightctl_1.5.0_update.yml
+    modules:
+      - description: Manage Flight Control Image Builder resources.
+        name: flightctl_image_builder
+        namespace: ''
+      - description: Get information about Flight Control Image Builder resources.
+        name: flightctl_image_builder_info
+        namespace: ''
+    release_date: '2026-04-06'

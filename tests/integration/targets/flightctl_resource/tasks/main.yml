@@ -3,6 +3,9 @@
 - include_tasks: fleet-lifecycle.yml
 - include_tasks: repository-lifecycle.yml
 - include_tasks: resourcesync-lifecycle.yml
+- include_tasks: authprovider-lifecycle.yml
+- include_tasks: catalog-lifecycle.yml
+- include_tasks: catalogitem-lifecycle.yml
 - include_tasks: idempotency.yml
 # TODO - re-enable the delete template versions when the service stops returning a 500
 # - include_tasks: delete-template-versions.yml

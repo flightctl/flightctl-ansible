@@ -23,8 +23,8 @@ options:
       - Use to create, delete, or discover an object without providing a full resource definition.
       - If O(resource_definition) is provided, the C(apiVersion) value from the O(resource_definition)
         will override this option.
+      - When not specified, the API version is automatically determined from the resource O(kind).
     type: str
-    default: flightctl.io/v1beta1
   kind:
     description:
       - Use to specify an object model.
@@ -42,6 +42,10 @@ options:
   fleet_name:
     description:
       - Use to specify a fleet that owns the assocated resource(s).
+    type: str
+  catalog_name:
+    description:
+      - Use to specify a catalog that owns the associated CatalogItem resource(s).
     type: str
   resource_definition:
     description:
@@ -127,7 +131,8 @@ def main():
         kind=dict(type="str"),
         name=dict(type="str"),
         fleet_name=dict(type="str"),
-        api_version=dict(type="str", default="flightctl.io/v1beta1"),
+        catalog_name=dict(type="str"),
+        api_version=dict(type="str"),
         resource_definition=dict(type="raw"),
         **STATE_ARG_SPEC
     )

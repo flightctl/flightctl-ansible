@@ -4,6 +4,22 @@ flightctl collection Release Notes
 
 .. contents:: Topics
 
+v1.5.0
+======
+
+Release Summary
+---------------
+
+Added Image Builder modules, v1alpha1 API support, and new resource types for Flight Control API v1.1.
+
+Major Changes
+-------------
+
+- Added ``flightctl_image_builder`` and ``flightctl_image_builder_info`` modules.
+- Added v1alpha1 API support for Catalog and CatalogItem resources.
+- Added support for AuthProvider, Catalog, CatalogItem, Event, Organization, and EnrollmentConfig resource types.
+- Updated the Ansible collection to support Flight Control API version 1.1.
+
 v1.4.0
 ======
 

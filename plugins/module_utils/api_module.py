@@ -6,12 +6,13 @@ from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
 
+import importlib
 from datetime import datetime
 from base64 import b64encode
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 
-from .constants import API_MAPPING, ResourceType
+from .constants import API_MAPPING, NESTED_RESOURCES, ResourceType
 from .core import FlightctlModule
 from .exceptions import FlightctlException, FlightctlApiException
 from .options import ApprovalOptions, GetOptions
@@ -19,12 +20,11 @@ from .utils import diff_dicts, get_patch, json_patch
 
 
 try:
-    from flightctl import ApiClient
+    from flightctl.api_client import ApiClient
     from flightctl.configuration import Configuration
     from flightctl.api.enrollmentrequest_api import EnrollmentrequestApi
     from flightctl.api.certificatesigningrequest_api import CertificatesigningrequestApi
-    from flightctl.exceptions import ApiException, NotFoundException
-    from flightctl.models.patch_request_inner import PatchRequestInner
+    from flightctl.exceptions import ApiException
     from flightctl.models.enrollment_request_approval import EnrollmentRequestApproval
     from flightctl.models.list_meta import ListMeta
     from flightctl.models.condition import Condition
@@ -34,11 +34,25 @@ try:
     from flightctl.models.device_decommission import DeviceDecommission
     from flightctl.models.device_decommission_target_type import DeviceDecommissionTargetType
 
+    from flightctl.v1alpha1.api_client import ApiClient as V1Alpha1ApiClient
+    from flightctl.v1alpha1.configuration import Configuration as V1Alpha1Configuration
+
 except ImportError as imp_exc:
     ListMeta = None
     CLIENT_IMPORT_ERROR = imp_exc
 else:
     CLIENT_IMPORT_ERROR = None
+
+
+def _resolve_for_version(api_version: str, submodule: str, class_name: str):
+    """Resolve a version-specific class from the flightctl client library.
+
+    Maps an API version string (e.g. ``"v1beta1"``, ``"v1alpha1"``) to the
+    correct client package and imports ``<class_name>`` from ``<submodule>``.
+    """
+    pkg = "flightctl" if api_version == "v1beta1" else f"flightctl.{api_version}"
+    mod = importlib.import_module(f"{pkg}.{submodule}")
+    return getattr(mod, class_name)
 
 
 class ResourceProtocol(Protocol):
@@ -119,6 +133,13 @@ class FlightctlAPIModule(FlightctlModule):
         self.client = ApiClient(client_config)
         self._set_org_id_query_param()
 
+        v1alpha1_config = V1Alpha1Configuration(
+            host=self.url.geturl(),
+            ssl_ca_cert=self.ca_path,
+        )
+        v1alpha1_config.verify_ssl = self.verify_ssl
+        self.v1alpha1_client = V1Alpha1ApiClient(v1alpha1_config)
+
     def _set_org_id_query_param(self) -> None:
         """
         Inject the optional Flight Control org selector as a query parameter `org_id`.
@@ -176,6 +197,13 @@ class FlightctlAPIModule(FlightctlModule):
             _request_timeout=self.request_timeout,
         )
 
+    def _get_client(self, resource: ResourceType):
+        """Returns the appropriate ApiClient based on the resource's api_version."""
+        api_type = API_MAPPING[resource]
+        if api_type.api_version == "v1alpha1":
+            return self.v1alpha1_client
+        return self.client
+
     def get(
         self, options: GetOptions,
     ) -> ResourceProtocol:
@@ -193,23 +221,26 @@ class FlightctlAPIModule(FlightctlModule):
             FlightctlException: If the approval request fails.
         """
         api_type = API_MAPPING[options.resource]
-        api_instance = api_type.api(self.client)
+        api_instance = api_type.api(self._get_client(options.resource))
 
         if options.resource is ResourceType.DEVICE and options.rendered:
             get_call = getattr(api_instance, api_type.rendered)
         else:
             get_call = getattr(api_instance, api_type.get)
 
+        not_found_exc = _resolve_for_version(api_type.api_version, "exceptions", "NotFoundException")
+        api_exc = _resolve_for_version(api_type.api_version, "exceptions", "ApiException")
+
         try:
-            if options.resource is ResourceType.TEMPLATE_VERSION:
-                return self.call_api(get_call, options.fleet_name, options.name)
+            if options.resource in NESTED_RESOURCES:
+                return self.call_api(get_call, options.parent_name, options.name)
             elif options.resource is ResourceType.FLEET:
                 return self.call_api(get_call, options.name, options.summary)
             else:
                 return self.call_api(get_call, options.name)
-        except NotFoundException:
+        except not_found_exc:
             return None
-        except ApiException as e:
+        except api_exc as e:
             raise FlightctlApiException(f"Unable to fetch {options.resource.value} - {options.name}: {e}")
 
     def list(self, options: GetOptions) -> ListProtocol:
@@ -226,15 +257,16 @@ class FlightctlAPIModule(FlightctlModule):
             FlightctlException: If the approval request fails.
         """
         api_type = API_MAPPING[options.resource]
-        api_instance = api_type.api(self.client)
+        api_instance = api_type.api(self._get_client(options.resource))
         list_call = getattr(api_instance, api_type.list)
+        api_exc = _resolve_for_version(api_type.api_version, "exceptions", "ApiException")
 
         try:
-            if options.resource is ResourceType.TEMPLATE_VERSION:
-                return self.call_api(list_call, options.fleet_name, **options.request_params)
+            if options.resource in NESTED_RESOURCES:
+                return self.call_api(list_call, options.parent_name, **options.request_params)
             else:
                 return self.call_api(list_call, **options.request_params)
-        except ApiException as e:
+        except api_exc as e:
             raise FlightctlApiException(f"Unable to list {options.resource.value}: {e}")
 
     def get_one_or_many(
@@ -268,35 +300,39 @@ class FlightctlAPIModule(FlightctlModule):
             )
 
     def create(
-        self, resource: ResourceType, definition: Dict[str, Any]
+        self, resource: ResourceType, definition: Dict[str, Any],
+        parent_name: Optional[str] = None,
     ) -> ResourceProtocol:
         """
         Creates a new resource in the API.
 
         Args:
+            resource (ResourceType): The type of resource to create.
             definition (Dict[str, Any]): The resource definition.
+            parent_name (Optional[str]): Parent resource name for nested resources.
 
         Returns:
-            Returns:
-            Tuple[bool, Dict[str, Any]]:
-                A tuple containing:
-                    - A boolean indicating whether the resource was created (changed).
-                    - The created resource as a dictionary.
+            ResourceProtocol: The created resource.
+
         Raises:
             FlightctlException: If the creation fails.
         """
         api_type = API_MAPPING[resource]
-        api_instance = api_type.api(self.client)
+        api_instance = api_type.api(self._get_client(resource))
         create_call = getattr(api_instance, api_type.create)
+        api_exc = _resolve_for_version(api_type.api_version, "exceptions", "ApiException")
 
         try:
             request_obj = api_type.model.from_dict(definition)
+            if resource in NESTED_RESOURCES and parent_name:
+                return self.call_api(create_call, parent_name, request_obj)
             return self.call_api(create_call, request_obj)
-        except ApiException as e:
+        except api_exc as e:
             raise FlightctlApiException(f"Unable to create {resource.value}: {e}")
 
     def update(
-        self, resource: ResourceType, existing_obj: ResourceProtocol, definition: Dict[str, Any]
+        self, resource: ResourceType, existing_obj: ResourceProtocol, definition: Dict[str, Any],
+        parent_name: Optional[str] = None,
     ) -> Tuple[bool, Dict[str, Any]]:
         """
         Updates an existing resource.
@@ -309,6 +345,7 @@ class FlightctlAPIModule(FlightctlModule):
             resource(ResourceType): The type of resource to update.
             existing (Dict[str, Any]): The current state of the resource.
             definition (Dict[str, Any]): The desired state of the resource.
+            parent_name (Optional[str]): Parent resource name for nested resources.
 
         Returns:
             Tuple[bool, Dict[str, Any]]:
@@ -330,20 +367,26 @@ class FlightctlAPIModule(FlightctlModule):
         match, diffs = diff_dicts(existing, obj)
         if diffs:
             api_type = API_MAPPING[resource]
-            api_instance = api_type.api(self.client)
+            api_instance = api_type.api(self._get_client(resource))
             patch_call = getattr(api_instance, api_type.patch)
+            patch_cls = _resolve_for_version(api_type.api_version, "models.patch_request_inner", "PatchRequestInner")
+            api_exc = _resolve_for_version(api_type.api_version, "exceptions", "ApiException")
 
             try:
-                patch_params = [PatchRequestInner.from_dict(p) for p in patch]
-                response = self.call_api(patch_call, name, patch_params)
+                patch_params = [patch_cls.from_dict(p) for p in patch]
+                if resource in NESTED_RESOURCES and parent_name:
+                    response = self.call_api(patch_call, parent_name, name, patch_params)
+                else:
+                    response = self.call_api(patch_call, name, patch_params)
                 changed |= True
-            except ApiException as e:
-                raise FlightctlApiException(f"Unable to create {resource.value}: {e}")
+            except api_exc as e:
+                raise FlightctlApiException(f"Unable to update {resource.value}: {e}")
 
         return changed, (response if diffs else existing_obj)
 
     def replace(
-            self, resource: ResourceType, definition: Dict[str, Any]
+            self, resource: ResourceType, definition: Dict[str, Any],
+            parent_name: Optional[str] = None,
     ) -> ResourceProtocol:
         """
         Replaces an existing resource.
@@ -351,49 +394,50 @@ class FlightctlAPIModule(FlightctlModule):
         The replacement is equivalent to a PUT.
 
         Args:
-            resource(ResourceType): The type of resource to replace
+            resource(ResourceType): The type of resource to replace.
             definition(Dict[str, Any]): The desired state of the resource.
+            parent_name (Optional[str]): Parent resource name for nested resources.
 
         Returns:
             Dict[str, Any]: The result of the replace operation.
         """
         name = definition["metadata"]["name"]
         api_type = API_MAPPING[resource]
-        api_instance = api_type.api(self.client)
+        api_instance = api_type.api(self._get_client(resource))
         replace_call = getattr(api_instance, api_type.replace)
+        api_exc = _resolve_for_version(api_type.api_version, "exceptions", "ApiException")
 
         try:
             request_obj = api_type.model.from_dict(definition)
             return self.call_api(replace_call, name, request_obj)
-        except ApiException as e:
+        except api_exc as e:
             raise FlightctlApiException(f"Unable to replace {resource.value}: {e}")
 
-    def delete(self, resource: ResourceType, name: str, fleet_name: str) -> Optional[ResourceProtocol]:
+    def delete(self, resource: ResourceType, name: str, parent_name: Optional[str] = None) -> Optional[ResourceProtocol]:
         """
         Deletes resources from the API.
 
         Args:
-            endpoint (str): The API endpoint (resource type).
+            resource (ResourceType): The API resource type.
             name (str): The resource name.
+            parent_name (Optional[str]): Parent resource name for nested resources.
 
         Returns:
-            Tuple[bool, Optional[Any]]:
-                A tuple containing:
-                - A boolean indicating whether the resource was deleted (changed).
-                - An optional response body of the delete operation.
+            Optional[ResourceProtocol]: The response body of the delete operation.
         """
         if not name:
             raise FlightctlApiException("A resource name must be provided for deletion.")
 
         api_type = API_MAPPING[resource]
-        api_instance = api_type.api(self.client)
+        api_instance = api_type.api(self._get_client(resource))
         delete_call = getattr(api_instance, api_type.delete)
+        api_exc = _resolve_for_version(api_type.api_version, "exceptions", "ApiException")
         try:
-            if resource is ResourceType.TEMPLATE_VERSION:
-                response = self.call_api(delete_call, fleet_name, name)
+            if resource in NESTED_RESOURCES and parent_name:
+                response = self.call_api(delete_call, parent_name, name)
             else:
                 response = self.call_api(delete_call, name)
-        except ApiException as e:
+        except api_exc as e:
             raise FlightctlApiException(f"Unable to delete {resource.value} - {name}: {e}")
 
         return response

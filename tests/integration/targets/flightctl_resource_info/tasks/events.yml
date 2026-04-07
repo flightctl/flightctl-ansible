@@ -1,0 +1,34 @@
+---
+- name: Test Get Event Info (list-only)
+  vars:
+    connection_info: &connection_info
+      flightctl_token: "{{ flightctl_token | default(omit)}}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_organization: "{{ flightctl_organization | default(omit)}}"
+      flightctl_validate_certs: False
+  block:
+    - name: List all events
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: Event
+      register: events_result
+
+    - name: Assert that events were listed successfully
+      ansible.builtin.assert:
+        that:
+          - events_result is success
+          - events_result.result.data is defined
+
+    - name: List events with a limit
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: Event
+        limit: 5
+      register: limited_events_result
+
+    - name: Assert that limited events were listed successfully
+      ansible.builtin.assert:
+        that:
+          - limited_events_result is success
+          - limited_events_result.result.data is defined
+          - limited_events_result.result.data | length <= 5

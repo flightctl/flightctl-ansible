@@ -9,7 +9,7 @@ __metaclass__ = type
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from .constants import ResourceType
+from .constants import LIST_ONLY_RESOURCES, NESTED_RESOURCES, ResourceType
 from .exceptions import ValidationException
 
 
@@ -48,6 +48,7 @@ class GetOptions:
     field_selector: Optional[str] = None
     owner: Optional[str] = None
     fleet_name: Optional[str] = None
+    catalog_name: Optional[str] = None
     rendered: Optional[bool] = None
     summary: Optional[bool] = None
     summary_only: Optional[bool] = None
@@ -58,12 +59,18 @@ class GetOptions:
     def __post_init__(self):
         if not self.resource:
             raise ValidationException("Resource must be specified")
+        if self.name and self.resource in LIST_ONLY_RESOURCES:
+            raise ValidationException(f"{self.resource.value} only supports listing, not fetching by name")
         if self.owner and self.resource not in [ResourceType.DEVICE, ResourceType.FLEET]:
             raise ValidationException("Owner field is only valid for Device and Fleet kinds")
         if self.rendered and self.resource is not ResourceType.DEVICE:
             raise ValidationException("Rendered field is only valid for Device kind")
         if self.fleet_name and self.resource is not ResourceType.TEMPLATE_VERSION:
             raise ValidationException("Fleet name field is only valid for TemplateVersion kind")
+        if self.catalog_name and self.resource is not ResourceType.CATALOG_ITEM:
+            raise ValidationException("Catalog name field is only valid for CatalogItem kind")
+        if self.resource in NESTED_RESOURCES and not self.parent_name:
+            raise ValidationException(f"{self.resource.value} requires a parent name")
         if self.summary_only:
             if self.resource is not ResourceType.DEVICE:
                 raise ValidationException("Summary Only field is only valid for Device kind")
@@ -83,6 +90,11 @@ class GetOptions:
             raise ValidationException("Label selector field is not valid when fetching one resource")
         if self.field_selector and self.name:
             raise ValidationException("Label selector field is not valid when fetching one resource")
+
+    @property
+    def parent_name(self) -> Optional[str]:
+        """Returns the parent resource name for nested resources."""
+        return self.fleet_name or self.catalog_name
 
     @property
     def request_params(self) -> dict:

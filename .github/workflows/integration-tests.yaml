@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FLIGHTCTL_REF: v1.0.0
+  FLIGHTCTL_REF: v1.1.0-rc7
 
 jobs:
   integration-tests:
@@ -45,6 +45,9 @@ jobs:
 
       - name: Start flightctl services
         run: make deploy
+
+      - name: Deploy e2e extras
+        run: make deploy-e2e-extras
 
       - name: Checkout collection
         uses: actions/checkout@v4
@@ -96,6 +99,9 @@ jobs:
 
       - name: Start flightctl services
         run: make deploy
+
+      - name: Deploy e2e extras
+        run: make deploy-e2e-extras
 
       - name: Checkout repository
         uses: actions/checkout@v4

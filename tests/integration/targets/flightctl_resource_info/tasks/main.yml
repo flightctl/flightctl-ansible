@@ -3,3 +3,5 @@
   - include_tasks: fleets.yml
   - include_tasks: repository.yml
   - include_tasks: resource-sync.yml
+  - include_tasks: events.yml
+  - include_tasks: organizations.yml

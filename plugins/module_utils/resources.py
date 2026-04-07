@@ -8,12 +8,29 @@ __metaclass__ = type
 
 from typing import Any, Dict, Iterable, List, Optional, Union, cast
 
+from .constants import API_MAPPING, ResourceType
+
 try:
     import yaml
 except ImportError as imp_exc:
     PYYAML_IMPORT_ERROR = imp_exc
 else:
     PYYAML_IMPORT_ERROR = None
+
+_DEFAULT_API_VERSION = "flightctl.io/v1beta1"
+
+
+def _api_version_for_kind(kind: Optional[str]) -> str:
+    """Return the correct apiVersion string for a given resource kind."""
+    if kind:
+        try:
+            resource = ResourceType(kind)
+            mapping = API_MAPPING.get(resource)
+            if mapping and mapping.api_version == "v1alpha1":
+                return "flightctl.io/v1alpha1"
+        except (TypeError, ValueError):
+            pass
+    return _DEFAULT_API_VERSION
 
 
 class ResourceDefinition(Dict[str, Any]):
@@ -62,11 +79,13 @@ def merge_params(definition: Dict[str, Any], params: Dict[str, Any]) -> Dict[str
     Fields in the resource definition take precedence over module parameters.
     """
     definition.setdefault("kind", params.get("kind"))
-    definition.setdefault("apiVersion", params.get("api_version"))
+    api_version = params.get("api_version") or _api_version_for_kind(definition.get("kind"))
+    definition.setdefault("apiVersion", api_version)
     metadata = definition.setdefault("metadata", {})
-    # The following should only be set if we have values for them
     if params.get("name"):
         metadata.setdefault("name", params.get("name"))
+    if params.get("catalog_name"):
+        metadata.setdefault("catalog", params.get("catalog_name"))
     return definition
 
 
