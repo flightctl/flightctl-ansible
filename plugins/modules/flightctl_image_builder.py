@@ -169,8 +169,16 @@ def main():
             if not name:
                 module.fail_json(msg="name is required when state=cancelled")
 
+            existing = getattr(module, ops["get"])(name)
+            if not existing:
+                module.fail_json(msg=f"{kind} '{name}' not found")
+
+            status = (existing.to_dict().get("status") or {}).get("phase", "")
+            if status.lower() in ("cancelled", "cancelling"):
+                module.exit_json(changed=False, result=existing.to_dict())
+
             if module.check_mode:
-                module.exit_json(changed=True)
+                module.exit_json(changed=True, result=existing.to_dict())
 
             result = getattr(module, ops["cancel"])(name)
             module.exit_json(changed=True, result=result.to_dict())

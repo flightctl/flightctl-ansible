@@ -51,7 +51,7 @@ class FlightctlImageBuilderModule(FlightctlModule):
         )
 
         if IB_CLIENT_IMPORT_ERROR:
-            raise IB_CLIENT_IMPORT_ERROR
+            self.fail_json(msg="Image Builder client import failed", error=str(IB_CLIENT_IMPORT_ERROR))
 
         client_config = Configuration(
             host=self.url.geturl(),
@@ -122,7 +122,7 @@ class FlightctlImageBuilderModule(FlightctlModule):
                 kwargs['label_selector'] = label_selector
             if field_selector:
                 kwargs['field_selector'] = field_selector
-            if limit:
+            if limit is not None:
                 kwargs['limit'] = limit
             if continue_token:
                 kwargs['var_continue'] = continue_token
@@ -180,7 +180,7 @@ class FlightctlImageBuilderModule(FlightctlModule):
                 kwargs['label_selector'] = label_selector
             if field_selector:
                 kwargs['field_selector'] = field_selector
-            if limit:
+            if limit is not None:
                 kwargs['limit'] = limit
             if continue_token:
                 kwargs['var_continue'] = continue_token

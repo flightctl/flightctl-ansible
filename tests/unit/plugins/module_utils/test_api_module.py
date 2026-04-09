@@ -225,7 +225,7 @@ def test_delete_auth_provider(api_module):
             delete='delete_auth_provider',
         ),
     }):
-        result = api_module.delete(ResourceType.AUTH_PROVIDER, "test-provider", None)
+        api_module.delete(ResourceType.AUTH_PROVIDER, "test-provider", None)
         mock_api_instance.delete_auth_provider.assert_called_once()
 
 

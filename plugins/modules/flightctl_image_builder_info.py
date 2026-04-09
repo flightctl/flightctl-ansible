@@ -37,11 +37,16 @@ options:
     default: false
   download:
     description:
-      - If C(true), download the exported image artifact.
+      - If C(true), download the exported image artifact to the path specified by O(dest).
       - Only valid when O(kind=ImageExport) and O(name) is specified.
-      - The artifact is returned as base64-encoded content in the result.
+      - Requires O(dest) to be set.
     type: bool
     default: false
+  dest:
+    description:
+      - Destination file path to write the downloaded artifact to.
+      - Required when O(download=true).
+    type: path
   with_exports:
     description:
       - If C(true), include related ImageExport resources in the response.
@@ -106,6 +111,7 @@ EXAMPLES = r"""
     kind: ImageExport
     name: my-export
     download: true
+    dest: /tmp/my-export.img
   register: export_artifact
 """
 
@@ -124,8 +130,8 @@ result:
       description: The build/export log content.
       returned: When O(log=true)
       type: str
-    download:
-      description: Base64-encoded artifact content.
+    dest:
+      description: The file path the artifact was written to.
       returned: When O(download=true)
       type: str
     metadata:
@@ -133,8 +139,6 @@ result:
       returned: When listing resources
       type: dict
 """
-
-from base64 import b64encode
 
 from ..module_utils.imagebuilder_module import FlightctlImageBuilderModule
 from ..module_utils.exceptions import FlightctlException
@@ -184,9 +188,18 @@ def _handle_image_export(module, name, fetch_log, fetch_download):
     elif fetch_download:
         if not name:
             module.fail_json(msg="name is required when download=true")
+        dest = module.params.get("dest")
+        if not dest:
+            module.fail_json(msg="dest is required when download=true")
+        if module.check_mode:
+            module.exit_json(changed=True, result=dict(dest=dest))
         artifact = module.download_image_export(name)
-        encoded = b64encode(bytes(artifact)).decode('utf-8')
-        module.exit_json(result=dict(download=encoded))
+        try:
+            with open(dest, "wb") as f:
+                f.write(bytes(artifact))
+        except OSError as e:
+            module.fail_json(msg=f"Failed to write artifact to {dest}: {e}")
+        module.exit_json(result=dict(dest=dest), changed=True)
 
     elif name:
         resource = module.get_image_export(name)
@@ -214,6 +227,7 @@ def main():
         name=dict(type="str"),
         log=dict(type="bool", default=False),
         download=dict(type="bool", default=False),
+        dest=dict(type="path"),
         with_exports=dict(type="bool"),
         label_selector=dict(type="str"),
         field_selector=dict(type="str"),
@@ -234,6 +248,8 @@ def main():
                 module.fail_json(msg="download is only supported for kind=ImageExport")
             _handle_image_build(module, name, fetch_log)
         else:
+            if module.params.get("with_exports"):
+                module.fail_json(msg="with_exports is only supported for kind=ImageBuild")
             _handle_image_export(module, name, fetch_log, fetch_download)
 
     except FlightctlException as e:

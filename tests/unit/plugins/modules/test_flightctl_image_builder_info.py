@@ -4,8 +4,6 @@ __metaclass__ = type
 
 import pytest
 from unittest.mock import MagicMock, patch
-from base64 import b64encode
-
 from tests.unit.utils import set_module_args
 
 
@@ -276,17 +274,18 @@ class TestImageExportInfoLog:
 
 
 class TestImageExportInfoDownload:
-    def test_download(self):
+    def test_download(self, tmp_path):
+        dest = str(tmp_path / 'artifact.img')
         set_module_args(dict(
             flightctl_host='https://ib.example.com',
             flightctl_token='tok',
             kind='ImageExport',
             name='my-export',
             download=True,
+            dest=dest,
         ))
 
         artifact = bytearray(b'\x89PNG\r\n')
-        expected_b64 = b64encode(bytes(artifact)).decode('utf-8')
 
         with patch(f'{IB_CLASS}.download_image_export', return_value=artifact) as mock_dl, \
              patch(f'{IB_CLASS}.exit_json') as mock_exit:
@@ -297,7 +296,9 @@ class TestImageExportInfoDownload:
 
             mock_dl.assert_called_once_with('my-export')
             result = mock_exit.call_args[1]['result']
-            assert result['download'] == expected_b64
+            assert result['dest'] == dest
+            with open(dest, 'rb') as f:
+                assert f.read() == bytes(artifact)
 
     def test_download_without_name_fails(self):
         set_module_args(dict(

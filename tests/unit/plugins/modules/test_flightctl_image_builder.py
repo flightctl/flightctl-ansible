@@ -188,10 +188,14 @@ class TestImageBuilderCancel:
             state='cancelled',
         ))
 
+        mock_existing = MagicMock()
+        mock_existing.to_dict.return_value = {"metadata": {"name": "b1"}, "status": {"phase": "Building"}}
+
         mock_result = MagicMock()
         mock_result.to_dict.return_value = {"metadata": {"name": "b1"}, "status": {"phase": "Cancelled"}}
 
-        with patch(f'{IB_CLASS}.cancel_image_build', return_value=mock_result) as mock_cancel, \
+        with patch(f'{IB_CLASS}.get_image_build', return_value=mock_existing), \
+             patch(f'{IB_CLASS}.cancel_image_build', return_value=mock_result) as mock_cancel, \
              patch(f'{IB_CLASS}.exit_json') as mock_exit:
             mock_exit.side_effect = SystemExit(0)
             with pytest.raises(SystemExit):
@@ -211,10 +215,14 @@ class TestImageBuilderCancel:
             state='cancelled',
         ))
 
-        mock_result = MagicMock()
-        mock_result.to_dict.return_value = {"metadata": {"name": "e1"}}
+        mock_existing = MagicMock()
+        mock_existing.to_dict.return_value = {"metadata": {"name": "e1"}, "status": {"phase": "Exporting"}}
 
-        with patch(f'{IB_CLASS}.cancel_image_export', return_value=mock_result) as mock_cancel, \
+        mock_result = MagicMock()
+        mock_result.to_dict.return_value = {"metadata": {"name": "e1"}, "status": {"phase": "Cancelled"}}
+
+        with patch(f'{IB_CLASS}.get_image_export', return_value=mock_existing), \
+             patch(f'{IB_CLASS}.cancel_image_export', return_value=mock_result) as mock_cancel, \
              patch(f'{IB_CLASS}.exit_json') as mock_exit:
             mock_exit.side_effect = SystemExit(0)
             with pytest.raises(SystemExit):

@@ -23,8 +23,9 @@ _DEFAULT_API_VERSION = "flightctl.io/v1beta1"
 def _api_version_for_kind(kind: Optional[str]) -> str:
     """Return the correct apiVersion string for a given resource kind."""
     if kind:
+        normalized = kind[:-4] if kind.endswith("List") else kind
         try:
-            resource = ResourceType(kind)
+            resource = ResourceType(normalized)
             mapping = API_MAPPING.get(resource)
             if mapping and mapping.api_version == "v1alpha1":
                 return "flightctl.io/v1alpha1"

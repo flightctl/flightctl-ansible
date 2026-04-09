@@ -89,7 +89,7 @@ class GetOptions:
         if self.label_selector and self.name:
             raise ValidationException("Label selector field is not valid when fetching one resource")
         if self.field_selector and self.name:
-            raise ValidationException("Label selector field is not valid when fetching one resource")
+            raise ValidationException("Field selector field is not valid when fetching one resource")
 
     @property
     def parent_name(self) -> Optional[str]:

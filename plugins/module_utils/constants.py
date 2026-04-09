@@ -120,6 +120,7 @@ try:
             create='create_catalog_item',
             list='list_catalog_items',
             patch='patch_catalog_item',
+            replace='replace_catalog_item',
             delete='delete_catalog_item',
         ),
         ResourceType.DEVICE: ApiResource(

@@ -120,7 +120,7 @@ class FlightctlAPIModule(FlightctlModule):
         )
 
         if CLIENT_IMPORT_ERROR:
-            raise CLIENT_IMPORT_ERROR
+            self.fail_json(msg="Flight Control client import failed", error=str(CLIENT_IMPORT_ERROR))
 
         client_config = Configuration(
             host=self.url.geturl(),
@@ -131,7 +131,7 @@ class FlightctlAPIModule(FlightctlModule):
         self.set_auth()
 
         self.client = ApiClient(client_config)
-        self._set_org_id_query_param()
+        self._set_org_id_query_param(self.client)
 
         v1alpha1_config = V1Alpha1Configuration(
             host=self.url.geturl(),
@@ -139,8 +139,9 @@ class FlightctlAPIModule(FlightctlModule):
         )
         v1alpha1_config.verify_ssl = self.verify_ssl
         self.v1alpha1_client = V1Alpha1ApiClient(v1alpha1_config)
+        self._set_org_id_query_param(self.v1alpha1_client)
 
-    def _set_org_id_query_param(self) -> None:
+    def _set_org_id_query_param(self, client) -> None:
         """
         Inject the optional Flight Control org selector as a query parameter `org_id`.
         """
@@ -148,7 +149,7 @@ class FlightctlAPIModule(FlightctlModule):
             return
 
         org_id = str(self.organization)
-        original_param_serialize = self.client.param_serialize
+        original_param_serialize = client.param_serialize
 
         def param_serialize_with_org_id(*args: Any, **kwargs: Any):
             query_params = kwargs.get('query_params')
@@ -161,7 +162,7 @@ class FlightctlAPIModule(FlightctlModule):
 
             return original_param_serialize(*args, **kwargs)
 
-        self.client.param_serialize = param_serialize_with_org_id
+        client.param_serialize = param_serialize_with_org_id
 
     def set_auth(self) -> None:
         """
@@ -409,6 +410,8 @@ class FlightctlAPIModule(FlightctlModule):
 
         try:
             request_obj = api_type.model.from_dict(definition)
+            if resource in NESTED_RESOURCES and parent_name:
+                return self.call_api(replace_call, parent_name, name, request_obj)
             return self.call_api(replace_call, name, request_obj)
         except api_exc as e:
             raise FlightctlApiException(f"Unable to replace {resource.value}: {e}")
