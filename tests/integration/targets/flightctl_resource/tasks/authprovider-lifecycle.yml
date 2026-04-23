@@ -1,0 +1,20 @@
+---
+- name: Test AuthProvider info (list and get)
+  vars:
+    connection_info: &connection_info
+      flightctl_token: "{{ flightctl_token | default(omit)}}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_organization: "{{ flightctl_organization | default(omit)}}"
+      flightctl_validate_certs: False
+  block:
+    - name: List all auth providers
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: AuthProvider
+      register: list_result
+
+    - name: Assert auth providers were listed successfully
+      ansible.builtin.assert:
+        that:
+          - list_result is success
+          - list_result.result.data is defined

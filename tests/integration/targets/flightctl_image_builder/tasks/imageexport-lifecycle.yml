@@ -1,0 +1,240 @@
+---
+- name: Test ImageExport lifecycle (list, get)
+  vars:
+    connection_info: &connection_info
+      flightctl_token: "{{ flightctl_token | default(omit) }}"
+      flightctl_host: "{{ flightctl_image_builder_host }}"
+      flightctl_validate_certs: False
+  block:
+    - name: List all image exports
+      flightctl.core.flightctl_image_builder_info:
+        <<: *connection_info
+        kind: ImageExport
+      register: list_result
+
+    - name: Assert image exports were listed successfully
+      ansible.builtin.assert:
+        that:
+          - list_result is success
+          - list_result.result.data is defined
+
+    - name: List image exports with a limit
+      flightctl.core.flightctl_image_builder_info:
+        <<: *connection_info
+        kind: ImageExport
+        limit: 5
+      register: limited_result
+
+    - name: Assert limited image exports were listed successfully
+      ansible.builtin.assert:
+        that:
+          - limited_result is success
+          - limited_result.result.data is defined
+          - limited_result.result.data | length <= 5
+
+    - name: Delete a non-existent image export (should be idempotent)
+      flightctl.core.flightctl_image_builder:
+        <<: *connection_info
+        kind: ImageExport
+        name: ansible-integration-nonexistent-export
+        state: absent
+      register: delete_result
+
+    - name: Assert no change for non-existent delete
+      ansible.builtin.assert:
+        that:
+          - delete_result is success
+          - not delete_result.changed
+
+- name: Test ImageExport happy path (create, get, logs, delete)
+  vars:
+    core_connection: &core_connection
+      flightctl_token: "{{ flightctl_token | default(omit) }}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_organization: "{{ flightctl_organization | default(omit) }}"
+      flightctl_validate_certs: False
+    ib_connection: &ib_connection
+      flightctl_token: "{{ flightctl_token | default(omit) }}"
+      flightctl_host: "{{ flightctl_image_builder_host }}"
+      flightctl_validate_certs: False
+    source_repo_name: ansible-integration-ie-source-repo
+    dest_repo_name: ansible-integration-ie-dest-repo
+    build_name: ansible-integration-test-export-build
+    export_name: ansible-integration-test-export
+  block:
+    - name: Create source repository
+      flightctl.core.flightctl_resource:
+        <<: *core_connection
+        kind: Repository
+        name: "{{ source_repo_name }}"
+        resource_definition:
+          spec:
+            registry: quay.io
+            type: oci
+            scheme: https
+            accessMode: Read
+      register: source_repo_result
+
+    - name: Assert source repository was created
+      ansible.builtin.assert:
+        that:
+          - source_repo_result is success
+
+    - name: Create destination repository
+      flightctl.core.flightctl_resource:
+        <<: *core_connection
+        kind: Repository
+        name: "{{ dest_repo_name }}"
+        resource_definition:
+          spec:
+            registry: e2e-container-registry.flightctl-e2e.svc.cluster.local:5000
+            type: oci
+            scheme: https
+            accessMode: ReadWrite
+            skipServerVerification: true
+      register: dest_repo_result
+
+    - name: Assert destination repository was created
+      ansible.builtin.assert:
+        that:
+          - dest_repo_result is success
+
+    - name: Create a prerequisite image build
+      flightctl.core.flightctl_image_builder:
+        <<: *ib_connection
+        kind: ImageBuild
+        state: present
+        resource_definition:
+          apiVersion: v1alpha1
+          kind: ImageBuild
+          metadata:
+            name: "{{ build_name }}"
+          spec:
+            source:
+              repository: "{{ source_repo_name }}"
+              imageName: centos-bootc/centos-bootc
+              imageTag: stream9
+            destination:
+              repository: "{{ dest_repo_name }}"
+              imageName: ansible-test-export
+              imageTag: latest
+            binding:
+              type: late
+      register: build_result
+
+    - name: Assert prerequisite build was created
+      ansible.builtin.assert:
+        that:
+          - build_result is success
+          - build_result.changed
+
+    - name: Create an image export
+      flightctl.core.flightctl_image_builder:
+        <<: *ib_connection
+        kind: ImageExport
+        state: present
+        resource_definition:
+          apiVersion: v1alpha1
+          kind: ImageExport
+          metadata:
+            name: "{{ export_name }}"
+          spec:
+            source:
+              type: imageBuild
+              imageBuildRef: "{{ build_name }}"
+            format: qcow2
+      register: export_create_result
+
+    - name: Assert export was created
+      ansible.builtin.assert:
+        that:
+          - export_create_result is success
+          - export_create_result.changed
+          - export_create_result.result is defined
+
+    - name: Get the image export by name
+      flightctl.core.flightctl_image_builder_info:
+        <<: *ib_connection
+        kind: ImageExport
+        name: "{{ export_name }}"
+      register: export_get_result
+
+    - name: Assert export was retrieved
+      ansible.builtin.assert:
+        that:
+          - export_get_result is success
+          - export_get_result.result.data | length == 1
+
+    - name: Get export logs
+      flightctl.core.flightctl_image_builder_info:
+        <<: *ib_connection
+        kind: ImageExport
+        name: "{{ export_name }}"
+        log: true
+      register: export_log_result
+
+    - name: Assert export logs were retrieved
+      ansible.builtin.assert:
+        that:
+          - export_log_result is success
+          - export_log_result.result.log is defined
+
+    - name: Delete the image export
+      flightctl.core.flightctl_image_builder:
+        <<: *ib_connection
+        kind: ImageExport
+        name: "{{ export_name }}"
+        state: absent
+      register: export_delete_result
+
+    - name: Assert export was deleted
+      ansible.builtin.assert:
+        that:
+          - export_delete_result is success
+          - export_delete_result.changed
+
+    - name: Verify export no longer exists
+      flightctl.core.flightctl_image_builder_info:
+        <<: *ib_connection
+        kind: ImageExport
+        name: "{{ export_name }}"
+      register: export_verify_result
+
+    - name: Assert export is gone
+      ansible.builtin.assert:
+        that:
+          - export_verify_result is success
+          - export_verify_result.result.data | length == 0
+
+  always:
+    - name: Cleanup image export (if still present)
+      flightctl.core.flightctl_image_builder:
+        <<: *ib_connection
+        kind: ImageExport
+        name: "{{ export_name }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Cleanup prerequisite image build (if still present)
+      flightctl.core.flightctl_image_builder:
+        <<: *ib_connection
+        kind: ImageBuild
+        name: "{{ build_name }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Cleanup source repository
+      flightctl.core.flightctl_resource:
+        <<: *core_connection
+        kind: Repository
+        name: "{{ source_repo_name }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Cleanup destination repository
+      flightctl.core.flightctl_resource:
+        <<: *core_connection
+        kind: Repository
+        name: "{{ dest_repo_name }}"
+        state: absent
+      ignore_errors: true
