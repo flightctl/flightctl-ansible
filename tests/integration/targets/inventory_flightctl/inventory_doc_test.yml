@@ -7,7 +7,7 @@
       - "flightctl.core.flightctl"
       - "returns ansible inventory"
       - "flightctl_config_file"
-      - "flightctl-python-client"
+      - "flightctl-client"
   tasks:
     - name: Run ansible-doc to get plugin help text
       ansible.builtin.command: ansible-doc -t inventory flightctl.core.flightctl
