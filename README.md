@@ -10,11 +10,11 @@ This collection enables organizations to automate time-consuming, error-prone ta
 
 ### Ansible version compatibility
 
-Tested with the Ansible Core >= 2.15.0 versions, and the current development version of Ansible.
+Tested with Ansible Core 2.16.0 and later, including current development versions.
 
 ### Python version compatibility
 
-This collection requires Python 3.10 or greater.
+This collection requires Python 3.12 or greater.
 
 ### Ansible Automation Platform compatibility  
   
@@ -56,19 +56,13 @@ A specific version of the collection can be installed by using the `version` key
 ---
 collections:
   - name: flightctl.core
-    version: 1.4.0
+    version: 1.5.0
 ```
 
 or using the ansible-galaxy command as follows
 
 ```shell
-ansible-galaxy collection install flightctl.core:1.4.0
-```
-
-The Python module dependencies are not installed by ansible-galaxy. They must be installed manually using pip:
-
-```shell
-pip install -r requirements.txt
+ansible-galaxy collection install flightctl.core:1.5.0
 ```
 
 Refer to the following for more details.
@@ -171,8 +165,9 @@ The easiest way to run tests locally is to:
 
 ## Support
 
-flightctl.core collection v1.0.0 is for [Technical Preview](https://access.redhat.com/support/offerings/techpreview). If you encounter issues or have questions, you can submit a support request through the following channels:
- - GitHub Issues: Report bugs, request features, or ask questions by opening an issue in the [GitHub repository](https://github.com/flightctl/flightctl-ansible/issues).
+If you encounter issues or have questions about the flightctl.core collection, you can submit a support request through the following channels:
+ - Automation Hub: Open a support case using the "Create issue" link on the [collection page in Automation Hub](https://console.redhat.com/ansible/automation-hub/collections/published/redhat/edge_manager/details).
+ - GitHub Issues: Report bugs or request features by opening an issue in the [GitHub repository](https://github.com/flightctl/flightctl-ansible/issues).
 
 ## Release notes
 
@@ -184,4 +179,4 @@ More information about Flight Control can be found in the [main repo](https://gi
 
 ## License Information
 
-See [LICENSE](./LICENSE) to see the full text.
+See [LICENSE](https://github.com/flightctl/flightctl-ansible/blob/main/LICENSE) to see the full text.

@@ -62,7 +62,7 @@ requirements:
   - jsonpatch
   - jsonschema
   - PyYAML
-  - "flightctl (git+https://github.com/flightctl/flightctl-python-client.git)"
+  - flightctl-client
 """
 
 EXAMPLES = r"""

@@ -110,8 +110,8 @@ options:
       required: false
       default: null
 requirements:
-    - "python >= 3.6"
-    - "flightctl-python-client"
+    - "python >= 3.12"
+    - "flightctl-client"
 '''
 
 try:

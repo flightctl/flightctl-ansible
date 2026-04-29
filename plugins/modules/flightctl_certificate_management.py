@@ -44,7 +44,7 @@ extends_documentation_fragment:
 requirements:
   - jsonschema
   - PyYAML
-  - "flightctl (git+https://github.com/flightctl/flightctl-python-client.git)"
+  - flightctl-client
 """
 
 

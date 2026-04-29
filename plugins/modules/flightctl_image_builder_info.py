@@ -71,7 +71,7 @@ options:
 extends_documentation_fragment:
   - flightctl.core.auth
 requirements:
-  - "flightctl (git+https://github.com/flightctl/flightctl-python-client.git)"
+  - flightctl-client
 """
 
 EXAMPLES = r"""
