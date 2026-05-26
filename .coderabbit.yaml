@@ -25,6 +25,8 @@ reviews:
     spec, return values), shared utilities, plugin behavior, test coverage,
     CI configuration, or collection metadata (galaxy.yml, meta/runtime.yml),
     and flag any backward-compatibility implications.
+  approve:
+    enabled: false
   collapse_walkthrough: false
   sequence_diagrams: true
 
