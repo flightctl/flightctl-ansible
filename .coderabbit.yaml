@@ -304,11 +304,8 @@ reviews:
         - No pre-release versions
 
     # ── Cryptography-related files ───────────────────────────────
-    # Note: minimatch (used by CodeRabbit) supports brace expansion
-    # by default. This pattern matches files with crypto-related
-    # keywords in their names (e.g., flightctl_certificate_management.py).
-    - path: "**/*{crypt,cipher,sign,hash,tls,ssl,cert,key,token}*"
-      instructions: |
+    - path: "**/*crypt*"
+      instructions: &crypto-instructions |
         Cryptographic security:
         - Banned: MD5, SHA1, DES, RC4, 3DES, Blowfish, ECB mode
         - Symmetric: AES-256-GCM or ChaCha20-Poly1305
@@ -316,6 +313,30 @@ reviews:
         - No custom crypto; use vetted libraries only
         - Constant-time comparison for all secret/token data
         - Certificate validation: verify full chain by default
+
+    - path: "**/*cipher*"
+      instructions: *crypto-instructions
+
+    - path: "**/*sign*"
+      instructions: *crypto-instructions
+
+    - path: "**/*hash*"
+      instructions: *crypto-instructions
+
+    - path: "**/*tls*"
+      instructions: *crypto-instructions
+
+    - path: "**/*ssl*"
+      instructions: *crypto-instructions
+
+    - path: "**/*cert*"
+      instructions: *crypto-instructions
+
+    - path: "**/*key*"
+      instructions: *crypto-instructions
+
+    - path: "**/*token*"
+      instructions: *crypto-instructions
 
     # ── Changelogs ───────────────────────────────────────────────
     - path: "changelogs/**/*"
