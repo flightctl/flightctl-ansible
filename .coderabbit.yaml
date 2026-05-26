@@ -15,7 +15,7 @@ tone_instructions: >-
 
 reviews:
   profile: "assertive"
-  request_changes_workflow: true
+  request_changes_workflow: false
   high_level_summary: true
   high_level_summary_instructions: >-
     Summarize changes in terms of which areas are affected (plugins/modules/,
@@ -25,8 +25,6 @@ reviews:
     spec, return values), shared utilities, plugin behavior, test coverage,
     CI configuration, or collection metadata (galaxy.yml, meta/runtime.yml),
     and flag any backward-compatibility implications.
-  approve:
-    enabled: false
   collapse_walkthrough: false
   sequence_diagrams: true
 
