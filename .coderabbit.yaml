@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 # CodeRabbit configuration for flightctl.core Ansible Collection
 # Tuned for: Python modules, module_utils, plugins, Ansible YAML, CI, shell scripts
 #
