@@ -1,0 +1,385 @@
+# CodeRabbit configuration for flightctl.core Ansible Collection
+# Tuned for: Python modules, module_utils, plugins, Ansible YAML, CI, shell scripts
+#
+# Schema: https://coderabbit.ai/integrations/schema.v2.json
+# Validate: comment "@coderabbitai configuration" on any PR
+#
+language: "en-US"
+early_access: true
+tone_instructions: >-
+  Balanced: weigh both security risk and design quality.
+  For security findings, state severity and impact.
+  For design findings, explain the Ansible or Python principle violated
+  and the concrete consequence (e.g., broken idempotency, silent data loss).
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: true
+  high_level_summary: true
+  high_level_summary_instructions: >-
+    Summarize changes in terms of which areas are affected (plugins/modules/,
+    plugins/module_utils/, plugins/connection/, plugins/inventory/,
+    plugins/doc_fragments/, tests/unit/, tests/integration/, demo/, .github/,
+    changelogs/), whether the change affects the module API surface (argument
+    spec, return values), shared utilities, plugin behavior, test coverage,
+    CI configuration, or collection metadata (galaxy.yml, meta/runtime.yml),
+    and flag any backward-compatibility implications.
+  collapse_walkthrough: false
+  sequence_diagrams: true
+
+  path_filters:
+    - "!**/*.tar.gz"
+    - "!.tox/**"
+    - "!.venv/**"
+    - "!venv/**"
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+    base_branches:
+      - "main"
+      - "release/.*"
+    ignore_title_keywords:
+      - "[skip-review]"
+      - "WIP"
+
+  labeling_instructions:
+    - label: "modules"
+      instructions: >-
+        Apply when the PR modifies files in plugins/modules/. Changes here
+        affect the Ansible module API surface (argument specs, return values,
+        behavior).
+
+    - label: "module-utils"
+      instructions: >-
+        Apply when the PR modifies files in plugins/module_utils/. Changes
+        here affect shared utilities used by all modules.
+
+    - label: "plugins"
+      instructions: >-
+        Apply when the PR modifies files in plugins/connection/ or
+        plugins/inventory/. Changes here affect connection or inventory
+        plugin behavior.
+
+    - label: "tests"
+      instructions: >-
+        Apply when the PR modifies files in tests/. Changes here affect
+        unit or integration test coverage.
+
+    - label: "ci"
+      instructions: >-
+        Apply when the PR modifies files in .github/workflows/ or ci/.
+        Changes here affect CI pipeline behavior.
+
+    - label: "docs"
+      instructions: >-
+        Apply when the PR primarily modifies documentation files (README.md,
+        CONTRIBUTING.md, CHANGELOG.rst) or doc_fragments/ without changing
+        module logic.
+
+    - label: "collection-metadata"
+      instructions: >-
+        Apply when the PR modifies galaxy.yml, meta/runtime.yml, or
+        changelogs/. Changes here affect collection versioning, compatibility
+        declarations, or release notes.
+
+  path_instructions:
+
+    # ── Ansible modules ──────────────────────────────────────────
+    - path: "plugins/modules/**/*.py"
+      instructions: |
+        Ansible module review — design AND security:
+
+        Design (idempotency is the top priority):
+        - Module MUST be idempotent: identical input → identical result, no side effects on re-run
+        - Support check_mode: report what would change without making changes
+        - DOCUMENTATION, EXAMPLES, RETURN docstrings must be present and accurate
+        - Return consistent result dicts: changed, msg, and resource-specific keys
+        - Argument spec: define type, required, default, choices for every parameter
+        - Use module.fail_json() for errors with actionable messages
+        - Use module.exit_json() for success with meaningful return data
+        - EXAMPLES must use FQCN (flightctl.core.<module_name>)
+        - Diff mode: return before/after state when module.\_diff is set
+
+        Security:
+        - Use no_log=True for parameters that accept secrets, tokens, or passwords
+        - No shell=True, os.system, or subprocess with unsanitized input
+        - No eval/exec on user-provided data
+        - Validate and sanitize all user-provided arguments at the argument spec level
+        - HTTPS for all API communication; certificate verification enabled by default
+        - No hardcoded credentials, endpoints, or tokens
+
+    # ── Module utilities ─────────────────────────────────────────
+    - path: "plugins/module_utils/**/*.py"
+      instructions: |
+        Module utilities review — shared code that all modules depend on:
+
+        Design:
+        - Clean, well-defined public interfaces; minimize surface area
+        - Raise specific exceptions (not bare Exception or generic RuntimeError)
+        - Functions should be independently testable
+        - Avoid circular imports between utility modules
+        - Type hints on public function signatures
+        - Separation of concerns: API client logic, argument handling,
+          resource manipulation should live in distinct modules
+
+        Security:
+        - TLS certificate validation must be the default; disabling it
+          should require explicit user opt-in
+        - No yaml.load without SafeLoader; no pickle on untrusted data
+        - Sanitize data before logging (strip tokens, passwords, keys)
+        - Connection strings and URLs must not embed credentials
+
+    # ── Connection and inventory plugins ─────────────────────────
+    - path: "plugins/{connection,inventory}/**/*.py"
+      instructions: |
+        Ansible plugin review:
+
+        Design:
+        - Implement all required plugin interface methods
+        - Handle connection failures gracefully with clear, actionable errors
+        - DOCUMENTATION must describe all options with type, default, and env/ini sources
+        - Inventory plugin: proper use of caching, compose, and keyed_groups
+        - Connection plugin: support become, persistent connections where applicable
+
+        Security:
+        - Protect credentials in memory (no_log, clear after use)
+        - Validate TLS certificates by default; warn when verification is disabled
+        - No credential leakage in debug or verbose output (-vvv)
+        - WebSocket connections must use wss:// in production
+
+    # ── Documentation fragments ──────────────────────────────────
+    - path: "plugins/doc_fragments/**/*.py"
+      instructions: |
+        Documentation fragment review:
+        - Options must specify type, default, description, and required
+        - Environment variable and ini sources should be documented
+        - Descriptions should be clear enough for users unfamiliar with Flight Control
+        - Fragments should be reusable across modules without modification
+
+    # ── Python — general quality and security ────────────────────
+    - path: "**/*.py"
+      instructions: |
+        Python code quality and security:
+
+        Design:
+        - Follow PEP 8 naming conventions
+        - Use type hints for function signatures
+        - Keep functions focused on a single responsibility
+        - Prefer composition over inheritance
+        - Handle errors explicitly; do not swallow exceptions silently
+        - Avoid mutable default arguments
+
+        Security:
+        - No string formatting or concatenation for shell commands
+        - No eval/exec/compile on untrusted data
+        - No pickle.loads or yaml.load(stream) without SafeLoader on untrusted input
+        - Validate at trust boundaries with allow-lists, not deny-lists
+        - No hardcoded secrets, tokens, or credentials
+        - Constant-time comparison for sensitive values (hmac.compare_digest)
+
+    # ── Tests ────────────────────────────────────────────────────
+    - path: "tests/**/*.py"
+      instructions: |
+        Test quality review:
+        - Clear test names describing scenario and expected outcome
+        - Arrange-Act-Assert structure
+        - Each test verifies one behavior
+        - Mock external dependencies (API calls, filesystem), not internal logic
+        - Assertions must be specific — not just "no exception was raised"
+        - Test both success and error/exception paths
+        - No hardcoded credentials in test fixtures (use placeholders)
+
+    # ── Integration test tasks (Ansible YAML) ────────────────────
+    - path: "tests/integration/**/*.{yaml,yml}"
+      instructions: |
+        Integration test review:
+        - Verify idempotency: run the task twice and assert no change on the second run
+        - Test check_mode: run with check_mode=true and verify no actual change
+        - Test error conditions: invalid input, missing resources, permission errors
+        - Use assert module to validate expected state after each action
+        - Register results and inspect return values, not just changed status
+        - Clean up created resources in always blocks
+        - Use FQCN for all module references
+
+    # ── Demo playbooks ───────────────────────────────────────────
+    - path: "demo/**/*.{yaml,yml}"
+      instructions: |
+        Demo playbook review:
+        - Must use FQCN for all module references (flightctl.core.*)
+        - Every task must have a descriptive name
+        - No hardcoded credentials or secrets; use variables or vault
+        - Should demonstrate best practices that users can copy
+
+    # ── Ansible YAML (general) ───────────────────────────────────
+    - path: "**/*.{yaml,yml}"
+      instructions: |
+        Ansible YAML review (applies to playbooks, tasks, and variable files):
+        - Use FQCN for all module references
+        - Every task must have a descriptive name
+        - Use no_log: true on tasks handling sensitive data
+        - Avoid command/shell modules when a dedicated module exists
+        - Variables: use descriptive snake_case names
+
+    # ── CI/CD pipelines ──────────────────────────────────────────
+    - path: ".github/workflows/**/*"
+      instructions: |
+        CI/CD review — security AND design:
+
+        Security:
+        - Pin actions by full SHA, not tag
+        - No secrets in logs; mask sensitive outputs
+        - Least privilege: minimize GITHUB_TOKEN permissions
+        - No pull_request_target with checkout of PR head
+
+        Design:
+        - Fail fast: lint and unit tests before heavier integration tests
+        - Cache dependencies (pip, ansible collections) where possible
+        - Matrix strategy should cover supported Python/Ansible versions
+        - Clear job names that map to status checks
+
+    # ── Shell scripts ────────────────────────────────────────────
+    - path: "**/*.sh"
+      instructions: |
+        Shell script review:
+        - Use set -euo pipefail
+        - Quote all variable expansions ("$var", not $var)
+        - Use [[ ]] over [ ] for conditionals
+        - No eval with user-controlled input
+        - Validate inputs and fail early with clear messages
+
+    # ── Supply chain & dependencies ──────────────────────────────
+    - path: "**/{requirements*.txt,pyproject.toml,galaxy.yml,.pre-commit-config.yaml}"
+      instructions: |
+        Supply chain and dependency review:
+        - New dependencies: justify need, check license compatibility (Apache-2.0)
+        - Pin exact versions for reproducible builds
+        - Flag known CVEs (cross-ref osv.dev)
+        - No pre-release or yanked versions in production
+        - galaxy.yml: verify version bump follows semver
+        - Pre-commit hooks: pin by rev
+
+    # ── Cryptography-related files ───────────────────────────────
+    - path: "**/*{crypt,cipher,sign,hash,tls,ssl,cert,key,token}*"
+      instructions: |
+        Cryptographic security:
+        - Banned: MD5, SHA1, DES, RC4, 3DES, Blowfish, ECB mode
+        - Symmetric: AES-256-GCM or ChaCha20-Poly1305
+        - Signing: Ed25519 or ECDSA P-256+
+        - No custom crypto; use vetted libraries only
+        - Constant-time comparison for all secret/token data
+        - Certificate validation: verify full chain by default
+
+    # ── Changelogs ───────────────────────────────────────────────
+    - path: "changelogs/**/*"
+      instructions: |
+        Changelog review:
+        - Fragments must be categorized correctly (bugfixes, minor_changes,
+          major_changes, breaking_changes, deprecated_features)
+        - Descriptions should be user-facing and understandable without code context
+        - Include module name and brief impact description
+
+    # ── Documentation ────────────────────────────────────────────
+    - path: "**/*.{md,rst}"
+      instructions: |
+        Documentation review:
+        - Accurate and consistent with current code behavior
+        - Code examples must use FQCN
+        - Version references must be current
+        - Installation and usage instructions must be complete and testable
+
+  # ── Security scanners ────────────────────────────────────────
+  tools:
+    gitleaks:
+      enabled: true
+    semgrep:
+      enabled: true
+    actionlint:
+      enabled: true
+    ast-grep:
+      essential_rules: true
+    # YAML and markdown linting (from ai-workflows config)
+    yamllint:
+      enabled: true
+    markdownlint:
+      enabled: true
+    # No Dockerfiles in this repo; disable container-specific scanners
+    hadolint:
+      enabled: false
+    # Dependency vulnerability scanning
+    trivy:
+      enabled: true
+    osvScanner:
+      enabled: true
+    # No IaC (Terraform/CloudFormation) in this repo
+    checkov:
+      enabled: false
+
+  # ── Pre-merge checks (hard gates) ───────────────────────────
+  pre_merge_checks:
+    description:
+      mode: "warning"
+    custom_checks:
+      - name: "no-hardcoded-secrets"
+        instructions: |
+          Flag hardcoded secrets: API keys, tokens, passwords, private
+          keys, credentials. Also flag base64 strings >32 chars in config,
+          URLs with embedded credentials, variables named api_key/secret/
+          token/password assigned string literals. In Ansible YAML, flag
+          sensitive values not protected by no_log or vault.
+        mode: "error"
+
+      - name: "no-weak-crypto"
+        instructions: |
+          Flag MD5, SHA1, DES, RC4, 3DES, Blowfish, ECB mode usage.
+          Flag custom crypto implementations. Flag non-constant-time
+          comparison of secrets or tokens.
+        mode: "error"
+
+      - name: "no-injection-vectors"
+        instructions: |
+          Flag shell=True with user input, eval/exec on untrusted data,
+          pickle.loads on untrusted input, yaml.load without SafeLoader,
+          os.system with variables. In Ansible tasks, flag command/shell
+          usage when a module alternative exists.
+        mode: "error"
+
+      - name: "no-sensitive-data-in-logs"
+        instructions: |
+          Flag logging that may expose passwords, tokens, API keys,
+          PII, session IDs, or customer data. In Ansible tasks, flag
+          missing no_log on tasks that handle sensitive data (credentials,
+          certificates, tokens).
+        mode: "error"
+
+      - name: "ansible-idempotency"
+        instructions: |
+          Flag Ansible modules that may break idempotency: modules that
+          always report changed=True without comparing desired vs actual
+          state, modules missing check_mode support, command/shell tasks
+          without creates/removes guards.
+        mode: "warning"
+
+      - name: "ai-attribution"
+        instructions: |
+          If AI tools were used (mentioned in PR or commits), verify
+          Red Hat attribution: Assisted-by or Generated-by trailers.
+          Flag use of Co-Authored-By for AI tools.
+        mode: "warning"
+
+# ── Knowledge base ───────────────────────────────────────────
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "**/AGENTS.md"
+      - "**/CLAUDE.md"
+      - "**/CONTRIBUTING.md"
+
+  issues:
+    scope: "auto"
+  pull_requests:
+    scope: "auto"
+  learnings:
+    scope: "auto"
