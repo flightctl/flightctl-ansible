@@ -131,23 +131,38 @@ reviews:
         - Sanitize data before logging (strip tokens, passwords, keys)
         - Connection strings and URLs must not embed credentials
 
-    # ── Connection and inventory plugins ─────────────────────────
-    - path: "plugins/{connection,inventory}/**/*.py"
+    # ── Connection plugin ────────────────────────────────────────
+    - path: "plugins/connection/**/*.py"
       instructions: |
-        Ansible plugin review:
+        Connection plugin review:
 
         Design:
         - Implement all required plugin interface methods
         - Handle connection failures gracefully with clear, actionable errors
         - DOCUMENTATION must describe all options with type, default, and env/ini sources
-        - Inventory plugin: proper use of caching, compose, and keyed_groups
-        - Connection plugin: support become, persistent connections where applicable
+        - Support become, persistent connections where applicable
 
         Security:
         - Protect credentials in memory (no_log, clear after use)
         - Validate TLS certificates by default; warn when verification is disabled
         - No credential leakage in debug or verbose output (-vvv)
         - WebSocket connections must use wss:// in production
+
+    # ── Inventory plugin ─────────────────────────────────────────
+    - path: "plugins/inventory/**/*.py"
+      instructions: |
+        Inventory plugin review:
+
+        Design:
+        - Implement all required plugin interface methods
+        - Handle connection failures gracefully with clear, actionable errors
+        - DOCUMENTATION must describe all options with type, default, and env/ini sources
+        - Proper use of caching, compose, and keyed_groups
+
+        Security:
+        - Protect credentials in memory (no_log, clear after use)
+        - Validate TLS certificates by default; warn when verification is disabled
+        - No credential leakage in debug or verbose output (-vvv)
 
     # ── Documentation fragments ──────────────────────────────────
     - path: "plugins/doc_fragments/**/*.py"
@@ -192,8 +207,8 @@ reviews:
         - No hardcoded credentials in test fixtures (use placeholders)
 
     # ── Integration test tasks (Ansible YAML) ────────────────────
-    - path: "tests/integration/**/*.{yaml,yml}"
-      instructions: |
+    - path: "tests/integration/**/*.yaml"
+      instructions: &integration-test-instructions |
         Integration test review:
         - Verify idempotency: run the task twice and assert no change on the second run
         - Test check_mode: run with check_mode=true and verify no actual change
@@ -203,24 +218,33 @@ reviews:
         - Clean up created resources in always blocks
         - Use FQCN for all module references
 
+    - path: "tests/integration/**/*.yml"
+      instructions: *integration-test-instructions
+
     # ── Demo playbooks ───────────────────────────────────────────
-    - path: "demo/**/*.{yaml,yml}"
-      instructions: |
+    - path: "demo/**/*.yaml"
+      instructions: &demo-instructions |
         Demo playbook review:
         - Must use FQCN for all module references (flightctl.core.*)
         - Every task must have a descriptive name
         - No hardcoded credentials or secrets; use variables or vault
         - Should demonstrate best practices that users can copy
 
+    - path: "demo/**/*.yml"
+      instructions: *demo-instructions
+
     # ── Ansible YAML (general) ───────────────────────────────────
-    - path: "**/*.{yaml,yml}"
-      instructions: |
+    - path: "**/*.yaml"
+      instructions: &ansible-yaml-instructions |
         Ansible YAML review (applies to playbooks, tasks, and variable files):
         - Use FQCN for all module references
         - Every task must have a descriptive name
         - Use no_log: true on tasks handling sensitive data
         - Avoid command/shell modules when a dedicated module exists
         - Variables: use descriptive snake_case names
+
+    - path: "**/*.yml"
+      instructions: *ansible-yaml-instructions
 
     # ── CI/CD pipelines ──────────────────────────────────────────
     - path: ".github/workflows/**/*"
@@ -250,17 +274,38 @@ reviews:
         - Validate inputs and fail early with clear messages
 
     # ── Supply chain & dependencies ──────────────────────────────
-    - path: "**/{requirements*.txt,pyproject.toml,galaxy.yml,.pre-commit-config.yaml}"
-      instructions: |
+    - path: "**/requirements*.txt"
+      instructions: &supply-chain-instructions |
         Supply chain and dependency review:
         - New dependencies: justify need, check license compatibility (Apache-2.0)
         - Pin exact versions for reproducible builds
         - Flag known CVEs (cross-ref osv.dev)
         - No pre-release or yanked versions in production
-        - galaxy.yml: verify version bump follows semver
-        - Pre-commit hooks: pin by rev
+
+    - path: "**/pyproject.toml"
+      instructions: *supply-chain-instructions
+
+    - path: "**/galaxy.yml"
+      instructions: |
+        Collection metadata and supply chain review:
+        - New dependencies: justify need, check license compatibility (Apache-2.0)
+        - Pin exact versions for reproducible builds
+        - Flag known CVEs (cross-ref osv.dev)
+        - No pre-release or yanked versions in production
+        - Verify version bump follows semver
+
+    - path: "**/.pre-commit-config.yaml"
+      instructions: |
+        Pre-commit hook supply chain review:
+        - New hooks: justify need, check license compatibility
+        - Pin hooks by rev (full SHA or release tag)
+        - Flag known CVEs in hook repositories
+        - No pre-release versions
 
     # ── Cryptography-related files ───────────────────────────────
+    # Note: minimatch (used by CodeRabbit) supports brace expansion
+    # by default. This pattern matches files with crypto-related
+    # keywords in their names (e.g., flightctl_certificate_management.py).
     - path: "**/*{crypt,cipher,sign,hash,tls,ssl,cert,key,token}*"
       instructions: |
         Cryptographic security:
@@ -281,13 +326,16 @@ reviews:
         - Include module name and brief impact description
 
     # ── Documentation ────────────────────────────────────────────
-    - path: "**/*.{md,rst}"
-      instructions: |
+    - path: "**/*.md"
+      instructions: &docs-instructions |
         Documentation review:
         - Accurate and consistent with current code behavior
         - Code examples must use FQCN
         - Version references must be current
         - Installation and usage instructions must be complete and testable
+
+    - path: "**/*.rst"
+      instructions: *docs-instructions
 
   # ── Security scanners ────────────────────────────────────────
   tools:
@@ -324,10 +372,13 @@ reviews:
       - name: "no-hardcoded-secrets"
         instructions: |
           Flag hardcoded secrets: API keys, tokens, passwords, private
-          keys, credentials. Also flag base64 strings >32 chars in config,
-          URLs with embedded credentials, variables named api_key/secret/
-          token/password assigned string literals. In Ansible YAML, flag
-          sensitive values not protected by no_log or vault.
+          keys, credentials. Flag high-entropy secret-like strings when
+          the variable or key name indicates a credential (api_key, secret,
+          token, password, private_key). Flag URLs with embedded credentials,
+          and variables named api_key/secret/token/password assigned string
+          literals. In Ansible YAML, flag sensitive values not protected
+          by no_log or vault. Do not flag base64-encoded certificate data
+          in test fixtures or certificate-authority-data fields.
         mode: "error"
 
       - name: "no-weak-crypto"
@@ -339,10 +390,13 @@ reviews:
 
       - name: "no-injection-vectors"
         instructions: |
-          Flag shell=True with user input, eval/exec on untrusted data,
-          pickle.loads on untrusted input, yaml.load without SafeLoader,
-          os.system with variables. In Ansible tasks, flag command/shell
-          usage when a module alternative exists.
+          Flag Python code using shell=True with user input, eval/exec
+          on untrusted data, pickle.loads on untrusted input, yaml.load
+          without SafeLoader, or os.system with interpolated variables.
+          Do not flag Ansible command/shell task usage in integration
+          tests or demos — these are controlled environments where
+          command/shell is often the only option (e.g., mktemp, service
+          management, CLI tools with no module equivalent).
         mode: "error"
 
       - name: "no-sensitive-data-in-logs"
