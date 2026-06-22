@@ -292,6 +292,10 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
 
         request_timeout = self.get_option('request_timeout') or 120.0
 
+        host = host.rstrip('/')
+        if not host.endswith('/api/v1'):
+            host = f"{host}/api/v1"
+
         config = Configuration(
             host=host,
             access_token=access_token,
@@ -422,10 +426,29 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
 
 
 # ---------------------- Custom context manager ------------------
+def _set_org_id_query_param(client: ApiClient, organization: str) -> None:
+    """Inject the optional Flight Control org selector as a query parameter."""
+    original_param_serialize = client.param_serialize
+
+    def param_serialize_with_org_id(*args: Any, **kwargs: Any) -> Any:
+        query_params = kwargs.get('query_params')
+        if query_params is None:
+            query_params = []
+            kwargs['query_params'] = query_params
+        if not any(k == 'org_id' for k, _v in query_params):
+            query_params.append(('org_id', organization))
+        return original_param_serialize(*args, **kwargs)
+
+    client.param_serialize = param_serialize_with_org_id
+
+
 @contextmanager
 def flightctl_apis(config: Configuration) -> Generator[tuple[DeviceApi, FleetApi], Any, None]:
     """ Context manager yielding both API clients (device_api, fleet_api) """
     with ApiClient(configuration=config) as client:
+        organization = getattr(config, 'organization', None)
+        if organization:
+            _set_org_id_query_param(client, str(organization))
         yield DeviceApi(client), FleetApi(client)
 
 

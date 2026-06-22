@@ -2,4 +2,4 @@ pyyaml>=6.0.1
 jsonpatch
 jsonschema
 websockets>=15.0.1
-flightctl-client==1.1.0
+flightctl-client==1.2.1

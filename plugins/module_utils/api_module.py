@@ -122,8 +122,12 @@ class FlightctlAPIModule(FlightctlModule):
         if CLIENT_IMPORT_ERROR:
             self.fail_json(msg="Flight Control client import failed", error=str(CLIENT_IMPORT_ERROR))
 
+        host_url = self.url.geturl().rstrip('/')
+        if not host_url.endswith('/api/v1'):
+            host_url = f"{host_url}/api/v1"
+
         client_config = Configuration(
-            host=self.url.geturl(),
+            host=host_url,
             ssl_ca_cert=self.ca_path,
         )
         client_config.verify_ssl = self.verify_ssl
@@ -134,7 +138,7 @@ class FlightctlAPIModule(FlightctlModule):
         self._set_org_id_query_param(self.client)
 
         v1alpha1_config = V1Alpha1Configuration(
-            host=self.url.geturl(),
+            host=host_url,
             ssl_ca_cert=self.ca_path,
         )
         v1alpha1_config.verify_ssl = self.verify_ssl

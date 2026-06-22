@@ -1,0 +1,19 @@
+---
+- name: Generate EC private key
+  ansible.builtin.command:
+    cmd: openssl ecparam -genkey -name prime256v1 -noout
+  register: _privkey
+  changed_when: false
+
+- name: Generate CSR with matching CN
+  ansible.builtin.command:
+    cmd: openssl req -new -key /dev/stdin -subj "/CN={{ csr_resource_name }}"
+  args:
+    stdin: "{{ _privkey.stdout }}"
+  register: _csr_pem
+  changed_when: false
+
+- name: Set CSR facts for use in subsequent tasks
+  ansible.builtin.set_fact:
+    generated_csr_b64: "{{ _csr_pem.stdout | b64encode }}"
+    generated_csr_pem: "{{ _csr_pem.stdout }}"

@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FLIGHTCTL_REF: v1.1.1
+  FLIGHTCTL_REF: v1.2.0
 
 jobs:
   integration-tests:
@@ -46,8 +46,8 @@ jobs:
       - name: Start flightctl services
         run: make deploy
 
-      - name: Deploy e2e extras
-        run: make deploy-e2e-extras
+      - name: Start e2e registry
+        run: docker run -d --name e2e-registry --network kind -p 5000:5000 quay.io/flightctl/e2eregistry:2
 
       - name: Checkout collection
         uses: actions/checkout@v4
@@ -100,8 +100,8 @@ jobs:
       - name: Start flightctl services
         run: make deploy
 
-      - name: Deploy e2e extras
-        run: make deploy-e2e-extras
+      - name: Start e2e registry
+        run: docker run -d --name e2e-registry --network kind -p 5000:5000 quay.io/flightctl/e2eregistry:2
 
       - name: Checkout repository
         uses: actions/checkout@v4
