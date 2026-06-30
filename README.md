@@ -56,13 +56,13 @@ A specific version of the collection can be installed by using the `version` key
 ---
 collections:
   - name: flightctl.core
-    version: 1.5.0
+    version: 1.6.0
 ```
 
 or using the ansible-galaxy command as follows
 
 ```shell
-ansible-galaxy collection install flightctl.core:1.5.0
+ansible-galaxy collection install flightctl.core:1.6.0
 ```
 
 Refer to the following for more details.

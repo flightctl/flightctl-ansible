@@ -4,6 +4,19 @@ flightctl collection Release Notes
 
 .. contents:: Topics
 
+v1.6.0
+======
+
+Release Summary
+---------------
+
+Added support for Flight Control API v1.2.
+
+Major Changes
+-------------
+
+- Updated the Ansible collection to support Flight Control API version 1.2.
+
 v1.5.0
 ======
 

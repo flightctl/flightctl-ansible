@@ -1,4 +1,4 @@
 jsonschema
 jsonpatch
-flightctl-client==1.1.0
+flightctl-client==1.2.1
 websockets>=15.0.1

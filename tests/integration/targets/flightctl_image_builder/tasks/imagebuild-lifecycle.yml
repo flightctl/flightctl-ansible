@@ -86,11 +86,10 @@
         name: "{{ dest_repo_name }}"
         resource_definition:
           spec:
-            registry: e2e-container-registry.flightctl-e2e.svc.cluster.local:5000
+            registry: e2e-registry:5000
             type: oci
-            scheme: https
+            scheme: http
             accessMode: ReadWrite
-            skipServerVerification: true
       register: dest_repo_result
 
     - name: Assert destination repository was created
