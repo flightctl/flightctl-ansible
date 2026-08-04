@@ -6,11 +6,11 @@ from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
 
-from base64 import b64encode
 from typing import Any, Callable, Dict, Optional
 
 from .core import FlightctlModule
-from .exceptions import FlightctlApiException
+from .exceptions import FlightctlApiException, FlightctlException
+from .oidc_auth import oidc_password_grant
 
 try:
     from flightctl.imagebuilder.api_client import ApiClient
@@ -66,12 +66,37 @@ class FlightctlImageBuilderModule(FlightctlModule):
         self._imageexport_api = None
 
     def _set_auth_headers(self) -> None:
+        """
+        Sets auth headers for the underlying client based on set parameters.
+
+        Prioritizes a set token if present on the module. If only a username and
+        password are provided, exchanges them for a Bearer token via an OIDC
+        password grant (mirroring `flightctl login --username --password`), since
+        the Flight Control API only accepts Bearer tokens on its endpoints.
+        """
         if self.token:
             self.headers = {'Authorization': f'Bearer {self.token}'}
         elif self.username and self.password:
-            basic_credentials = f"{self.username}:{self.password}"
-            encoded = b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
-            self.headers = {'Authorization': f'Basic {encoded}'}
+            bearer_token, error_detail = oidc_password_grant(
+                host=self.host,
+                username=self.username,
+                password=self.password,
+                verify_ssl=self.verify_ssl,
+                ca_path=self.ca_path,
+                request_timeout=self.request_timeout,
+            )
+            if not bearer_token:
+                self.fail_json(
+                    msg=f"Failed to authenticate with username/password via OIDC password grant: {error_detail}"
+                )
+                # fail_json() only raises/exits when no error_callback is set; if a
+                # caller supplied a non-raising error_callback, stop here so we never
+                # fall through to sending "Authorization: Bearer None".
+                raise FlightctlException(f"Failed to authenticate: {error_detail}")
+            self.headers = {'Authorization': f'Bearer {bearer_token}'}
+            # No longer needed now that we hold a bearer token; drop them from memory.
+            self.username = None
+            self.password = None
         else:
             self.headers = None
 

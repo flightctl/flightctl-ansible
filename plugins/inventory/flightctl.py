@@ -42,22 +42,32 @@ options:
       description: URL to Flight Control server. A token or username/password must be also provided.
       default: null
       type: str
+      env:
+        - name: FLIGHTCTL_HOST
     organization:
       description: Organization to scope Flight Control requests to.
       default: null
       type: str
+      env:
+        - name: FLIGHTCTL_ORGANIZATION
     username:
-      description: Username for your Flight Control service. Please note that this only works with proxies configured to use HTTP Basic Auth.
+      description: Username for your Flight Control service.
       default: null
       type: str
+      env:
+        - name: FLIGHTCTL_USERNAME
     password:
-      description: Password for your Flight Control service. Please note that this only works with proxies configured to use HTTP Basic Auth.
+      description: Password for your Flight Control service.
       default: null
       type: str
+      env:
+        - name: FLIGHTCTL_PASSWORD
     token:
-      description: The Flight Control API token to use.
+      description: The Flight Control API token to use. If value not set, will try environment variable C(FLIGHTCTL_TOKEN).
       default: null
       type: str
+      env:
+        - name: FLIGHTCTL_TOKEN
     additional_groups:
       description: Additional groups to add devices to.
       type: list
@@ -100,6 +110,8 @@ options:
           C(service.certificate-authority-data) (base64-encoded PEM).
         - Any values defined in the inventory override values from this file.
       type: path
+      env:
+        - name: FLIGHTCTL_CONFIG_FILE
     hostnames:
       description: |
         Dotted path of the device field to use as the Ansible inventory hostname (for example, C(metadata.name) or C(status.systemInfo.hostname)).
@@ -133,6 +145,7 @@ else:
 
 from ..module_utils.config_loader import ConfigLoader
 from ..module_utils.exceptions import ValidationException, FlightctlApiException, FlightctlException
+from ..module_utils.oidc_auth import oidc_password_grant
 from ansible.plugins.inventory import BaseInventoryPlugin, Constructable
 from ansible.utils.display import Display
 from contextlib import contextmanager
@@ -459,9 +472,26 @@ def _build_auth_headers(config: Configuration) -> Dict[str, str] | None:
     username = getattr(config, 'username', None)
     password = getattr(config, 'password', None)
     if username and password:
-        basic_credentials = f"{username}:{password}"
-        encoded_credentials = base64.b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
-        return {'Authorization': f'Basic {encoded_credentials}'}
+        bearer_token, error_detail = oidc_password_grant(
+            host=getattr(config, 'host', None),
+            username=username,
+            password=password,
+            verify_ssl=getattr(config, 'verify_ssl', True),
+            ca_path=getattr(config, 'ssl_ca_cert', None),
+            request_timeout=getattr(config, 'request_timeout', None),
+        )
+        if not bearer_token:
+            raise ValidationException(
+                f"Failed to authenticate with username/password via OIDC password grant: {error_detail}"
+            )
+        # Cache the token on the Configuration so subsequent calls within this inventory
+        # sync short-circuit through the access_token branch above, instead of repeating
+        # the discovery + token exchange handshake for every device/fleet/group listing.
+        config.access_token = bearer_token
+        # No longer needed now that access_token is cached; drop them from memory.
+        config.username = None
+        config.password = None
+        return {'Authorization': f'Bearer {bearer_token}'}
     return None
 
 
