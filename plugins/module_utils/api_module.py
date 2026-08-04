@@ -8,13 +8,13 @@ __metaclass__ = type
 
 import importlib
 from datetime import datetime
-from base64 import b64encode
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 
 from .constants import API_MAPPING, NESTED_RESOURCES, ResourceType
 from .core import FlightctlModule
 from .exceptions import FlightctlException, FlightctlApiException
+from .oidc_auth import oidc_password_grant
 from .options import ApprovalOptions, GetOptions
 from .utils import diff_dicts, get_patch, json_patch
 
@@ -172,14 +172,27 @@ class FlightctlAPIModule(FlightctlModule):
         """
         Sets auth headers for the underlying client based on set parameters.
 
-        Prioritizes a set token if present on the module.
+        Prioritizes a set token if present on the module. If only a username and
+        password are provided, exchanges them for a Bearer token via an OIDC
+        password grant (mirroring `flightctl login --username --password`), since
+        the Flight Control API only accepts Bearer tokens on its endpoints.
         """
         if self.token:
             self.headers = {'Authorization': f'Bearer {self.token}'}
         elif self.username and self.password:
-            basic_credentials = f"{self.username}:{self.password}"
-            encoded_credentials = b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
-            self.headers = {'Authorization': f'Basic {encoded_credentials}'}
+            bearer_token, error_detail = oidc_password_grant(
+                host=self.host,
+                username=self.username,
+                password=self.password,
+                verify_ssl=self.verify_ssl,
+                ca_path=self.ca_path,
+                request_timeout=self.request_timeout,
+            )
+            if not bearer_token:
+                self.fail_json(
+                    msg=f"Failed to authenticate with username/password via OIDC password grant: {error_detail}"
+                )
+            self.headers = {'Authorization': f'Bearer {bearer_token}'}
         else:
             self.headers = None
 

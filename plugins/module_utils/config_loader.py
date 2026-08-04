@@ -25,11 +25,6 @@ from ansible.module_utils.parsing.convert_bool import boolean as strtobool
 
 class ConfigLoader:
     def __init__(self, config_file=None, warn_callback=None):
-        if JSONSCHEMA_IMPORT_ERROR:
-            raise JSONSCHEMA_IMPORT_ERROR
-        if PYYAML_IMPORT_ERROR:
-            raise PYYAML_IMPORT_ERROR
-
         self._warn_callback = warn_callback
 
         # Assign token from config if it exists
@@ -44,6 +39,13 @@ class ConfigLoader:
 
     def _load_config_file(self, config_file):
         """Loads and validates the configuration from the provided file."""
+        # jsonschema/PyYAML are only required when a config_file is actually supplied,
+        # so the import checks live here rather than in __init__.
+        if JSONSCHEMA_IMPORT_ERROR:
+            raise JSONSCHEMA_IMPORT_ERROR
+        if PYYAML_IMPORT_ERROR:
+            raise PYYAML_IMPORT_ERROR
+
         # Define the schema for validation
         schema = {
             "type": "object",

@@ -1,8 +1,19 @@
+import io
+import json
 import unittest
+from urllib.error import HTTPError
 from unittest.mock import patch, MagicMock
 
 # Import your inventory module
-from plugins.inventory.flightctl import InventoryModule, _render_hostname_expression, _resolve_hostname, _validate_device
+from plugins.inventory.flightctl import (
+    InventoryModule,
+    _render_hostname_expression,
+    _resolve_hostname,
+    _validate_device,
+    _build_auth_headers,
+)
+from plugins.module_utils.exceptions import ValidationException
+from flightctl.configuration import Configuration
 
 
 class TestFlightCtlInventoryModule(unittest.TestCase):
@@ -519,6 +530,124 @@ class TestValidateDeviceWithExpressions(unittest.TestCase):
         device_id, metadata = _validate_device(device, "metadata.name + '_' + metadata.uid")
         self.assertEqual(device_id, 'device1_')
         self.assertEqual(metadata, device['metadata'])
+
+
+def _fake_http_response(data):
+    """Build a stand-in for what ansible.module_utils.urls.open_url() returns."""
+    response = MagicMock()
+    response.read.return_value = json.dumps(data).encode('utf-8')
+    return response
+
+
+AUTH_CONFIG_RESPONSE = {
+    'apiVersion': 'v1beta1',
+    'defaultProvider': 'pam-issuer',
+    'providers': [{
+        'apiVersion': 'v1beta1',
+        'kind': 'AuthProvider',
+        'metadata': {'name': 'pam-issuer'},
+        'spec': {
+            'providerType': 'oidc',
+            'issuer': 'https://issuer.example.com/_/pam-issuer',
+            'clientId': 'flightctl-client',
+        },
+    }],
+}
+
+OIDC_DISCOVERY_RESPONSE = {
+    'issuer': 'https://issuer.example.com/_/pam-issuer',
+    'token_endpoint': 'https://issuer.example.com/_/pam-issuer/api/v1/auth/token',
+}
+
+
+class TestBuildAuthHeaders(unittest.TestCase):
+    """Test suite for _build_auth_headers (Bug 2 - OIDC password grant)"""
+
+    def test_plain_token_returns_bearer_without_http_calls(self):
+        """A configured access_token should be used directly with no HTTP calls."""
+        config = Configuration(host='https://flightctl.example.com/api/v1', access_token='my-token')
+        with patch('plugins.module_utils.oidc_auth.open_url') as mock_open_url:
+            headers = _build_auth_headers(config)
+        mock_open_url.assert_not_called()
+        self.assertEqual(headers, {'Authorization': 'Bearer my-token'})
+
+    def test_username_password_performs_oidc_discovery_and_grant(self):
+        """username/password should trigger discovery + a password grant, not Basic auth."""
+        config = Configuration(host='https://flightctl.example.com/api/v1', username='alice', password='s3cret')
+        token_response = _fake_http_response({'access_token': 'access-1', 'id_token': 'id-token-1', 'token_type': 'Bearer'})
+        with patch('plugins.module_utils.oidc_auth.open_url') as mock_open_url:
+            mock_open_url.side_effect = [
+                _fake_http_response(AUTH_CONFIG_RESPONSE),
+                _fake_http_response(OIDC_DISCOVERY_RESPONSE),
+                token_response,
+            ]
+            headers = _build_auth_headers(config)
+
+        self.assertEqual(headers, {'Authorization': 'Bearer id-token-1'})
+        self.assertEqual(mock_open_url.call_count, 3)
+
+        # Confirm no Basic auth header was ever produced.
+        for call in mock_open_url.call_args_list:
+            self.assertNotIn('Basic', str(call))
+
+        # Confirm the password grant was POSTed to the discovered token endpoint.
+        post_call = mock_open_url.call_args_list[2]
+        self.assertEqual(post_call.args[0], OIDC_DISCOVERY_RESPONSE['token_endpoint'])
+        self.assertEqual(post_call.kwargs.get('method'), 'POST')
+        self.assertIn('grant_type=password', post_call.kwargs.get('data'))
+
+    def test_bearer_token_is_cached_on_configuration(self):
+        """A second call for the same Configuration should not repeat the OIDC handshake."""
+        config = Configuration(host='https://flightctl.example.com/api/v1', username='alice', password='s3cret')
+        with patch('plugins.module_utils.oidc_auth.open_url') as mock_open_url:
+            mock_open_url.side_effect = [
+                _fake_http_response(AUTH_CONFIG_RESPONSE),
+                _fake_http_response(OIDC_DISCOVERY_RESPONSE),
+                _fake_http_response({'id_token': 'id-token-1'}),
+            ]
+            first_headers = _build_auth_headers(config)
+            second_headers = _build_auth_headers(config)
+
+        self.assertEqual(first_headers, second_headers)
+        # Only the first call should have hit the network; the second short-circuits
+        # via config.access_token, which _build_auth_headers set after the first grant.
+        self.assertEqual(mock_open_url.call_count, 3)
+        self.assertEqual(config.access_token, 'id-token-1')
+
+    def test_invalid_credentials_raise_with_upstream_error_detail(self):
+        """A 400 from the token endpoint should surface the upstream error_description."""
+        config = Configuration(host='https://flightctl.example.com/api/v1', username='alice', password='wrong')
+        error_body = json.dumps({'error': 'invalid_grant', 'error_description': 'Invalid user credentials'}).encode('utf-8')
+        http_error = HTTPError(url='https://issuer.example.com/token', code=400, msg='Bad Request',
+                                hdrs=None, fp=io.BytesIO(error_body))
+        with patch('plugins.module_utils.oidc_auth.open_url') as mock_open_url:
+            mock_open_url.side_effect = [
+                _fake_http_response(AUTH_CONFIG_RESPONSE),
+                _fake_http_response(OIDC_DISCOVERY_RESPONSE),
+                http_error,
+            ]
+            with self.assertRaises(ValidationException) as context:
+                _build_auth_headers(config)
+
+        self.assertIn('Invalid user credentials', str(context.exception))
+
+    def test_no_oidc_provider_configured_raises_descriptive_error(self):
+        """If the server has no OIDC provider, the error should say so rather than a generic failure."""
+        config = Configuration(host='https://flightctl.example.com/api/v1', username='alice', password='s3cret')
+        with patch('plugins.module_utils.oidc_auth.open_url') as mock_open_url:
+            mock_open_url.return_value = _fake_http_response({'providers': []})
+            with self.assertRaises(ValidationException) as context:
+                _build_auth_headers(config)
+
+        self.assertIn('no OIDC-based authentication provider', str(context.exception))
+
+    def test_no_credentials_returns_none(self):
+        """No token and no username/password should return None (unauthenticated)."""
+        config = Configuration(host='https://flightctl.example.com/api/v1')
+        with patch('plugins.module_utils.oidc_auth.open_url') as mock_open_url:
+            headers = _build_auth_headers(config)
+        mock_open_url.assert_not_called()
+        self.assertIsNone(headers)
 
 
 if __name__ == '__main__':
