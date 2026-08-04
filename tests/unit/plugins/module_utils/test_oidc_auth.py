@@ -164,8 +164,9 @@ class TestOidcPasswordGrant:
 
     def test_invalid_credentials_surface_upstream_error_description(self):
         error_body = json.dumps({'error': 'invalid_grant', 'error_description': 'Invalid user credentials'}).encode('utf-8')
-        http_error = HTTPError(url='https://issuer.example.com/token', code=400, msg='Bad Request',
-                                hdrs=None, fp=io.BytesIO(error_body))
+        http_error = HTTPError(
+            url='https://issuer.example.com/token', code=400, msg='Bad Request', hdrs=None, fp=io.BytesIO(error_body),
+        )
         with patch('plugins.module_utils.oidc_auth.open_url') as mock_open_url:
             mock_open_url.side_effect = [
                 _fake_http_response(AUTH_CONFIG_RESPONSE),

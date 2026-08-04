@@ -488,6 +488,9 @@ def _build_auth_headers(config: Configuration) -> Dict[str, str] | None:
         # sync short-circuit through the access_token branch above, instead of repeating
         # the discovery + token exchange handshake for every device/fleet/group listing.
         config.access_token = bearer_token
+        # No longer needed now that access_token is cached; drop them from memory.
+        config.username = None
+        config.password = None
         return {'Authorization': f'Bearer {bearer_token}'}
     return None
 

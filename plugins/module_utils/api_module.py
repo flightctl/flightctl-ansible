@@ -192,7 +192,14 @@ class FlightctlAPIModule(FlightctlModule):
                 self.fail_json(
                     msg=f"Failed to authenticate with username/password via OIDC password grant: {error_detail}"
                 )
+                # fail_json() only raises/exits when no error_callback is set; if a
+                # caller supplied a non-raising error_callback, stop here so we never
+                # fall through to sending "Authorization: Bearer None".
+                raise FlightctlException(f"Failed to authenticate: {error_detail}")
             self.headers = {'Authorization': f'Bearer {bearer_token}'}
+            # No longer needed now that we hold a bearer token; drop them from memory.
+            self.username = None
+            self.password = None
         else:
             self.headers = None
 

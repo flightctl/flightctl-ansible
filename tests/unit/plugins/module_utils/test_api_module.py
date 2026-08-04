@@ -175,6 +175,9 @@ def test_username_password_performs_oidc_grant_with_module_connection_params():
         request_timeout=10,
     )
     assert module.headers == {'Authorization': 'Bearer oidc-bearer-token'}
+    # Credentials are no longer needed once a bearer token has been obtained.
+    assert module.username is None
+    assert module.password is None
 
 
 def test_username_password_oidc_failure_fails_module():
@@ -192,6 +195,25 @@ def test_username_password_oidc_failure_fails_module():
             FlightctlAPIModule(argument_spec={})
 
     assert 'no OIDC-based authentication provider configured' in mock_fail.call_args.kwargs['msg']
+
+
+def test_username_password_oidc_failure_with_non_raising_error_callback_still_raises():
+    """
+    fail_json() only raises/exits when no error_callback is set. If a caller supplies a
+    non-raising error_callback, set_auth() must still stop instead of falling through to
+    sending "Authorization: Bearer None".
+    """
+    set_module_args(dict(
+        flightctl_host='https://test-flightctl-url.com/',
+        flightctl_username='test-user',
+        flightctl_password='test-pass',
+    ))
+    with patch(
+        'plugins.module_utils.api_module.oidc_password_grant',
+        return_value=(None, 'the server has no OIDC-based authentication provider configured'),
+    ):
+        with pytest.raises(FlightctlException):
+            FlightctlAPIModule(argument_spec={}, error_callback=MagicMock())
 
 
 # --- AuthProvider tests ---

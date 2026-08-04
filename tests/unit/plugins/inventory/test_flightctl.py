@@ -586,6 +586,10 @@ class TestBuildAuthHeaders(unittest.TestCase):
         self.assertEqual(headers, {'Authorization': 'Bearer id-token-1'})
         self.assertEqual(mock_open_url.call_count, 3)
 
+        # Credentials are no longer needed once a bearer token has been cached.
+        self.assertIsNone(config.username)
+        self.assertIsNone(config.password)
+
         # Confirm no Basic auth header was ever produced.
         for call in mock_open_url.call_args_list:
             self.assertNotIn('Basic', str(call))
@@ -618,8 +622,9 @@ class TestBuildAuthHeaders(unittest.TestCase):
         """A 400 from the token endpoint should surface the upstream error_description."""
         config = Configuration(host='https://flightctl.example.com/api/v1', username='alice', password='wrong')
         error_body = json.dumps({'error': 'invalid_grant', 'error_description': 'Invalid user credentials'}).encode('utf-8')
-        http_error = HTTPError(url='https://issuer.example.com/token', code=400, msg='Bad Request',
-                                hdrs=None, fp=io.BytesIO(error_body))
+        http_error = HTTPError(
+            url='https://issuer.example.com/token', code=400, msg='Bad Request', hdrs=None, fp=io.BytesIO(error_body),
+        )
         with patch('plugins.module_utils.oidc_auth.open_url') as mock_open_url:
             mock_open_url.side_effect = [
                 _fake_http_response(AUTH_CONFIG_RESPONSE),

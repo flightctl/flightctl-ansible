@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from tests.unit.utils import set_module_args
-from plugins.module_utils.exceptions import FlightctlApiException
+from plugins.module_utils.exceptions import FlightctlApiException, FlightctlException
 
 
 @pytest.fixture
@@ -52,12 +52,14 @@ class TestAuthHeaders:
             flightctl_password='secret',
             flightctl_validate_certs=False,
         ))
-        with patch('plugins.module_utils.imagebuilder_module.ApiClient'), \
-             patch('plugins.module_utils.imagebuilder_module.Configuration'), \
-             patch(
+        with (
+            patch('plugins.module_utils.imagebuilder_module.ApiClient'),
+            patch('plugins.module_utils.imagebuilder_module.Configuration'),
+            patch(
                 'plugins.module_utils.imagebuilder_module.oidc_password_grant',
                 return_value=('oidc-bearer-token', None),
-             ) as mock_grant:
+            ) as mock_grant,
+        ):
             from plugins.module_utils.imagebuilder_module import FlightctlImageBuilderModule
             module = FlightctlImageBuilderModule(argument_spec={})
 
@@ -69,6 +71,9 @@ class TestAuthHeaders:
             ca_path=None,
             request_timeout=10,
         )
+        # Credentials are no longer needed once a bearer token has been obtained.
+        assert module.username is None
+        assert module.password is None
 
     def test_username_password_oidc_failure_fails_module(self):
         """A failed OIDC grant should fail the module with the upstream error detail."""
@@ -78,17 +83,42 @@ class TestAuthHeaders:
             flightctl_password='secret',
         ))
         from plugins.module_utils.imagebuilder_module import FlightctlImageBuilderModule
-        with patch('plugins.module_utils.imagebuilder_module.ApiClient'), \
-             patch('plugins.module_utils.imagebuilder_module.Configuration'), \
-             patch(
+        with (
+            patch('plugins.module_utils.imagebuilder_module.ApiClient'),
+            patch('plugins.module_utils.imagebuilder_module.Configuration'),
+            patch(
                 'plugins.module_utils.imagebuilder_module.oidc_password_grant',
                 return_value=(None, 'the server has no OIDC-based authentication provider configured'),
-             ), \
-             patch.object(FlightctlImageBuilderModule, 'fail_json', side_effect=SystemExit(1)) as mock_fail:
+            ),
+            patch.object(FlightctlImageBuilderModule, 'fail_json', side_effect=SystemExit(1)) as mock_fail,
+        ):
             with pytest.raises(SystemExit):
                 FlightctlImageBuilderModule(argument_spec={})
 
         assert 'no OIDC-based authentication provider configured' in mock_fail.call_args.kwargs['msg']
+
+    def test_username_password_oidc_failure_with_non_raising_error_callback_still_raises(self):
+        """
+        fail_json() only raises/exits when no error_callback is set. If a caller supplies a
+        non-raising error_callback, _set_auth_headers() must still stop instead of falling
+        through to sending "Authorization: Bearer None".
+        """
+        set_module_args(dict(
+            flightctl_host='https://test-imagebuilder.com/',
+            flightctl_username='admin',
+            flightctl_password='secret',
+        ))
+        from plugins.module_utils.imagebuilder_module import FlightctlImageBuilderModule
+        with (
+            patch('plugins.module_utils.imagebuilder_module.ApiClient'),
+            patch('plugins.module_utils.imagebuilder_module.Configuration'),
+            patch(
+                'plugins.module_utils.imagebuilder_module.oidc_password_grant',
+                return_value=(None, 'the server has no OIDC-based authentication provider configured'),
+            ),
+        ):
+            with pytest.raises(FlightctlException):
+                FlightctlImageBuilderModule(argument_spec={}, error_callback=MagicMock())
 
     def test_no_auth(self):
         set_module_args(dict(

@@ -27,8 +27,9 @@ from ansible.module_utils.urls import open_url
 
 
 def http_get_json(url: str, verify_ssl: bool, ca_path: Optional[str], request_timeout: Optional[float]) -> Dict[str, Any]:
-    response = open_url(url, method='GET', validate_certs=verify_ssl, ca_path=ca_path,
-                         timeout=request_timeout or 30)
+    response = open_url(
+        url, method='GET', validate_certs=verify_ssl, ca_path=ca_path, timeout=request_timeout or 30,
+    )
     return json.loads(response.read())
 
 
