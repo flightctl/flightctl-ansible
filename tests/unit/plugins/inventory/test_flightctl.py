@@ -1,8 +1,17 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from typing import ClassVar
+from unittest.mock import MagicMock, patch
+
+import yaml
 
 # Import your inventory module
-from plugins.inventory.flightctl import InventoryModule, _render_hostname_expression, _resolve_hostname, _validate_device
+from plugins.inventory.flightctl import (
+    DOCUMENTATION,
+    InventoryModule,
+    _render_hostname_expression,
+    _resolve_hostname,
+    _validate_device,
+)
 
 
 class TestFlightCtlInventoryModule(unittest.TestCase):
@@ -519,6 +528,78 @@ class TestValidateDeviceWithExpressions(unittest.TestCase):
         device_id, metadata = _validate_device(device, "metadata.name + '_' + metadata.uid")
         self.assertEqual(device_id, 'device1_')
         self.assertEqual(metadata, device['metadata'])
+
+
+class TestDocumentationEnvDeclarations(unittest.TestCase):
+    """Verify that all connection options declare env: blocks for AAP Credential Type support."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.doc = yaml.safe_load(DOCUMENTATION)
+        cls.options = cls.doc.get('options', {})
+
+    EXPECTED_ENV_VARS: ClassVar[dict[str, str]] = {
+        'token': 'FLIGHTCTL_TOKEN',
+        'host': 'FLIGHTCTL_HOST',
+        'username': 'FLIGHTCTL_USERNAME',
+        'password': 'FLIGHTCTL_PASSWORD',
+        'organization': 'FLIGHTCTL_ORGANIZATION',
+        'flightctl_config_file': 'FLIGHTCTL_CONFIG_FILE',
+        'ca_path': 'FLIGHTCTL_CA_PATH',
+        'verify_ssl': 'FLIGHTCTL_VERIFY_SSL',
+    }
+
+    def test_all_connection_options_have_env_declarations(self):
+        """Every connection option must have an env: block with the correct variable name."""
+        for option_name, expected_env in self.EXPECTED_ENV_VARS.items():
+            with self.subTest(option=option_name):
+                option = self.options.get(option_name)
+                self.assertIsNotNone(option, f"Option '{option_name}' missing from DOCUMENTATION")
+                env_list = option.get('env')
+                self.assertIsNotNone(env_list, f"Option '{option_name}' is missing env: declaration")
+                self.assertIsInstance(env_list, list)
+                env_names = [e.get('name') for e in env_list]
+                self.assertIn(expected_env, env_names,
+                              f"Option '{option_name}' should declare env var '{expected_env}', got {env_names}")
+
+    def test_token_env_declaration(self):
+        env_list = self.options['token'].get('env', [])
+        self.assertEqual(env_list[0]['name'], 'FLIGHTCTL_TOKEN')
+
+    def test_host_env_declaration(self):
+        env_list = self.options['host'].get('env', [])
+        self.assertEqual(env_list[0]['name'], 'FLIGHTCTL_HOST')
+
+    def test_username_env_declaration(self):
+        env_list = self.options['username'].get('env', [])
+        self.assertEqual(env_list[0]['name'], 'FLIGHTCTL_USERNAME')
+
+    def test_password_env_declaration(self):
+        env_list = self.options['password'].get('env', [])
+        self.assertEqual(env_list[0]['name'], 'FLIGHTCTL_PASSWORD')
+
+    def test_organization_env_declaration(self):
+        env_list = self.options['organization'].get('env', [])
+        self.assertEqual(env_list[0]['name'], 'FLIGHTCTL_ORGANIZATION')
+
+    def test_config_file_env_declaration(self):
+        env_list = self.options['flightctl_config_file'].get('env', [])
+        self.assertEqual(env_list[0]['name'], 'FLIGHTCTL_CONFIG_FILE')
+
+    def test_ca_path_env_declaration(self):
+        env_list = self.options['ca_path'].get('env', [])
+        self.assertEqual(env_list[0]['name'], 'FLIGHTCTL_CA_PATH')
+
+    def test_verify_ssl_env_declaration(self):
+        env_list = self.options['verify_ssl'].get('env', [])
+        self.assertEqual(env_list[0]['name'], 'FLIGHTCTL_VERIFY_SSL')
+
+    def test_env_vars_match_module_utils_convention(self):
+        """Env var names must follow the FLIGHTCTL_ prefix convention used in module_utils/core.py."""
+        for option_name, expected_env in self.EXPECTED_ENV_VARS.items():
+            with self.subTest(option=option_name):
+                self.assertTrue(expected_env.startswith('FLIGHTCTL_'),
+                                f"Env var '{expected_env}' should start with FLIGHTCTL_")
 
 
 if __name__ == '__main__':
