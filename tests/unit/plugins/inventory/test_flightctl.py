@@ -1,8 +1,15 @@
+import json
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, PropertyMock
 
-# Import your inventory module
-from plugins.inventory.flightctl import InventoryModule, _render_hostname_expression, _resolve_hostname, _validate_device
+from plugins.inventory.flightctl import (
+    InventoryModule,
+    _build_auth_headers,
+    _render_hostname_expression,
+    _resolve_hostname,
+    _validate_device,
+)
+from plugins.module_utils.exceptions import ValidationException
 
 
 class TestFlightCtlInventoryModule(unittest.TestCase):
@@ -519,6 +526,310 @@ class TestValidateDeviceWithExpressions(unittest.TestCase):
         device_id, metadata = _validate_device(device, "metadata.name + '_' + metadata.uid")
         self.assertEqual(device_id, 'device1_')
         self.assertEqual(metadata, device['metadata'])
+
+
+class TestBuildAuthHeaders(unittest.TestCase):
+    """Verify _build_auth_headers only produces Bearer tokens, never Basic Auth."""
+
+    def test_bearer_token_returned_when_access_token_set(self):
+        config = MagicMock()
+        config.access_token = "my-jwt-token"
+        config.username = None
+        config.password = None
+        headers = _build_auth_headers(config)
+        self.assertEqual(headers, {"Authorization": "Bearer my-jwt-token"})
+
+    def test_no_headers_when_no_token(self):
+        config = MagicMock()
+        config.access_token = None
+        config.username = "admin"
+        config.password = "secret"
+        headers = _build_auth_headers(config)
+        self.assertIsNone(headers)
+
+    def test_no_basic_auth_ever_produced(self):
+        config = MagicMock()
+        config.access_token = None
+        config.username = "admin"
+        config.password = "secret"
+        headers = _build_auth_headers(config)
+        if headers:
+            self.assertNotIn("Basic", headers.get("Authorization", ""))
+
+
+class TestOidcPasswordGrant(unittest.TestCase):
+    """Test the OIDC password grant flow in InventoryModule._oidc_password_grant."""
+
+    def setUp(self):
+        self.module = InventoryModule()
+
+    @patch("urllib.request.urlopen")
+    def test_successful_oidc_grant_returns_id_token(self, mock_urlopen):
+        discovery_response = MagicMock()
+        discovery_response.__enter__ = MagicMock(return_value=discovery_response)
+        discovery_response.__exit__ = MagicMock(return_value=False)
+        discovery_response.read.return_value = json.dumps(
+            {"token_endpoint": "https://host/_/pam-issuer/api/v1/auth/token"}
+        ).encode()
+
+        token_response = MagicMock()
+        token_response.__enter__ = MagicMock(return_value=token_response)
+        token_response.__exit__ = MagicMock(return_value=False)
+        token_response.read.return_value = json.dumps(
+            {"id_token": "jwt-id-token", "access_token": "jwt-access-token"}
+        ).encode()
+
+        mock_urlopen.side_effect = [discovery_response, token_response]
+
+        token = self.module._oidc_password_grant(
+            "https://host", "admin", "password123", False
+        )
+        self.assertEqual(token, "jwt-id-token")
+
+    @patch("urllib.request.urlopen")
+    def test_oidc_grant_falls_back_to_access_token(self, mock_urlopen):
+        discovery_response = MagicMock()
+        discovery_response.__enter__ = MagicMock(return_value=discovery_response)
+        discovery_response.__exit__ = MagicMock(return_value=False)
+        discovery_response.read.return_value = json.dumps(
+            {"token_endpoint": "https://host/_/pam-issuer/api/v1/auth/token"}
+        ).encode()
+
+        token_response = MagicMock()
+        token_response.__enter__ = MagicMock(return_value=token_response)
+        token_response.__exit__ = MagicMock(return_value=False)
+        token_response.read.return_value = json.dumps(
+            {"access_token": "jwt-access-only"}
+        ).encode()
+
+        mock_urlopen.side_effect = [discovery_response, token_response]
+
+        token = self.module._oidc_password_grant(
+            "https://host", "admin", "password123", False
+        )
+        self.assertEqual(token, "jwt-access-only")
+
+    @patch("urllib.request.urlopen")
+    def test_oidc_discovery_failure_raises(self, mock_urlopen):
+        mock_urlopen.side_effect = Exception("Connection refused")
+        with self.assertRaises(ValidationException) as ctx:
+            self.module._oidc_password_grant(
+                "https://host", "admin", "pass", False
+            )
+        self.assertIn("OIDC discovery failed", str(ctx.exception))
+
+    @patch("urllib.request.urlopen")
+    def test_missing_token_endpoint_raises(self, mock_urlopen):
+        discovery_response = MagicMock()
+        discovery_response.__enter__ = MagicMock(return_value=discovery_response)
+        discovery_response.__exit__ = MagicMock(return_value=False)
+        discovery_response.read.return_value = json.dumps({}).encode()
+
+        mock_urlopen.return_value = discovery_response
+
+        with self.assertRaises(ValidationException) as ctx:
+            self.module._oidc_password_grant(
+                "https://host", "admin", "pass", False
+            )
+        self.assertIn("token_endpoint missing", str(ctx.exception))
+
+    @patch("urllib.request.urlopen")
+    def test_token_request_http_error_raises(self, mock_urlopen):
+        import urllib.error
+
+        discovery_response = MagicMock()
+        discovery_response.__enter__ = MagicMock(return_value=discovery_response)
+        discovery_response.__exit__ = MagicMock(return_value=False)
+        discovery_response.read.return_value = json.dumps(
+            {"token_endpoint": "https://host/token"}
+        ).encode()
+
+        http_error = urllib.error.HTTPError(
+            "https://host/token", 401, "Unauthorized", {}, None
+        )
+        http_error.read = MagicMock(return_value=b"invalid credentials")
+
+        mock_urlopen.side_effect = [discovery_response, http_error]
+
+        with self.assertRaises(ValidationException) as ctx:
+            self.module._oidc_password_grant(
+                "https://host", "admin", "wrongpass", False
+            )
+        self.assertIn("OIDC token request failed (401)", str(ctx.exception))
+
+    @patch("urllib.request.urlopen")
+    def test_no_token_in_response_raises(self, mock_urlopen):
+        discovery_response = MagicMock()
+        discovery_response.__enter__ = MagicMock(return_value=discovery_response)
+        discovery_response.__exit__ = MagicMock(return_value=False)
+        discovery_response.read.return_value = json.dumps(
+            {"token_endpoint": "https://host/token"}
+        ).encode()
+
+        token_response = MagicMock()
+        token_response.__enter__ = MagicMock(return_value=token_response)
+        token_response.__exit__ = MagicMock(return_value=False)
+        token_response.read.return_value = json.dumps({"error": "bad_grant"}).encode()
+
+        mock_urlopen.side_effect = [discovery_response, token_response]
+
+        with self.assertRaises(ValidationException) as ctx:
+            self.module._oidc_password_grant(
+                "https://host", "admin", "pass", False
+            )
+        self.assertIn("No token returned", str(ctx.exception))
+
+    @patch("urllib.request.urlopen")
+    def test_oidc_grant_sends_correct_payload(self, mock_urlopen):
+        import urllib.parse
+
+        discovery_response = MagicMock()
+        discovery_response.__enter__ = MagicMock(return_value=discovery_response)
+        discovery_response.__exit__ = MagicMock(return_value=False)
+        discovery_response.read.return_value = json.dumps(
+            {"token_endpoint": "https://host/token"}
+        ).encode()
+
+        token_response = MagicMock()
+        token_response.__enter__ = MagicMock(return_value=token_response)
+        token_response.__exit__ = MagicMock(return_value=False)
+        token_response.read.return_value = json.dumps(
+            {"id_token": "tok"}
+        ).encode()
+
+        mock_urlopen.side_effect = [discovery_response, token_response]
+
+        self.module._oidc_password_grant(
+            "https://host", "admin", "s3cret", False
+        )
+
+        token_call = mock_urlopen.call_args_list[1]
+        request_obj = token_call[0][0]
+        body = request_obj.data.decode()
+        params = urllib.parse.parse_qs(body)
+        self.assertEqual(params["grant_type"], ["password"])
+        self.assertEqual(params["username"], ["admin"])
+        self.assertEqual(params["password"], ["s3cret"])
+        self.assertEqual(params["client_id"], ["flightctl-client"])
+
+
+class TestSetupConnectionOidcIntegration(unittest.TestCase):
+    """Test that _setup_connection_configuration uses OIDC grant for username/password."""
+
+    def _make_module(self, options):
+        module = InventoryModule()
+        module.get_option = MagicMock(side_effect=lambda key: options.get(key))
+        module._load_config_file = MagicMock(return_value=None)
+        return module
+
+    @patch.object(InventoryModule, '_oidc_password_grant', return_value='oidc-bearer-token')
+    def test_username_password_triggers_oidc_grant(self, mock_oidc):
+        module = self._make_module({
+            'host': 'https://rhem.example.com',
+            'verify_ssl': False,
+            'token': None,
+            'username': 'admin',
+            'password': 'redhat',
+            'organization': None,
+            'ca_path': None,
+            'request_timeout': 120.0,
+            'flightctl_config_file': None,
+        })
+
+        config = module._setup_connection_configuration()
+
+        mock_oidc.assert_called_once_with(
+            'https://rhem.example.com', 'admin', 'redhat', False, None
+        )
+        self.assertEqual(config.access_token, 'oidc-bearer-token')
+        self.assertIsNone(config.username)
+        self.assertIsNone(config.password)
+
+    def test_token_skips_oidc_grant(self):
+        module = self._make_module({
+            'host': 'https://rhem.example.com',
+            'verify_ssl': False,
+            'token': 'pre-existing-token',
+            'username': None,
+            'password': None,
+            'organization': None,
+            'ca_path': None,
+            'request_timeout': 120.0,
+            'flightctl_config_file': None,
+        })
+
+        with patch.object(InventoryModule, '_oidc_password_grant') as mock_oidc:
+            config = module._setup_connection_configuration()
+            mock_oidc.assert_not_called()
+
+        self.assertEqual(config.access_token, 'pre-existing-token')
+
+    @patch.object(InventoryModule, '_oidc_password_grant', return_value='oidc-token')
+    def test_host_with_api_v1_suffix_stripped_for_oidc(self, mock_oidc):
+        module = self._make_module({
+            'host': 'https://rhem.example.com/api/v1',
+            'verify_ssl': False,
+            'token': None,
+            'username': 'admin',
+            'password': 'redhat',
+            'organization': None,
+            'ca_path': None,
+            'request_timeout': 120.0,
+            'flightctl_config_file': None,
+        })
+
+        module._setup_connection_configuration()
+
+        mock_oidc.assert_called_once_with(
+            'https://rhem.example.com', 'admin', 'redhat', False, None
+        )
+
+    @patch.object(InventoryModule, '_oidc_password_grant', return_value='oidc-token')
+    def test_ca_path_passed_to_oidc_grant(self, mock_oidc):
+        module = self._make_module({
+            'host': 'https://rhem.example.com',
+            'verify_ssl': True,
+            'token': None,
+            'username': 'admin',
+            'password': 'redhat',
+            'organization': None,
+            'ca_path': '/etc/pki/tls/custom-ca.crt',
+            'request_timeout': 120.0,
+            'flightctl_config_file': None,
+        })
+
+        config = module._setup_connection_configuration()
+
+        mock_oidc.assert_called_once_with(
+            'https://rhem.example.com', 'admin', 'redhat', True, '/etc/pki/tls/custom-ca.crt'
+        )
+        self.assertEqual(config.access_token, 'oidc-token')
+
+    @patch("urllib.request.urlopen")
+    def test_oidc_grant_uses_ca_path_in_ssl_context(self, mock_urlopen):
+        discovery_response = MagicMock()
+        discovery_response.__enter__ = MagicMock(return_value=discovery_response)
+        discovery_response.__exit__ = MagicMock(return_value=False)
+        discovery_response.read.return_value = json.dumps(
+            {"token_endpoint": "https://host/token"}
+        ).encode()
+
+        token_response = MagicMock()
+        token_response.__enter__ = MagicMock(return_value=token_response)
+        token_response.__exit__ = MagicMock(return_value=False)
+        token_response.read.return_value = json.dumps(
+            {"id_token": "tok"}
+        ).encode()
+
+        mock_urlopen.side_effect = [discovery_response, token_response]
+
+        module = InventoryModule()
+        with patch("ssl.create_default_context") as mock_ssl_ctx:
+            mock_ssl_ctx.return_value = MagicMock()
+            module._oidc_password_grant(
+                "https://host", "admin", "pass", True, "/path/to/ca.crt"
+            )
+            mock_ssl_ctx.assert_called_once_with(cafile="/path/to/ca.crt")
 
 
 if __name__ == '__main__':

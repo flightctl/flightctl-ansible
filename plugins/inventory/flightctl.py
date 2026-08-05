@@ -47,11 +47,11 @@ options:
       default: null
       type: str
     username:
-      description: Username for your Flight Control service. Please note that this only works with proxies configured to use HTTP Basic Auth.
+      description: Username for your Flight Control service. When provided with password and without a token, the plugin performs an OIDC password grant to obtain a Bearer token automatically.
       default: null
       type: str
     password:
-      description: Password for your Flight Control service. Please note that this only works with proxies configured to use HTTP Basic Auth.
+      description: Password for your Flight Control service. Used together with username for OIDC password grant authentication.
       default: null
       type: str
     token:
@@ -252,6 +252,56 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
             # Ensure the created temp file is deleted when our module exits
             self.add_cleanup_file(temp_file.name)
 
+    def _oidc_password_grant(self, host: str, username: str, password: str,
+                             verify_ssl: bool, ca_path: str | None = None) -> str:
+        import json
+        import ssl
+        import urllib.parse
+        import urllib.request
+
+        if not verify_ssl:
+            ctx = ssl._create_unverified_context()
+        elif ca_path:
+            ctx = ssl.create_default_context(cafile=ca_path)
+        else:
+            ctx = ssl.create_default_context()
+
+        discovery_url = host.rstrip('/') + "/_/pam-issuer/api/v1/auth/.well-known/openid-configuration"
+        try:
+            with urllib.request.urlopen(urllib.request.Request(discovery_url), context=ctx, timeout=10) as resp:
+                token_endpoint = json.load(resp).get("token_endpoint")
+        except Exception as exc:
+            raise ValidationException(f"OIDC discovery failed at {discovery_url}: {exc}") from exc
+
+        if not token_endpoint:
+            raise ValidationException(f"token_endpoint missing from OIDC discovery at {discovery_url}")
+
+        payload = urllib.parse.urlencode({
+            "grant_type": "password",
+            "username": username,
+            "password": password,
+            "client_id": "flightctl-client",
+            "scope": "openid profile email roles offline_access",
+        }).encode()
+
+        req = urllib.request.Request(
+            token_endpoint, data=payload,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        try:
+            with urllib.request.urlopen(req, context=ctx, timeout=10) as resp:
+                data = json.load(resp)
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode(errors="replace")
+            raise ValidationException(f"OIDC token request failed ({exc.code}): {body}") from exc
+        except Exception as exc:
+            raise ValidationException(f"OIDC token request failed: {exc}") from exc
+
+        token = data.get("id_token") or data.get("access_token")
+        if not token:
+            raise ValidationException("No token returned by OIDC password grant")
+        return token
+
     def _setup_connection_configuration(self) -> Configuration:
         """
         Read Flight Control's config file if supplied.
@@ -278,9 +328,6 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
             raise ValidationException(
                 "Authentication is required: provide either access_token or both username and password")
 
-        organization = (self.get_option('organization')
-                        or (getattr(config_file, 'organization', None) if config_file else None))
-
         ca_path = (self.get_option('ca_path')
                    or (getattr(config_file, 'ca_path', None) if config_file else None)
                    or (getattr(config_file, 'flightctl_ca_path', None) if config_file else None))
@@ -289,6 +336,15 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
         if not ca_path and hasattr(config_file, "ca_data"):
             self._create_tmp_crt(getattr(config_file, "ca_data"))
             ca_path = self.ca_path
+
+        if not access_token and username and password:
+            base_host = host.rstrip('/').removesuffix('/api/v1')
+            access_token = self._oidc_password_grant(base_host, username, password, verify_ssl, ca_path)
+            username = None
+            password = None
+
+        organization = (self.get_option('organization')
+                        or (getattr(config_file, 'organization', None) if config_file else None))
 
         request_timeout = self.get_option('request_timeout') or 120.0
 
@@ -456,12 +512,6 @@ def _build_auth_headers(config: Configuration) -> Dict[str, str] | None:
     token = getattr(config, 'access_token', None)
     if token:
         return {'Authorization': f'Bearer {token}'}
-    username = getattr(config, 'username', None)
-    password = getattr(config, 'password', None)
-    if username and password:
-        basic_credentials = f"{username}:{password}"
-        encoded_credentials = base64.b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
-        return {'Authorization': f'Basic {encoded_credentials}'}
     return None
 
 
