@@ -28,6 +28,8 @@ options:
       description: Path to a CA cert file to use when making requests.
       default: null
       type: path
+      env:
+        - name: FLIGHTCTL_CA_PATH
     ca_data:
       description: CertificateAuthorityData contains PEM-encoded certificate authority certificates.
                            It will be written into a temporary file to enable underlying code to use ca_path.
@@ -38,26 +40,38 @@ options:
                            If `false', SSL certificates will not be validated.
                            This should only be used on personally controlled sites using self-signed certificates.
       type: bool
+      env:
+        - name: FLIGHTCTL_VERIFY_SSL
     host:
       description: URL to Flight Control server. A token or username/password must be also provided.
       default: null
       type: str
+      env:
+        - name: FLIGHTCTL_HOST
     organization:
       description: Organization to scope Flight Control requests to.
       default: null
       type: str
+      env:
+        - name: FLIGHTCTL_ORGANIZATION
     username:
       description: Username for your Flight Control service. When provided with password and without a token, the plugin performs an OIDC password grant to obtain a Bearer token automatically.
       default: null
       type: str
+      env:
+        - name: FLIGHTCTL_USERNAME
     password:
       description: Password for your Flight Control service. Used together with username for OIDC password grant authentication.
       default: null
       type: str
+      env:
+        - name: FLIGHTCTL_PASSWORD
     token:
       description: The Flight Control API token to use.
       default: null
       type: str
+      env:
+        - name: FLIGHTCTL_TOKEN
     additional_groups:
       description: Additional groups to add devices to.
       type: list
@@ -100,6 +114,8 @@ options:
           C(service.certificate-authority-data) (base64-encoded PEM).
         - Any values defined in the inventory override values from this file.
       type: path
+      env:
+        - name: FLIGHTCTL_CONFIG_FILE
     hostnames:
       description: |
         Dotted path of the device field to use as the Ansible inventory hostname (for example, C(metadata.name) or C(status.systemInfo.hostname)).
