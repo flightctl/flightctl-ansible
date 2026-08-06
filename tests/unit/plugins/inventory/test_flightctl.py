@@ -9,7 +9,6 @@ import yaml
 from plugins.inventory.flightctl import (
     DOCUMENTATION,
     InventoryModule,
-    _build_auth_headers,
     _get_data,
     _get_data_raw,
     _is_pydantic_validation_error,
@@ -17,7 +16,7 @@ from plugins.inventory.flightctl import (
     _resolve_hostname,
     _validate_device,
 )
-from plugins.module_utils.exceptions import FlightctlApiException, ValidationException
+from plugins.module_utils.exceptions import FlightctlApiException
 
 
 class TestFlightCtlInventoryModule(unittest.TestCase):
