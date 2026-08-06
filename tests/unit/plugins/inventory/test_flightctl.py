@@ -1,7 +1,7 @@
 import json
 import unittest
 from typing import ClassVar
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 import yaml
 
@@ -9,11 +9,14 @@ from plugins.inventory.flightctl import (
     DOCUMENTATION,
     InventoryModule,
     _build_auth_headers,
+    _get_data,
+    _get_data_raw,
+    _is_pydantic_validation_error,
     _render_hostname_expression,
     _resolve_hostname,
     _validate_device,
 )
-from plugins.module_utils.exceptions import ValidationException
+from plugins.module_utils.exceptions import FlightctlApiException, ValidationException
 
 
 class TestFlightCtlInventoryModule(unittest.TestCase):
@@ -557,164 +560,207 @@ class TestBuildAuthHeaders(unittest.TestCase):
         config.username = "admin"
         config.password = "secret"
         headers = _build_auth_headers(config)
-        if headers:
-            self.assertNotIn("Basic", headers.get("Authorization", ""))
+        self.assertIsNone(headers)
 
 
 class TestOidcPasswordGrant(unittest.TestCase):
     """Test the OIDC password grant flow in InventoryModule._oidc_password_grant."""
 
+    OPEN_URL = "plugins.inventory.flightctl.open_url"
+
+    SAMPLE_AUTH_CONFIG = {
+        "providers": [{
+            "metadata": {"name": "my-oidc"},
+            "spec": {
+                "providerType": "oidc",
+                "issuer": "https://idp.example.com/realms/test",
+                "clientId": "my-client",
+                "scopes": ["openid", "profile", "email"],
+            },
+        }],
+        "defaultProvider": "my-oidc",
+    }
+
     def setUp(self):
         self.module = InventoryModule()
 
-    @patch("urllib.request.urlopen")
-    def test_successful_oidc_grant_returns_id_token(self, mock_urlopen):
-        discovery_response = MagicMock()
-        discovery_response.__enter__ = MagicMock(return_value=discovery_response)
-        discovery_response.__exit__ = MagicMock(return_value=False)
-        discovery_response.read.return_value = json.dumps(
-            {"token_endpoint": "https://host/_/pam-issuer/api/v1/auth/token"}
-        ).encode()
+    @staticmethod
+    def _mock_response(body_dict):
+        resp = MagicMock()
+        resp.read.return_value = json.dumps(body_dict).encode()
+        return resp
 
-        token_response = MagicMock()
-        token_response.__enter__ = MagicMock(return_value=token_response)
-        token_response.__exit__ = MagicMock(return_value=False)
-        token_response.read.return_value = json.dumps(
-            {"id_token": "jwt-id-token", "access_token": "jwt-access-token"}
-        ).encode()
-
-        mock_urlopen.side_effect = [discovery_response, token_response]
-
+    @patch(OPEN_URL)
+    def test_successful_oidc_grant_returns_id_token(self, mock_open):
+        mock_open.side_effect = [
+            self._mock_response(self.SAMPLE_AUTH_CONFIG),
+            self._mock_response(
+                {"token_endpoint": "https://idp.example.com/realms/test/protocol/openid-connect/token"}
+            ),
+            self._mock_response(
+                {"id_token": "jwt-id-token", "access_token": "jwt-access-token"}
+            ),
+        ]
         token = self.module._oidc_password_grant(
             "https://host", "admin", "password123", False
         )
         self.assertEqual(token, "jwt-id-token")
 
-    @patch("urllib.request.urlopen")
-    def test_oidc_grant_falls_back_to_access_token(self, mock_urlopen):
-        discovery_response = MagicMock()
-        discovery_response.__enter__ = MagicMock(return_value=discovery_response)
-        discovery_response.__exit__ = MagicMock(return_value=False)
-        discovery_response.read.return_value = json.dumps(
-            {"token_endpoint": "https://host/_/pam-issuer/api/v1/auth/token"}
-        ).encode()
-
-        token_response = MagicMock()
-        token_response.__enter__ = MagicMock(return_value=token_response)
-        token_response.__exit__ = MagicMock(return_value=False)
-        token_response.read.return_value = json.dumps(
-            {"access_token": "jwt-access-only"}
-        ).encode()
-
-        mock_urlopen.side_effect = [discovery_response, token_response]
-
+    @patch(OPEN_URL)
+    def test_oidc_grant_falls_back_to_access_token(self, mock_open):
+        mock_open.side_effect = [
+            self._mock_response(self.SAMPLE_AUTH_CONFIG),
+            self._mock_response(
+                {"token_endpoint": "https://idp.example.com/realms/test/protocol/openid-connect/token"}
+            ),
+            self._mock_response({"access_token": "jwt-access-only"}),
+        ]
         token = self.module._oidc_password_grant(
             "https://host", "admin", "password123", False
         )
         self.assertEqual(token, "jwt-access-only")
 
-    @patch("urllib.request.urlopen")
-    def test_oidc_discovery_failure_raises(self, mock_urlopen):
-        mock_urlopen.side_effect = Exception("Connection refused")
+    @patch(OPEN_URL)
+    def test_auth_config_failure_raises(self, mock_open):
+        mock_open.side_effect = Exception("Connection refused")
+        with self.assertRaises(ValidationException) as ctx:
+            self.module._oidc_password_grant(
+                "https://host", "admin", "pass", False
+            )
+        self.assertIn("Failed to fetch auth config", str(ctx.exception))
+
+    @patch(OPEN_URL)
+    def test_no_oidc_provider_raises(self, mock_open):
+        mock_open.return_value = self._mock_response({"providers": []})
+        with self.assertRaises(ValidationException) as ctx:
+            self.module._oidc_password_grant(
+                "https://host", "admin", "pass", False
+            )
+        self.assertIn("No OIDC provider found", str(ctx.exception))
+
+    @patch(OPEN_URL)
+    def test_oidc_discovery_failure_raises(self, mock_open):
+        mock_open.side_effect = [
+            self._mock_response(self.SAMPLE_AUTH_CONFIG),
+            Exception("Connection refused"),
+        ]
         with self.assertRaises(ValidationException) as ctx:
             self.module._oidc_password_grant(
                 "https://host", "admin", "pass", False
             )
         self.assertIn("OIDC discovery failed", str(ctx.exception))
 
-    @patch("urllib.request.urlopen")
-    def test_missing_token_endpoint_raises(self, mock_urlopen):
-        discovery_response = MagicMock()
-        discovery_response.__enter__ = MagicMock(return_value=discovery_response)
-        discovery_response.__exit__ = MagicMock(return_value=False)
-        discovery_response.read.return_value = json.dumps({}).encode()
-
-        mock_urlopen.return_value = discovery_response
-
+    @patch(OPEN_URL)
+    def test_missing_token_endpoint_raises(self, mock_open):
+        mock_open.side_effect = [
+            self._mock_response(self.SAMPLE_AUTH_CONFIG),
+            self._mock_response({}),
+        ]
         with self.assertRaises(ValidationException) as ctx:
             self.module._oidc_password_grant(
                 "https://host", "admin", "pass", False
             )
         self.assertIn("token_endpoint missing", str(ctx.exception))
 
-    @patch("urllib.request.urlopen")
-    def test_token_request_http_error_raises(self, mock_urlopen):
+    @patch(OPEN_URL)
+    def test_token_request_http_error_raises(self, mock_open):
         import urllib.error
 
-        discovery_response = MagicMock()
-        discovery_response.__enter__ = MagicMock(return_value=discovery_response)
-        discovery_response.__exit__ = MagicMock(return_value=False)
-        discovery_response.read.return_value = json.dumps(
-            {"token_endpoint": "https://host/token"}
-        ).encode()
-
         http_error = urllib.error.HTTPError(
-            "https://host/token", 401, "Unauthorized", {}, None
+            "https://idp.example.com/token", 401, "Unauthorized", {}, None
         )
         http_error.read = MagicMock(return_value=b"invalid credentials")
 
-        mock_urlopen.side_effect = [discovery_response, http_error]
-
+        mock_open.side_effect = [
+            self._mock_response(self.SAMPLE_AUTH_CONFIG),
+            self._mock_response({"token_endpoint": "https://idp.example.com/token"}),
+            http_error,
+        ]
         with self.assertRaises(ValidationException) as ctx:
             self.module._oidc_password_grant(
                 "https://host", "admin", "wrongpass", False
             )
         self.assertIn("OIDC token request failed (401)", str(ctx.exception))
 
-    @patch("urllib.request.urlopen")
-    def test_no_token_in_response_raises(self, mock_urlopen):
-        discovery_response = MagicMock()
-        discovery_response.__enter__ = MagicMock(return_value=discovery_response)
-        discovery_response.__exit__ = MagicMock(return_value=False)
-        discovery_response.read.return_value = json.dumps(
-            {"token_endpoint": "https://host/token"}
-        ).encode()
-
-        token_response = MagicMock()
-        token_response.__enter__ = MagicMock(return_value=token_response)
-        token_response.__exit__ = MagicMock(return_value=False)
-        token_response.read.return_value = json.dumps({"error": "bad_grant"}).encode()
-
-        mock_urlopen.side_effect = [discovery_response, token_response]
-
+    @patch(OPEN_URL)
+    def test_no_token_in_response_raises(self, mock_open):
+        mock_open.side_effect = [
+            self._mock_response(self.SAMPLE_AUTH_CONFIG),
+            self._mock_response({"token_endpoint": "https://idp.example.com/token"}),
+            self._mock_response({"error": "bad_grant"}),
+        ]
         with self.assertRaises(ValidationException) as ctx:
             self.module._oidc_password_grant(
                 "https://host", "admin", "pass", False
             )
         self.assertIn("No token returned", str(ctx.exception))
 
-    @patch("urllib.request.urlopen")
-    def test_oidc_grant_sends_correct_payload(self, mock_urlopen):
+    @patch(OPEN_URL)
+    def test_oidc_grant_sends_correct_payload(self, mock_open):
         import urllib.parse
 
-        discovery_response = MagicMock()
-        discovery_response.__enter__ = MagicMock(return_value=discovery_response)
-        discovery_response.__exit__ = MagicMock(return_value=False)
-        discovery_response.read.return_value = json.dumps(
-            {"token_endpoint": "https://host/token"}
-        ).encode()
-
-        token_response = MagicMock()
-        token_response.__enter__ = MagicMock(return_value=token_response)
-        token_response.__exit__ = MagicMock(return_value=False)
-        token_response.read.return_value = json.dumps(
-            {"id_token": "tok"}
-        ).encode()
-
-        mock_urlopen.side_effect = [discovery_response, token_response]
-
+        mock_open.side_effect = [
+            self._mock_response(self.SAMPLE_AUTH_CONFIG),
+            self._mock_response({"token_endpoint": "https://idp.example.com/token"}),
+            self._mock_response({"id_token": "tok"}),
+        ]
         self.module._oidc_password_grant(
             "https://host", "admin", "s3cret", False
         )
 
-        token_call = mock_urlopen.call_args_list[1]
-        request_obj = token_call[0][0]
-        body = request_obj.data.decode()
+        token_call = mock_open.call_args_list[2]
+        body = token_call[1]["data"].decode()
         params = urllib.parse.parse_qs(body)
         self.assertEqual(params["grant_type"], ["password"])
         self.assertEqual(params["username"], ["admin"])
         self.assertEqual(params["password"], ["s3cret"])
-        self.assertEqual(params["client_id"], ["flightctl-client"])
+        self.assertEqual(params["client_id"], ["my-client"])
+        self.assertEqual(params["scope"], ["openid profile email"])
+
+    @patch(OPEN_URL)
+    def test_discovery_url_built_from_issuer(self, mock_open):
+        mock_open.side_effect = [
+            self._mock_response(self.SAMPLE_AUTH_CONFIG),
+            self._mock_response({"token_endpoint": "https://idp.example.com/token"}),
+            self._mock_response({"id_token": "tok"}),
+        ]
+        self.module._oidc_password_grant(
+            "https://host", "admin", "pass", False
+        )
+
+        discovery_call = mock_open.call_args_list[1]
+        self.assertEqual(
+            discovery_call[0][0],
+            "https://idp.example.com/realms/test/.well-known/openid-configuration",
+        )
+
+    @patch(OPEN_URL)
+    def test_default_scope_when_not_configured(self, mock_open):
+        import urllib.parse
+
+        auth_config_no_scopes = {
+            "providers": [{
+                "metadata": {"name": "minimal"},
+                "spec": {
+                    "providerType": "oidc",
+                    "issuer": "https://idp.example.com",
+                    "clientId": "my-client",
+                },
+            }],
+        }
+        mock_open.side_effect = [
+            self._mock_response(auth_config_no_scopes),
+            self._mock_response({"token_endpoint": "https://idp.example.com/token"}),
+            self._mock_response({"id_token": "tok"}),
+        ]
+        self.module._oidc_password_grant(
+            "https://host", "admin", "pass", False
+        )
+
+        token_call = mock_open.call_args_list[2]
+        body = token_call[1]["data"].decode()
+        params = urllib.parse.parse_qs(body)
+        self.assertEqual(params["scope"], ["openid"])
 
 
 class TestSetupConnectionOidcIntegration(unittest.TestCase):
@@ -722,7 +768,7 @@ class TestSetupConnectionOidcIntegration(unittest.TestCase):
 
     def _make_module(self, options):
         module = InventoryModule()
-        module.get_option = MagicMock(side_effect=lambda key: options.get(key))
+        module.get_option = MagicMock(side_effect=options.get)
         module._load_config_file = MagicMock(return_value=None)
         return module
 
@@ -809,31 +855,37 @@ class TestSetupConnectionOidcIntegration(unittest.TestCase):
         )
         self.assertEqual(config.access_token, 'oidc-token')
 
-    @patch("urllib.request.urlopen")
-    def test_oidc_grant_uses_ca_path_in_ssl_context(self, mock_urlopen):
-        discovery_response = MagicMock()
-        discovery_response.__enter__ = MagicMock(return_value=discovery_response)
-        discovery_response.__exit__ = MagicMock(return_value=False)
-        discovery_response.read.return_value = json.dumps(
-            {"token_endpoint": "https://host/token"}
-        ).encode()
+    @patch("plugins.inventory.flightctl.open_url")
+    def test_oidc_grant_passes_ca_path_to_open_url(self, mock_open):
+        def _resp(body):
+            r = MagicMock()
+            r.read.return_value = json.dumps(body).encode()
+            return r
 
-        token_response = MagicMock()
-        token_response.__enter__ = MagicMock(return_value=token_response)
-        token_response.__exit__ = MagicMock(return_value=False)
-        token_response.read.return_value = json.dumps(
-            {"id_token": "tok"}
-        ).encode()
-
-        mock_urlopen.side_effect = [discovery_response, token_response]
+        auth_config = {
+            "providers": [{
+                "metadata": {"name": "p"},
+                "spec": {
+                    "providerType": "oidc",
+                    "issuer": "https://idp.example.com",
+                    "clientId": "c",
+                },
+            }],
+        }
+        mock_open.side_effect = [
+            _resp(auth_config),
+            _resp({"token_endpoint": "https://idp.example.com/token"}),
+            _resp({"id_token": "tok"}),
+        ]
 
         module = InventoryModule()
-        with patch("ssl.create_default_context") as mock_ssl_ctx:
-            mock_ssl_ctx.return_value = MagicMock()
-            module._oidc_password_grant(
-                "https://host", "admin", "pass", True, "/path/to/ca.crt"
-            )
-            mock_ssl_ctx.assert_called_once_with(cafile="/path/to/ca.crt")
+        module._oidc_password_grant(
+            "https://host", "admin", "pass", True, "/path/to/ca.crt"
+        )
+
+        for call in mock_open.call_args_list:
+            self.assertTrue(call[1].get("validate_certs"))
+            self.assertEqual(call[1].get("ca_path"), "/path/to/ca.crt")
 
 
 class TestDocumentationEnvDeclarations(unittest.TestCase):
@@ -906,6 +958,173 @@ class TestDocumentationEnvDeclarations(unittest.TestCase):
             with self.subTest(option=option_name):
                 self.assertTrue(expected_env.startswith('FLIGHTCTL_'),
                                 f"Env var '{expected_env}' should start with FLIGHTCTL_")
+
+
+class TestIsPydanticValidationError(unittest.TestCase):
+    """Verify _is_pydantic_validation_error detects pydantic errors without importing pydantic."""
+
+    def test_real_pydantic_validation_error(self):
+        try:
+            from pydantic import ValidationError, BaseModel
+
+            class StrictModel(BaseModel):
+                value: int
+
+            try:
+                StrictModel(value="not-an-int")  # type: ignore[arg-type]
+            except ValidationError as exc:
+                self.assertTrue(_is_pydantic_validation_error(exc))
+        except ImportError:
+            self.skipTest("pydantic not installed")
+
+    def test_generic_exception_returns_false(self):
+        self.assertFalse(_is_pydantic_validation_error(ValueError("nope")))
+
+    def test_non_pydantic_validation_error_returns_false(self):
+        class ValidationError(Exception):
+            __module__ = "myapp.errors"
+
+        self.assertFalse(_is_pydantic_validation_error(ValidationError("nope")))
+
+
+class TestGetDataRawFallback(unittest.TestCase):
+    """Verify _get_data_raw paginates through raw HTTP responses."""
+
+    def _make_raw_response(self, items, continue_token=None):
+        metadata = {}
+        if continue_token:
+            metadata['continue'] = continue_token
+        body = json.dumps({'items': items, 'metadata': metadata}).encode()
+        resp = MagicMock()
+        resp.data = body
+        return resp
+
+    def test_single_page(self):
+        items = [{'metadata': {'name': 'dev-1'}}, {'metadata': {'name': 'dev-2'}}]
+        list_func = MagicMock(return_value=self._make_raw_response(items))
+
+        result = _get_data_raw(list_func, limit=100)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]['metadata']['name'], 'dev-1')
+        list_func.assert_called_once()
+
+    def test_multi_page_pagination(self):
+        page1 = self._make_raw_response(
+            [{'metadata': {'name': 'dev-1'}}], continue_token='token-abc'
+        )
+        page2 = self._make_raw_response(
+            [{'metadata': {'name': 'dev-2'}}]
+        )
+        list_func = MagicMock(side_effect=[page1, page2])
+
+        result = _get_data_raw(list_func, limit=1)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]['metadata']['name'], 'dev-1')
+        self.assertEqual(result[1]['metadata']['name'], 'dev-2')
+        self.assertEqual(list_func.call_count, 2)
+
+    def test_api_error_raises_flightctl_exception(self):
+        list_func = MagicMock(side_effect=ConnectionError("timeout"))
+        with self.assertRaises(FlightctlApiException):
+            _get_data_raw(list_func)
+
+
+class TestGetDataPydanticFallback(unittest.TestCase):
+    """Verify _get_data falls back to raw JSON on pydantic ValidationError."""
+
+    def _make_typed_response(self, items, continue_token=None):
+        resp = MagicMock()
+        resp.items = items
+        metadata = {}
+        if continue_token:
+            metadata['continue'] = continue_token
+        resp.to_dict.return_value = {'metadata': metadata}
+        return resp
+
+    def _make_raw_response(self, items, continue_token=None):
+        metadata = {}
+        if continue_token:
+            metadata['continue'] = continue_token
+        body = json.dumps({'items': items, 'metadata': metadata}).encode()
+        resp = MagicMock()
+        resp.data = body
+        return resp
+
+    def _make_pydantic_error(self):
+        try:
+            from pydantic import ValidationError, BaseModel
+
+            class StrictModel(BaseModel):
+                value: int
+
+            try:
+                StrictModel(value="not-an-int")  # type: ignore[arg-type]
+            except ValidationError as exc:
+                return exc
+        except ImportError:
+            return None
+
+    def test_normal_path_no_fallback_needed(self):
+        typed_resp = self._make_typed_response([MagicMock(), MagicMock()])
+        list_func = MagicMock(return_value=typed_resp)
+        fallback_func = MagicMock()
+
+        result = _get_data(list_func, fallback_list_func=fallback_func)
+        self.assertEqual(len(result), 2)
+        fallback_func.assert_not_called()
+
+    def test_pydantic_error_triggers_fallback(self):
+        pydantic_exc = self._make_pydantic_error()
+        if pydantic_exc is None:
+            self.skipTest("pydantic not installed")
+
+        list_func = MagicMock(side_effect=pydantic_exc)
+        raw_items = [{'metadata': {'name': 'dev-1'}}]
+        fallback_func = MagicMock(return_value=self._make_raw_response(raw_items))
+
+        result = _get_data(list_func, fallback_list_func=fallback_func)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['metadata']['name'], 'dev-1')
+        fallback_func.assert_called_once()
+
+    def test_non_pydantic_error_still_raises(self):
+        list_func = MagicMock(side_effect=ConnectionError("refused"))
+        fallback_func = MagicMock()
+
+        with self.assertRaises(FlightctlApiException):
+            _get_data(list_func, fallback_list_func=fallback_func)
+        fallback_func.assert_not_called()
+
+    def test_pydantic_error_without_fallback_raises(self):
+        pydantic_exc = self._make_pydantic_error()
+        if pydantic_exc is None:
+            self.skipTest("pydantic not installed")
+
+        list_func = MagicMock(side_effect=pydantic_exc)
+
+        with self.assertRaises(FlightctlApiException):
+            _get_data(list_func, fallback_list_func=None)
+
+
+class TestPopulateInventoryFleetsWithRawDicts(unittest.TestCase):
+    """Verify _populate_inventory_fleets handles raw dicts (fallback path)."""
+
+    @patch('plugins.inventory.flightctl._fetch_fleet_devices')
+    def test_fleet_as_raw_dict(self, mock_fetch):
+        mock_fetch.return_value = []
+        inventory = InventoryModule()
+        mock_inv = MagicMock()
+        mock_groups = MagicMock()
+        mock_groups.__contains__ = MagicMock(return_value=False)
+        mock_inv.groups = mock_groups
+        inventory.inventory = mock_inv
+
+        raw_fleet = {'metadata': {'name': 'fleet-1'}}
+        config = MagicMock()
+
+        inventory._populate_inventory_fleets([raw_fleet], config)
+
+        mock_fetch.assert_called_once_with('fleet-1', config, inventory.LIMIT_PER_PAGE)
 
 
 if __name__ == '__main__':

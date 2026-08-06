@@ -55,7 +55,10 @@ options:
       env:
         - name: FLIGHTCTL_ORGANIZATION
     username:
-      description: Username for your Flight Control service. When provided with password and without a token, the plugin performs an OIDC password grant to obtain a Bearer token automatically.
+      description:
+        - Username for your Flight Control service.
+        - When provided with password and without a token, the plugin performs
+          an OIDC password grant to obtain a Bearer token automatically.
       default: null
       type: str
       env:
@@ -149,10 +152,12 @@ else:
 
 from ..module_utils.config_loader import ConfigLoader
 from ..module_utils.exceptions import ValidationException, FlightctlApiException, FlightctlException
+from ansible.module_utils.urls import open_url
 from ansible.plugins.inventory import BaseInventoryPlugin, Constructable
 from ansible.utils.display import Display
 from contextlib import contextmanager
 from enum import Enum
+import json
 import re
 import base64
 import tempfile
@@ -268,54 +273,107 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
             # Ensure the created temp file is deleted when our module exits
             self.add_cleanup_file(temp_file.name)
 
+    def _fetch_auth_config(self, host: str, verify_ssl: bool,
+                           ca_path: str | None = None) -> dict:
+        auth_config_url = host.rstrip('/') + "/api/v1/auth/config"
+        try:
+            resp = open_url(auth_config_url, validate_certs=verify_ssl,
+                            ca_path=ca_path, timeout=10)
+            return json.loads(resp.read())
+        except Exception as exc:
+            raise ValidationException(
+                f"Failed to fetch auth config from {auth_config_url}: {exc}"
+            ) from exc
+
+    @staticmethod
+    def _select_oidc_provider(auth_config: dict) -> dict:
+        providers = auth_config.get("providers") or []
+        default_name = auth_config.get("defaultProvider")
+
+        oidc_providers = [
+            p for p in providers
+            if (p.get("spec") or {}).get("providerType") == "oidc"
+        ]
+        if not oidc_providers:
+            raise ValidationException(
+                "No OIDC provider found in auth config"
+            )
+
+        if default_name:
+            for p in oidc_providers:
+                name = (p.get("metadata") or {}).get("name")
+                if name == default_name:
+                    return p
+
+        return oidc_providers[0]
+
     def _oidc_password_grant(self, host: str, username: str, password: str,
                              verify_ssl: bool, ca_path: str | None = None) -> str:
-        import json
-        import ssl
+        import urllib.error
         import urllib.parse
-        import urllib.request
 
-        if not verify_ssl:
-            ctx = ssl._create_unverified_context()
-        elif ca_path:
-            ctx = ssl.create_default_context(cafile=ca_path)
-        else:
-            ctx = ssl.create_default_context()
+        auth_config = self._fetch_auth_config(host, verify_ssl, ca_path)
+        provider = self._select_oidc_provider(auth_config)
+        spec = provider.get("spec", {})
+        issuer = spec.get("issuer")
+        client_id = spec.get("clientId")
+        scopes = spec.get("scopes")
 
-        discovery_url = host.rstrip('/') + "/_/pam-issuer/api/v1/auth/.well-known/openid-configuration"
+        if not issuer:
+            raise ValidationException(
+                "OIDC provider in auth config has no issuer URL"
+            )
+        if not client_id:
+            raise ValidationException(
+                "OIDC provider in auth config has no clientId"
+            )
+
+        discovery_url = issuer.rstrip('/') + "/.well-known/openid-configuration"
         try:
-            with urllib.request.urlopen(urllib.request.Request(discovery_url), context=ctx, timeout=10) as resp:
-                token_endpoint = json.load(resp).get("token_endpoint")
+            resp = open_url(discovery_url, validate_certs=verify_ssl,
+                            ca_path=ca_path, timeout=10)
+            token_endpoint = json.loads(resp.read()).get("token_endpoint")
         except Exception as exc:
-            raise ValidationException(f"OIDC discovery failed at {discovery_url}: {exc}") from exc
+            raise ValidationException(
+                f"OIDC discovery failed at {discovery_url}: {exc}"
+            ) from exc
 
         if not token_endpoint:
-            raise ValidationException(f"token_endpoint missing from OIDC discovery at {discovery_url}")
+            raise ValidationException(
+                f"token_endpoint missing from OIDC discovery at {discovery_url}"
+            )
 
+        scope_str = " ".join(scopes) if scopes else "openid"
         payload = urllib.parse.urlencode({
             "grant_type": "password",
             "username": username,
             "password": password,
-            "client_id": "flightctl-client",
-            "scope": "openid profile email roles offline_access",
+            "client_id": client_id,
+            "scope": scope_str,
         }).encode()
 
-        req = urllib.request.Request(
-            token_endpoint, data=payload,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        )
         try:
-            with urllib.request.urlopen(req, context=ctx, timeout=10) as resp:
-                data = json.load(resp)
+            resp = open_url(
+                token_endpoint, data=payload,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                validate_certs=verify_ssl, ca_path=ca_path, timeout=10,
+            )
+            data = json.loads(resp.read())
         except urllib.error.HTTPError as exc:
             body = exc.read().decode(errors="replace")
-            raise ValidationException(f"OIDC token request failed ({exc.code}): {body}") from exc
+            raise ValidationException(
+                f"OIDC token request failed ({exc.code}): {body}"
+            ) from exc
         except Exception as exc:
-            raise ValidationException(f"OIDC token request failed: {exc}") from exc
+            raise ValidationException(
+                f"OIDC token request failed: {exc}"
+            ) from exc
 
         token = data.get("id_token") or data.get("access_token")
         if not token:
-            raise ValidationException("No token returned by OIDC password grant")
+            raise ValidationException(
+                "No token returned by OIDC password grant"
+            )
         return token
 
     def _setup_connection_configuration(self) -> Configuration:
@@ -389,7 +447,9 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
         if len(fleets) == 0:
             return
 
-        for fleet in [fleet.to_dict() for fleet in fleets]:
+        for raw_fleet in fleets:
+            fleet = raw_fleet.to_dict() if hasattr(raw_fleet, 'to_dict') else raw_fleet
+            fleet = _convert_enums_to_strings(fleet)
             fleet_id = _validate_fleet(fleet)
             devices = _fetch_fleet_devices(fleet_id, config, self.LIMIT_PER_PAGE) or []
             self.info(f"Retrieved {len(devices)} devices from fleet {fleet_id}")
@@ -532,6 +592,48 @@ def _build_auth_headers(config: Configuration) -> Dict[str, str] | None:
 
 
 # ---------------------- Static methods --------------------------
+def _is_pydantic_validation_error(exc: Exception) -> bool:
+    """Check if an exception is a pydantic ValidationError without importing pydantic."""
+    exc_type = type(exc)
+    return exc_type.__name__ == 'ValidationError' and 'pydantic' in getattr(exc_type, '__module__', '')
+
+
+def _get_data_raw(
+        list_func: Callable[..., Any],
+        label_list: str | None = None,
+        field_list: str | None = None,
+        limit: int | None = 1000,
+        headers: Dict[str, str] | None = None,
+        request_timeout: float | None = None,
+) -> List[Dict[str, Any]]:
+    """Fallback pagination using a *_without_preload_content endpoint that returns raw JSON."""
+    all_records: list[Dict[str, Any]] = []
+    continue_token: Optional[str] = None
+
+    while True:
+        try:
+            response = list_func(
+                var_continue=continue_token,
+                label_selector=label_list,
+                field_selector=field_list,
+                limit=limit,
+                _headers=headers,
+                _request_timeout=request_timeout,
+            )
+        except Exception as e:
+            raise FlightctlApiException(f"Error retrieving data from Flight Control API: {e}") from e
+        data = json.loads(response.data)
+        records = data.get('items', [])
+        all_records.extend(records)
+        metadata = data.get('metadata', {})
+        continue_token = metadata.get('continue', None)
+
+        if not continue_token:
+            break
+
+    return all_records
+
+
 def _get_data(
         list_func: Callable[..., Any],
         label_list: str | None = None,
@@ -539,6 +641,7 @@ def _get_data(
         limit: int | None = 1000,
         headers: Dict[str, str] | None = None,
         request_timeout: float | None = None,
+        fallback_list_func: Callable[..., Any] | None = None,
 ) -> List[T]:
     """ Repeatedly call `list_func` until exhausted; return combined list """
     all_records: list[T] = []
@@ -556,6 +659,19 @@ def _get_data(
                 _request_timeout=request_timeout,
             )
         except Exception as e:
+            if fallback_list_func is not None and _is_pydantic_validation_error(e):
+                Display().warning(
+                    "Flight Control client SDK raised a pydantic validation error; "
+                    f"falling back to raw JSON deserialization: {e}"
+                )
+                return _get_data_raw(
+                    fallback_list_func,
+                    label_list=label_list,
+                    field_list=field_list,
+                    limit=limit,
+                    headers=headers,
+                    request_timeout=request_timeout,
+                )
             raise FlightctlApiException(f"Error retrieving data from Flight Control API: {e}") from e
         records: Sequence[T] = response.items
         all_records.extend(records)
@@ -767,7 +883,8 @@ def _fetch_fleet_devices(fleet_id: str, config, limit_per_page: int) -> List[Any
             field_list=field_list,
             limit=limit_per_page,
             headers=headers,
-            request_timeout=getattr(config, 'request_timeout', None)
+            request_timeout=getattr(config, 'request_timeout', None),
+            fallback_list_func=device_api.list_devices_without_preload_content,
         )
     return devices
 
@@ -785,13 +902,15 @@ def _get_devices_and_fleets(config, limit_per_page: int) -> Tuple[List[DeviceLis
             device_api.list_devices,
             limit=limit_per_page,
             headers=headers,
-            request_timeout=getattr(config, 'request_timeout', None)
+            request_timeout=getattr(config, 'request_timeout', None),
+            fallback_list_func=device_api.list_devices_without_preload_content,
         )
         all_fleets = _get_data(
             fleet_api.list_fleets,
             limit=limit_per_page,
             headers=headers,
-            request_timeout=getattr(config, 'request_timeout', None)
+            request_timeout=getattr(config, 'request_timeout', None),
+            fallback_list_func=fleet_api.list_fleets_without_preload_content,
         )
 
     return all_devices, all_fleets
@@ -810,7 +929,8 @@ def _get_devices_by_labels_and_fields(config, label_selectors: str | None, field
             field_list=field_selectors,
             limit=limit_per_page,
             headers=headers,
-            request_timeout=getattr(config, 'request_timeout', None)
+            request_timeout=getattr(config, 'request_timeout', None),
+            fallback_list_func=device_api.list_devices_without_preload_content,
         )
 
     return devices
