@@ -5,10 +5,10 @@ from unittest.mock import MagicMock, patch
 
 import yaml
 
-# Import your inventory module
 from plugins.inventory.flightctl import (
     DOCUMENTATION,
     InventoryModule,
+    _build_auth_headers,
     _get_data,
     _get_data_raw,
     _is_pydantic_validation_error,
@@ -16,7 +16,7 @@ from plugins.inventory.flightctl import (
     _resolve_hostname,
     _validate_device,
 )
-from plugins.module_utils.exceptions import FlightctlApiException
+from plugins.module_utils.exceptions import FlightctlApiException, ValidationException
 
 
 class TestFlightCtlInventoryModule(unittest.TestCase):
@@ -533,6 +533,359 @@ class TestValidateDeviceWithExpressions(unittest.TestCase):
         device_id, metadata = _validate_device(device, "metadata.name + '_' + metadata.uid")
         self.assertEqual(device_id, 'device1_')
         self.assertEqual(metadata, device['metadata'])
+
+
+class TestBuildAuthHeaders(unittest.TestCase):
+    """Verify _build_auth_headers only produces Bearer tokens, never Basic Auth."""
+
+    def test_bearer_token_returned_when_access_token_set(self):
+        config = MagicMock()
+        config.access_token = "my-jwt-token"
+        config.username = None
+        config.password = None
+        headers = _build_auth_headers(config)
+        self.assertEqual(headers, {"Authorization": "Bearer my-jwt-token"})
+
+    def test_no_headers_when_no_token(self):
+        config = MagicMock()
+        config.access_token = None
+        config.username = "admin"
+        config.password = "secret"
+        headers = _build_auth_headers(config)
+        self.assertIsNone(headers)
+
+    def test_no_basic_auth_ever_produced(self):
+        config = MagicMock()
+        config.access_token = None
+        config.username = "admin"
+        config.password = "secret"
+        headers = _build_auth_headers(config)
+        self.assertIsNone(headers)
+
+
+class TestOidcPasswordGrant(unittest.TestCase):
+    """Test the OIDC password grant flow in InventoryModule._oidc_password_grant."""
+
+    OPEN_URL = "plugins.inventory.flightctl.open_url"
+
+    SAMPLE_AUTH_CONFIG = {
+        "providers": [{
+            "metadata": {"name": "my-oidc"},
+            "spec": {
+                "providerType": "oidc",
+                "issuer": "https://idp.example.com/realms/test",
+                "clientId": "my-client",
+                "scopes": ["openid", "profile", "email"],
+            },
+        }],
+        "defaultProvider": "my-oidc",
+    }
+
+    def setUp(self):
+        self.module = InventoryModule()
+
+    @staticmethod
+    def _mock_response(body_dict):
+        resp = MagicMock()
+        resp.read.return_value = json.dumps(body_dict).encode()
+        return resp
+
+    @patch(OPEN_URL)
+    def test_successful_oidc_grant_returns_id_token(self, mock_open):
+        mock_open.side_effect = [
+            self._mock_response(self.SAMPLE_AUTH_CONFIG),
+            self._mock_response(
+                {"token_endpoint": "https://idp.example.com/realms/test/protocol/openid-connect/token"}
+            ),
+            self._mock_response(
+                {"id_token": "jwt-id-token", "access_token": "jwt-access-token"}
+            ),
+        ]
+        token = self.module._oidc_password_grant(
+            "https://host", "admin", "password123", False
+        )
+        self.assertEqual(token, "jwt-id-token")
+
+    @patch(OPEN_URL)
+    def test_oidc_grant_falls_back_to_access_token(self, mock_open):
+        mock_open.side_effect = [
+            self._mock_response(self.SAMPLE_AUTH_CONFIG),
+            self._mock_response(
+                {"token_endpoint": "https://idp.example.com/realms/test/protocol/openid-connect/token"}
+            ),
+            self._mock_response({"access_token": "jwt-access-only"}),
+        ]
+        token = self.module._oidc_password_grant(
+            "https://host", "admin", "password123", False
+        )
+        self.assertEqual(token, "jwt-access-only")
+
+    @patch(OPEN_URL)
+    def test_auth_config_failure_raises(self, mock_open):
+        mock_open.side_effect = Exception("Connection refused")
+        with self.assertRaises(ValidationException) as ctx:
+            self.module._oidc_password_grant(
+                "https://host", "admin", "pass", False
+            )
+        self.assertIn("Failed to fetch auth config", str(ctx.exception))
+
+    @patch(OPEN_URL)
+    def test_no_oidc_provider_raises(self, mock_open):
+        mock_open.return_value = self._mock_response({"providers": []})
+        with self.assertRaises(ValidationException) as ctx:
+            self.module._oidc_password_grant(
+                "https://host", "admin", "pass", False
+            )
+        self.assertIn("No OIDC provider found", str(ctx.exception))
+
+    @patch(OPEN_URL)
+    def test_oidc_discovery_failure_raises(self, mock_open):
+        mock_open.side_effect = [
+            self._mock_response(self.SAMPLE_AUTH_CONFIG),
+            Exception("Connection refused"),
+        ]
+        with self.assertRaises(ValidationException) as ctx:
+            self.module._oidc_password_grant(
+                "https://host", "admin", "pass", False
+            )
+        self.assertIn("OIDC discovery failed", str(ctx.exception))
+
+    @patch(OPEN_URL)
+    def test_missing_token_endpoint_raises(self, mock_open):
+        mock_open.side_effect = [
+            self._mock_response(self.SAMPLE_AUTH_CONFIG),
+            self._mock_response({}),
+        ]
+        with self.assertRaises(ValidationException) as ctx:
+            self.module._oidc_password_grant(
+                "https://host", "admin", "pass", False
+            )
+        self.assertIn("token_endpoint missing", str(ctx.exception))
+
+    @patch(OPEN_URL)
+    def test_token_request_http_error_raises(self, mock_open):
+        import urllib.error
+
+        http_error = urllib.error.HTTPError(
+            "https://idp.example.com/token", 401, "Unauthorized", {}, None
+        )
+        http_error.read = MagicMock(return_value=b"invalid credentials")
+
+        mock_open.side_effect = [
+            self._mock_response(self.SAMPLE_AUTH_CONFIG),
+            self._mock_response({"token_endpoint": "https://idp.example.com/token"}),
+            http_error,
+        ]
+        with self.assertRaises(ValidationException) as ctx:
+            self.module._oidc_password_grant(
+                "https://host", "admin", "wrongpass", False
+            )
+        self.assertIn("OIDC token request failed (401)", str(ctx.exception))
+
+    @patch(OPEN_URL)
+    def test_no_token_in_response_raises(self, mock_open):
+        mock_open.side_effect = [
+            self._mock_response(self.SAMPLE_AUTH_CONFIG),
+            self._mock_response({"token_endpoint": "https://idp.example.com/token"}),
+            self._mock_response({"error": "bad_grant"}),
+        ]
+        with self.assertRaises(ValidationException) as ctx:
+            self.module._oidc_password_grant(
+                "https://host", "admin", "pass", False
+            )
+        self.assertIn("No token returned", str(ctx.exception))
+
+    @patch(OPEN_URL)
+    def test_oidc_grant_sends_correct_payload(self, mock_open):
+        import urllib.parse
+
+        mock_open.side_effect = [
+            self._mock_response(self.SAMPLE_AUTH_CONFIG),
+            self._mock_response({"token_endpoint": "https://idp.example.com/token"}),
+            self._mock_response({"id_token": "tok"}),
+        ]
+        self.module._oidc_password_grant(
+            "https://host", "admin", "s3cret", False
+        )
+
+        token_call = mock_open.call_args_list[2]
+        body = token_call[1]["data"].decode()
+        params = urllib.parse.parse_qs(body)
+        self.assertEqual(params["grant_type"], ["password"])
+        self.assertEqual(params["username"], ["admin"])
+        self.assertEqual(params["password"], ["s3cret"])
+        self.assertEqual(params["client_id"], ["my-client"])
+        self.assertEqual(params["scope"], ["openid profile email"])
+
+    @patch(OPEN_URL)
+    def test_discovery_url_built_from_issuer(self, mock_open):
+        mock_open.side_effect = [
+            self._mock_response(self.SAMPLE_AUTH_CONFIG),
+            self._mock_response({"token_endpoint": "https://idp.example.com/token"}),
+            self._mock_response({"id_token": "tok"}),
+        ]
+        self.module._oidc_password_grant(
+            "https://host", "admin", "pass", False
+        )
+
+        discovery_call = mock_open.call_args_list[1]
+        self.assertEqual(
+            discovery_call[0][0],
+            "https://idp.example.com/realms/test/.well-known/openid-configuration",
+        )
+
+    @patch(OPEN_URL)
+    def test_default_scope_when_not_configured(self, mock_open):
+        import urllib.parse
+
+        auth_config_no_scopes = {
+            "providers": [{
+                "metadata": {"name": "minimal"},
+                "spec": {
+                    "providerType": "oidc",
+                    "issuer": "https://idp.example.com",
+                    "clientId": "my-client",
+                },
+            }],
+        }
+        mock_open.side_effect = [
+            self._mock_response(auth_config_no_scopes),
+            self._mock_response({"token_endpoint": "https://idp.example.com/token"}),
+            self._mock_response({"id_token": "tok"}),
+        ]
+        self.module._oidc_password_grant(
+            "https://host", "admin", "pass", False
+        )
+
+        token_call = mock_open.call_args_list[2]
+        body = token_call[1]["data"].decode()
+        params = urllib.parse.parse_qs(body)
+        self.assertEqual(params["scope"], ["openid"])
+
+
+class TestSetupConnectionOidcIntegration(unittest.TestCase):
+    """Test that _setup_connection_configuration uses OIDC grant for username/password."""
+
+    def _make_module(self, options):
+        module = InventoryModule()
+        module.get_option = MagicMock(side_effect=options.get)
+        module._load_config_file = MagicMock(return_value=None)
+        return module
+
+    @patch.object(InventoryModule, '_oidc_password_grant', return_value='oidc-bearer-token')
+    def test_username_password_triggers_oidc_grant(self, mock_oidc):
+        module = self._make_module({
+            'host': 'https://rhem.example.com',
+            'verify_ssl': False,
+            'token': None,
+            'username': 'admin',
+            'password': 'redhat',
+            'organization': None,
+            'ca_path': None,
+            'request_timeout': 120.0,
+            'flightctl_config_file': None,
+        })
+
+        config = module._setup_connection_configuration()
+
+        mock_oidc.assert_called_once_with(
+            'https://rhem.example.com', 'admin', 'redhat', False, None
+        )
+        self.assertEqual(config.access_token, 'oidc-bearer-token')
+        self.assertIsNone(config.username)
+        self.assertIsNone(config.password)
+
+    def test_token_skips_oidc_grant(self):
+        module = self._make_module({
+            'host': 'https://rhem.example.com',
+            'verify_ssl': False,
+            'token': 'pre-existing-token',
+            'username': None,
+            'password': None,
+            'organization': None,
+            'ca_path': None,
+            'request_timeout': 120.0,
+            'flightctl_config_file': None,
+        })
+
+        with patch.object(InventoryModule, '_oidc_password_grant') as mock_oidc:
+            config = module._setup_connection_configuration()
+            mock_oidc.assert_not_called()
+
+        self.assertEqual(config.access_token, 'pre-existing-token')
+
+    @patch.object(InventoryModule, '_oidc_password_grant', return_value='oidc-token')
+    def test_host_with_api_v1_suffix_stripped_for_oidc(self, mock_oidc):
+        module = self._make_module({
+            'host': 'https://rhem.example.com/api/v1',
+            'verify_ssl': False,
+            'token': None,
+            'username': 'admin',
+            'password': 'redhat',
+            'organization': None,
+            'ca_path': None,
+            'request_timeout': 120.0,
+            'flightctl_config_file': None,
+        })
+
+        module._setup_connection_configuration()
+
+        mock_oidc.assert_called_once_with(
+            'https://rhem.example.com', 'admin', 'redhat', False, None
+        )
+
+    @patch.object(InventoryModule, '_oidc_password_grant', return_value='oidc-token')
+    def test_ca_path_passed_to_oidc_grant(self, mock_oidc):
+        module = self._make_module({
+            'host': 'https://rhem.example.com',
+            'verify_ssl': True,
+            'token': None,
+            'username': 'admin',
+            'password': 'redhat',
+            'organization': None,
+            'ca_path': '/etc/pki/tls/custom-ca.crt',
+            'request_timeout': 120.0,
+            'flightctl_config_file': None,
+        })
+
+        config = module._setup_connection_configuration()
+
+        mock_oidc.assert_called_once_with(
+            'https://rhem.example.com', 'admin', 'redhat', True, '/etc/pki/tls/custom-ca.crt'
+        )
+        self.assertEqual(config.access_token, 'oidc-token')
+
+    @patch("plugins.inventory.flightctl.open_url")
+    def test_oidc_grant_passes_ca_path_to_open_url(self, mock_open):
+        def _resp(body):
+            r = MagicMock()
+            r.read.return_value = json.dumps(body).encode()
+            return r
+
+        auth_config = {
+            "providers": [{
+                "metadata": {"name": "p"},
+                "spec": {
+                    "providerType": "oidc",
+                    "issuer": "https://idp.example.com",
+                    "clientId": "c",
+                },
+            }],
+        }
+        mock_open.side_effect = [
+            _resp(auth_config),
+            _resp({"token_endpoint": "https://idp.example.com/token"}),
+            _resp({"id_token": "tok"}),
+        ]
+
+        module = InventoryModule()
+        module._oidc_password_grant(
+            "https://host", "admin", "pass", True, "/path/to/ca.crt"
+        )
+
+        for call in mock_open.call_args_list:
+            self.assertTrue(call[1].get("validate_certs"))
+            self.assertEqual(call[1].get("ca_path"), "/path/to/ca.crt")
 
 
 class TestDocumentationEnvDeclarations(unittest.TestCase):
