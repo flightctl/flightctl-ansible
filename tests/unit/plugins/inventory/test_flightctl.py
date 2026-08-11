@@ -9,11 +9,14 @@ from plugins.inventory.flightctl import (
     DOCUMENTATION,
     InventoryModule,
     _build_auth_headers,
+    _get_data,
+    _get_data_raw,
+    _is_pydantic_validation_error,
     _render_hostname_expression,
     _resolve_hostname,
     _validate_device,
 )
-from plugins.module_utils.exceptions import ValidationException
+from plugins.module_utils.exceptions import FlightctlApiException, ValidationException
 
 
 class TestFlightCtlInventoryModule(unittest.TestCase):
@@ -955,6 +958,173 @@ class TestDocumentationEnvDeclarations(unittest.TestCase):
             with self.subTest(option=option_name):
                 self.assertTrue(expected_env.startswith('FLIGHTCTL_'),
                                 f"Env var '{expected_env}' should start with FLIGHTCTL_")
+
+
+class TestIsPydanticValidationError(unittest.TestCase):
+    """Verify _is_pydantic_validation_error detects pydantic errors without importing pydantic."""
+
+    def test_real_pydantic_validation_error(self):
+        try:
+            from pydantic import ValidationError, BaseModel
+
+            class StrictModel(BaseModel):
+                value: int
+
+            try:
+                StrictModel(value="not-an-int")  # type: ignore[arg-type]
+            except ValidationError as exc:
+                self.assertTrue(_is_pydantic_validation_error(exc))
+        except ImportError:
+            self.skipTest("pydantic not installed")
+
+    def test_generic_exception_returns_false(self):
+        self.assertFalse(_is_pydantic_validation_error(ValueError("nope")))
+
+    def test_non_pydantic_validation_error_returns_false(self):
+        class ValidationError(Exception):
+            __module__ = "myapp.errors"
+
+        self.assertFalse(_is_pydantic_validation_error(ValidationError("nope")))
+
+
+class TestGetDataRawFallback(unittest.TestCase):
+    """Verify _get_data_raw paginates through raw HTTP responses."""
+
+    def _make_raw_response(self, items, continue_token=None):
+        metadata = {}
+        if continue_token:
+            metadata['continue'] = continue_token
+        body = json.dumps({'items': items, 'metadata': metadata}).encode()
+        resp = MagicMock()
+        resp.data = body
+        return resp
+
+    def test_single_page(self):
+        items = [{'metadata': {'name': 'dev-1'}}, {'metadata': {'name': 'dev-2'}}]
+        list_func = MagicMock(return_value=self._make_raw_response(items))
+
+        result = _get_data_raw(list_func, limit=100)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]['metadata']['name'], 'dev-1')
+        list_func.assert_called_once()
+
+    def test_multi_page_pagination(self):
+        page1 = self._make_raw_response(
+            [{'metadata': {'name': 'dev-1'}}], continue_token='token-abc'
+        )
+        page2 = self._make_raw_response(
+            [{'metadata': {'name': 'dev-2'}}]
+        )
+        list_func = MagicMock(side_effect=[page1, page2])
+
+        result = _get_data_raw(list_func, limit=1)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]['metadata']['name'], 'dev-1')
+        self.assertEqual(result[1]['metadata']['name'], 'dev-2')
+        self.assertEqual(list_func.call_count, 2)
+
+    def test_api_error_raises_flightctl_exception(self):
+        list_func = MagicMock(side_effect=ConnectionError("timeout"))
+        with self.assertRaises(FlightctlApiException):
+            _get_data_raw(list_func)
+
+
+class TestGetDataPydanticFallback(unittest.TestCase):
+    """Verify _get_data falls back to raw JSON on pydantic ValidationError."""
+
+    def _make_typed_response(self, items, continue_token=None):
+        resp = MagicMock()
+        resp.items = items
+        metadata = {}
+        if continue_token:
+            metadata['continue'] = continue_token
+        resp.to_dict.return_value = {'metadata': metadata}
+        return resp
+
+    def _make_raw_response(self, items, continue_token=None):
+        metadata = {}
+        if continue_token:
+            metadata['continue'] = continue_token
+        body = json.dumps({'items': items, 'metadata': metadata}).encode()
+        resp = MagicMock()
+        resp.data = body
+        return resp
+
+    def _make_pydantic_error(self):
+        try:
+            from pydantic import ValidationError, BaseModel
+
+            class StrictModel(BaseModel):
+                value: int
+
+            try:
+                StrictModel(value="not-an-int")  # type: ignore[arg-type]
+            except ValidationError as exc:
+                return exc
+        except ImportError:
+            return None
+
+    def test_normal_path_no_fallback_needed(self):
+        typed_resp = self._make_typed_response([MagicMock(), MagicMock()])
+        list_func = MagicMock(return_value=typed_resp)
+        fallback_func = MagicMock()
+
+        result = _get_data(list_func, fallback_list_func=fallback_func)
+        self.assertEqual(len(result), 2)
+        fallback_func.assert_not_called()
+
+    def test_pydantic_error_triggers_fallback(self):
+        pydantic_exc = self._make_pydantic_error()
+        if pydantic_exc is None:
+            self.skipTest("pydantic not installed")
+
+        list_func = MagicMock(side_effect=pydantic_exc)
+        raw_items = [{'metadata': {'name': 'dev-1'}}]
+        fallback_func = MagicMock(return_value=self._make_raw_response(raw_items))
+
+        result = _get_data(list_func, fallback_list_func=fallback_func)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['metadata']['name'], 'dev-1')
+        fallback_func.assert_called_once()
+
+    def test_non_pydantic_error_still_raises(self):
+        list_func = MagicMock(side_effect=ConnectionError("refused"))
+        fallback_func = MagicMock()
+
+        with self.assertRaises(FlightctlApiException):
+            _get_data(list_func, fallback_list_func=fallback_func)
+        fallback_func.assert_not_called()
+
+    def test_pydantic_error_without_fallback_raises(self):
+        pydantic_exc = self._make_pydantic_error()
+        if pydantic_exc is None:
+            self.skipTest("pydantic not installed")
+
+        list_func = MagicMock(side_effect=pydantic_exc)
+
+        with self.assertRaises(FlightctlApiException):
+            _get_data(list_func, fallback_list_func=None)
+
+
+class TestPopulateInventoryFleetsWithRawDicts(unittest.TestCase):
+    """Verify _populate_inventory_fleets handles raw dicts (fallback path)."""
+
+    @patch('plugins.inventory.flightctl._fetch_fleet_devices')
+    def test_fleet_as_raw_dict(self, mock_fetch):
+        mock_fetch.return_value = []
+        inventory = InventoryModule()
+        mock_inv = MagicMock()
+        mock_groups = MagicMock()
+        mock_groups.__contains__ = MagicMock(return_value=False)
+        mock_inv.groups = mock_groups
+        inventory.inventory = mock_inv
+
+        raw_fleet = {'metadata': {'name': 'fleet-1'}}
+        config = MagicMock()
+
+        inventory._populate_inventory_fleets([raw_fleet], config)
+
+        mock_fetch.assert_called_once_with('fleet-1', config, inventory.LIMIT_PER_PAGE)
 
 
 if __name__ == '__main__':

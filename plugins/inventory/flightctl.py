@@ -447,7 +447,8 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
         if len(fleets) == 0:
             return
 
-        for fleet in [fleet.to_dict() for fleet in fleets]:
+        for raw_fleet in fleets:
+            fleet = raw_fleet.to_dict() if hasattr(raw_fleet, 'to_dict') else raw_fleet
             fleet = _convert_enums_to_strings(fleet)
             fleet_id = _validate_fleet(fleet)
             devices = _fetch_fleet_devices(fleet_id, config, self.LIMIT_PER_PAGE) or []
@@ -591,6 +592,48 @@ def _build_auth_headers(config: Configuration) -> Dict[str, str] | None:
 
 
 # ---------------------- Static methods --------------------------
+def _is_pydantic_validation_error(exc: Exception) -> bool:
+    """Check if an exception is a pydantic ValidationError without importing pydantic."""
+    exc_type = type(exc)
+    return exc_type.__name__ == 'ValidationError' and 'pydantic' in getattr(exc_type, '__module__', '')
+
+
+def _get_data_raw(
+        list_func: Callable[..., Any],
+        label_list: str | None = None,
+        field_list: str | None = None,
+        limit: int | None = 1000,
+        headers: Dict[str, str] | None = None,
+        request_timeout: float | None = None,
+) -> List[Dict[str, Any]]:
+    """Fallback pagination using a *_without_preload_content endpoint that returns raw JSON."""
+    all_records: list[Dict[str, Any]] = []
+    continue_token: Optional[str] = None
+
+    while True:
+        try:
+            response = list_func(
+                var_continue=continue_token,
+                label_selector=label_list,
+                field_selector=field_list,
+                limit=limit,
+                _headers=headers,
+                _request_timeout=request_timeout,
+            )
+        except Exception as e:
+            raise FlightctlApiException(f"Error retrieving data from Flight Control API: {e}") from e
+        data = json.loads(response.data)
+        records = data.get('items', [])
+        all_records.extend(records)
+        metadata = data.get('metadata', {})
+        continue_token = metadata.get('continue', None)
+
+        if not continue_token:
+            break
+
+    return all_records
+
+
 def _get_data(
         list_func: Callable[..., Any],
         label_list: str | None = None,
@@ -598,6 +641,7 @@ def _get_data(
         limit: int | None = 1000,
         headers: Dict[str, str] | None = None,
         request_timeout: float | None = None,
+        fallback_list_func: Callable[..., Any] | None = None,
 ) -> List[T]:
     """ Repeatedly call `list_func` until exhausted; return combined list """
     all_records: list[T] = []
@@ -615,6 +659,19 @@ def _get_data(
                 _request_timeout=request_timeout,
             )
         except Exception as e:
+            if fallback_list_func is not None and _is_pydantic_validation_error(e):
+                Display().warning(
+                    "Flight Control client SDK raised a pydantic validation error; "
+                    f"falling back to raw JSON deserialization: {e}"
+                )
+                return _get_data_raw(
+                    fallback_list_func,
+                    label_list=label_list,
+                    field_list=field_list,
+                    limit=limit,
+                    headers=headers,
+                    request_timeout=request_timeout,
+                )
             raise FlightctlApiException(f"Error retrieving data from Flight Control API: {e}") from e
         records: Sequence[T] = response.items
         all_records.extend(records)
@@ -827,7 +884,7 @@ def _fetch_fleet_devices(fleet_id: str, config, limit_per_page: int) -> List[Any
             limit=limit_per_page,
             headers=headers,
             request_timeout=getattr(config, 'request_timeout', None),
-
+            fallback_list_func=device_api.list_devices_without_preload_content,
         )
     return devices
 
@@ -846,14 +903,14 @@ def _get_devices_and_fleets(config, limit_per_page: int) -> Tuple[List[DeviceLis
             limit=limit_per_page,
             headers=headers,
             request_timeout=getattr(config, 'request_timeout', None),
-
+            fallback_list_func=device_api.list_devices_without_preload_content,
         )
         all_fleets = _get_data(
             fleet_api.list_fleets,
             limit=limit_per_page,
             headers=headers,
             request_timeout=getattr(config, 'request_timeout', None),
-
+            fallback_list_func=fleet_api.list_fleets_without_preload_content,
         )
 
     return all_devices, all_fleets
@@ -873,7 +930,7 @@ def _get_devices_by_labels_and_fields(config, label_selectors: str | None, field
             limit=limit_per_page,
             headers=headers,
             request_timeout=getattr(config, 'request_timeout', None),
-
+            fallback_list_func=device_api.list_devices_without_preload_content,
         )
 
     return devices
