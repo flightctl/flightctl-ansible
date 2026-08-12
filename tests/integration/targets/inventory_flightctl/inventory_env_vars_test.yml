@@ -1,0 +1,40 @@
+---
+# Verifies that the inventory plugin reads all connection options from environment
+# variables — the same mechanism AAP uses when injecting credentials via a
+# Credential Type (EDM-4975).  No host, token, or organization is present in
+# the inventory file itself; they must be picked up from the environment.
+
+- name: Test inventory plugin reads credentials from environment variables (AAP Credential Type simulation)
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Run ansible-inventory with credentials supplied only via env vars
+      ansible.builtin.command: >
+        ansible-inventory -i ./.config/flightctl/inventory_env_only.yml --list
+      environment:
+        FLIGHTCTL_HOST: "{{ flightctl_host }}"
+        FLIGHTCTL_TOKEN: "{{ flightctl_token }}"
+        FLIGHTCTL_ORGANIZATION: "{{ flightctl_organization | default('') }}"
+      register: inv_output
+      changed_when: false
+
+    - name: Parse inventory JSON output
+      ansible.builtin.set_fact:
+        inv_json: "{{ inv_output.stdout | from_json }}"
+
+    - name: Assert inventory returned at least one host
+      ansible.builtin.assert:
+        that:
+          - inv_json['_meta']['hostvars'] | length > 0
+        fail_msg: >
+          Inventory returned no hosts when credentials were supplied via env vars.
+          This indicates FLIGHTCTL_HOST / FLIGHTCTL_TOKEN were not read by the plugin
+          (EDM-4975 regression — missing env: declarations in DOCUMENTATION block).
+
+    - name: Assert known test device is present
+      ansible.builtin.assert:
+        that:
+          - "'ansible-integration-test-device' in inv_json['_meta']['hostvars']"
+        fail_msg: >
+          Expected device 'ansible-integration-test-device' not found in inventory.
+          Env var credential injection may have been ignored.

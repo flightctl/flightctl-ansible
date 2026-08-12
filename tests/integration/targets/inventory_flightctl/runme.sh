@@ -95,4 +95,19 @@ sleep 5
 echo "Step 3: Testing inventory discovery..."
 ansible-playbook ./inventory_test.yml -i ./.config/flightctl/inventory.yml -e "flightctl_host=${FLIGHTCTL_HOST}" -e "flightctl_token=${FLIGHTCTL_TOKEN}" -e "flightctl_organization=${FLIGHTCTL_ORGANIZATION}" "${CMD_ARGS[@]}"
 
+# Write a credential-free inventory file — host/token/org must come from env vars.
+# This simulates how AAP injects credentials via a Credential Type (EDM-4975).
+cat > .config/flightctl/inventory_env_only.yml <<EOF
+---
+plugin: flightctl.core.flightctl
+verify_ssl: False
+EOF
+
+echo "Step 4: Testing env var credential injection (AAP Credential Type simulation / EDM-4975)..."
+ansible-playbook ./inventory_env_vars_test.yml \
+  -e "flightctl_host=${FLIGHTCTL_HOST}" \
+  -e "flightctl_token=${FLIGHTCTL_TOKEN}" \
+  -e "flightctl_organization=${FLIGHTCTL_ORGANIZATION}" \
+  "${CMD_ARGS[@]}"
+
 echo "DONE"
