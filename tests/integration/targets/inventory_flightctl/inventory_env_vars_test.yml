@@ -10,7 +10,7 @@
   tasks:
     - name: Run ansible-inventory with credentials supplied only via env vars
       ansible.builtin.command: >
-        ansible-inventory -i ./.config/flightctl/inventory_env_only.yml --list
+        ansible-inventory -i ./.config/flightctl/env_only.inventory.yml --list
       environment:
         FLIGHTCTL_HOST: "{{ flightctl_host }}"
         FLIGHTCTL_TOKEN: "{{ flightctl_token }}"

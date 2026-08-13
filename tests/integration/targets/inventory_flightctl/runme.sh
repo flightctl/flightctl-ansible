@@ -97,7 +97,7 @@ ansible-playbook ./inventory_test.yml -i ./.config/flightctl/inventory.yml -e "f
 
 # Write a credential-free inventory file — host/token/org must come from env vars.
 # This simulates how AAP injects credentials via a Credential Type (EDM-4975).
-cat > .config/flightctl/inventory_env_only.yml <<EOF
+cat > .config/flightctl/env_only.inventory.yml <<EOF
 ---
 plugin: flightctl.core.flightctl
 verify_ssl: False
