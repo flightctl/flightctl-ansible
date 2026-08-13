@@ -23,6 +23,7 @@
         - 'device-dev-02'
         - 'device-test-01'
         - 'device-unmanaged-01'
+      no_log: true
 
     - name: Delete test fleets
       flightctl.core.flightctl_resource:
@@ -35,3 +36,4 @@
         - 'fleet-dev'
         - 'fleet-test'
         - 'fleet-prod'
+      no_log: true

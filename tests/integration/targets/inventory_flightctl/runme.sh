@@ -14,12 +14,21 @@ FLIGHTCTL_ORGANIZATION="$(grep -oP 'flightctl_organization:\s*\K.*' "../../integ
 export FLIGHTCTL_HOST FLIGHTCTL_TOKEN FLIGHTCTL_ORGANIZATION
 # Write credentials to a restricted temp vars file so they do not appear in
 # the process argument list of ansible-playbook calls.
+if [[ -z "${FLIGHTCTL_HOST}" || -z "${FLIGHTCTL_TOKEN}" ]]; then
+  printf 'error: flightctl_host and flightctl_token are required in integration_config.yml\n' >&2
+  exit 1
+fi
 VARS_FILE=$(mktemp)
+# Register cleanup immediately after mktemp — before chmod/printf — so the
+# file is removed even if a subsequent command fails under set -e.
+cleanup() {
+  ansible-playbook ./inventory_cleanup_test.yml -e "@${VARS_FILE}" "${CMD_ARGS[@]}" 2>/dev/null || true
+  rm -f "${VARS_FILE}" ".config/flightctl/inventory.yml" ".config/flightctl/env_only.inventory.yml"
+}
+trap cleanup EXIT
 chmod 600 "${VARS_FILE}"
 printf 'flightctl_host: "%s"\nflightctl_token: "%s"\nflightctl_organization: "%s"\n' \
   "${FLIGHTCTL_HOST}" "${FLIGHTCTL_TOKEN}" "${FLIGHTCTL_ORGANIZATION}" > "${VARS_FILE}"
-# Ensure the temp file is removed on exit (success or failure)
-trap 'rm -f "${VARS_FILE}"' EXIT
 set -x
 
 # Create inventory config directory
@@ -118,8 +127,5 @@ EOF
 
 echo "Step 4: Testing env var credential injection (AAP Credential Type simulation / EDM-4975)..."
 ansible-playbook ./inventory_env_vars_test.yml -e "@${VARS_FILE}" "${CMD_ARGS[@]}"
-
-echo "Step 5: Cleaning up test resources..."
-ansible-playbook ./inventory_cleanup_test.yml -e "@${VARS_FILE}" "${CMD_ARGS[@]}"
 
 echo "DONE"
