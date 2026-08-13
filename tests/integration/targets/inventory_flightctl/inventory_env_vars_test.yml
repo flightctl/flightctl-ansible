@@ -39,3 +39,23 @@
         fail_msg: >
           Expected device 'ansible-integration-test-device' not found in inventory.
           Env var credential injection may have been ignored.
+
+    - name: Run ansible-inventory with an invalid token (negative case)
+      ansible.builtin.command: >
+        ansible-inventory -i ./.config/flightctl/env_only.inventory.yml --list
+      environment:
+        FLIGHTCTL_HOST: "{{ flightctl_host }}"
+        FLIGHTCTL_TOKEN: "invalid-token-that-should-be-rejected"
+        FLIGHTCTL_ORGANIZATION: "{{ flightctl_organization | default('') }}"
+      register: inv_invalid_token
+      changed_when: false
+      failed_when: inv_invalid_token.rc == 0
+      no_log: true
+
+    - name: Assert invalid token was rejected (non-zero exit)
+      ansible.builtin.assert:
+        that:
+          - inv_invalid_token.rc != 0
+        fail_msg: >
+          Inventory succeeded with an invalid token — the API is not enforcing
+          authentication, or the token env var is being ignored entirely.
