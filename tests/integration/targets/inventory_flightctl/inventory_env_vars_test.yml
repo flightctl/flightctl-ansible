@@ -21,7 +21,7 @@
 
     - name: Parse inventory JSON output
       ansible.builtin.set_fact:
-        inv_json: "{{ inv_output.stdout | from_json }}"
+        inv_json: "{{ inv_output.stdout | string | from_json }}"
 
     - name: Assert inventory returned at least one host
       ansible.builtin.assert:
@@ -49,13 +49,17 @@
         FLIGHTCTL_ORGANIZATION: "{{ flightctl_organization | default('') }}"
       register: inv_invalid_token
       changed_when: false
-      failed_when: inv_invalid_token.rc == 0
       no_log: true
 
-    - name: Assert invalid token was rejected (non-zero exit)
+    - name: Parse invalid-token inventory output
+      ansible.builtin.set_fact:
+        inv_invalid_json: "{{ inv_invalid_token.stdout | string | from_json }}"
+
+    - name: Assert invalid token yields empty inventory (negative case)
       ansible.builtin.assert:
         that:
-          - inv_invalid_token.rc != 0
+          - inv_invalid_json['_meta']['hostvars'] | length == 0
         fail_msg: >
-          Inventory succeeded with an invalid token — the API is not enforcing
-          authentication, or the token env var is being ignored entirely.
+          Inventory returned hosts with an invalid token — the token env var is being
+          ignored entirely and the plugin is falling back to another credential source
+          (EDM-4975 regression).
