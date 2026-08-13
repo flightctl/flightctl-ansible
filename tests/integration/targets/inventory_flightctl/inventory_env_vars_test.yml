@@ -21,7 +21,7 @@
 
     - name: Parse inventory JSON output
       ansible.builtin.set_fact:
-        inv_json: "{{ inv_output.stdout | string | from_json }}"
+        inv_json: "{{ inv_output.stdout | to_json | from_json }}"
 
     - name: Assert inventory returned at least one host
       ansible.builtin.assert:
@@ -53,7 +53,7 @@
 
     - name: Parse invalid-token inventory output
       ansible.builtin.set_fact:
-        inv_invalid_json: "{{ inv_invalid_token.stdout | string | from_json }}"
+        inv_invalid_json: "{{ inv_invalid_token.stdout | to_json | from_json }}"
 
     - name: Assert invalid token yields empty inventory (negative case)
       ansible.builtin.assert:
