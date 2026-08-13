@@ -89,4 +89,3 @@
               total_groups: "{{ groups.keys() | list | length }}"
               total_hosts: "{{ groups['all'] | default([]) | length }}"
               custom_groups: "{{ groups.keys() | list | reject('match', '^(all|ungrouped)$') | list }}"
-
