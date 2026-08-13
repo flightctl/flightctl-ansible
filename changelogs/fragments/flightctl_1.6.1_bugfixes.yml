@@ -1,0 +1,22 @@
+release_summary: >-
+  Bug fix release addressing inventory plugin crashes and authentication issues.
+
+bugfixes:
+  - >-
+    Deferred ``jsonschema`` and ``pyyaml`` import checks in ``ConfigLoader`` to
+    ``_load_config_file()`` so that the inventory plugin no longer raises
+    ``ImportError`` when these packages are absent and no config file is used.
+  - >-
+    Added missing ``env`` declarations to all inventory plugin connection options
+    so that environment variables (``FLIGHTCTL_TOKEN``, ``FLIGHTCTL_HOST``, etc.)
+    are no longer silently ignored by ``get_option()``, restoring AAP Credential
+    Type injection support.
+  - >-
+    Replaced broken HTTP Basic Auth with an OIDC Resource Owner Password Grant
+    flow in the inventory plugin, matching the ``flightctl`` CLI behavior and
+    fixing authentication against RHEM servers that only accept Bearer tokens.
+  - >-
+    Added a pydantic ``ValidationError`` fallback in the inventory plugin that
+    retries device list calls using raw JSON endpoints, fixing crashes when the
+    API returns mount-only application volumes without the required ``image``
+    field.
