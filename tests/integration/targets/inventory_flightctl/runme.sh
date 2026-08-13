@@ -6,10 +6,12 @@ CMD_ARGS=("$@")
 
 echo "Running inventory test with args: ${CMD_ARGS[*]}"
 
-# Parse flightctl_host from the integration_config.yml file and pass it to the playbook
+# Parse credentials from integration_config.yml — suppress tracing to avoid exposing secrets in CI logs
+{ set +x; } 2>/dev/null
 FLIGHTCTL_HOST=$(grep -oP 'flightctl_host:\s*\K.*' "../../integration_config.yml")
 FLIGHTCTL_TOKEN=$(grep -oP 'flightctl_token:\s*\K.*' "../../integration_config.yml")
 FLIGHTCTL_ORGANIZATION="$(grep -oP 'flightctl_organization:\s*\K.*' "../../integration_config.yml" || true)"
+set -x
 
 # Create inventory config directory
 mkdir -p .config/flightctl
@@ -86,14 +88,18 @@ echo "Step 1: Testing inventory plugin documentation..."
 ansible-playbook ./inventory_doc_test.yml "${CMD_ARGS[@]}"
 
 echo "Step 2: Setting up test resources..."
+{ set +x; } 2>/dev/null
 ansible-playbook ./inventory_setup_test.yml -e "flightctl_host=${FLIGHTCTL_HOST}" -e "flightctl_token=${FLIGHTCTL_TOKEN}" -e "flightctl_organization=${FLIGHTCTL_ORGANIZATION}" "${CMD_ARGS[@]}"
+set -x
 
 # Wait a bit for resources to be fully created
 echo "Waiting for resources to be ready..."
 sleep 5
 
 echo "Step 3: Testing inventory discovery..."
+{ set +x; } 2>/dev/null
 ansible-playbook ./inventory_test.yml -i ./.config/flightctl/inventory.yml -e "flightctl_host=${FLIGHTCTL_HOST}" -e "flightctl_token=${FLIGHTCTL_TOKEN}" -e "flightctl_organization=${FLIGHTCTL_ORGANIZATION}" "${CMD_ARGS[@]}"
+set -x
 
 # Write a credential-free inventory file — host/token/org must come from env vars.
 # This simulates how AAP injects credentials via a Credential Type (EDM-4975).
@@ -104,10 +110,12 @@ verify_ssl: False
 EOF
 
 echo "Step 4: Testing env var credential injection (AAP Credential Type simulation / EDM-4975)..."
+{ set +x; } 2>/dev/null
 ansible-playbook ./inventory_env_vars_test.yml \
   -e "flightctl_host=${FLIGHTCTL_HOST}" \
   -e "flightctl_token=${FLIGHTCTL_TOKEN}" \
   -e "flightctl_organization=${FLIGHTCTL_ORGANIZATION}" \
   "${CMD_ARGS[@]}"
+set -x
 
 echo "DONE"

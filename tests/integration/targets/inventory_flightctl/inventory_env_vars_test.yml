@@ -17,6 +17,7 @@
         FLIGHTCTL_ORGANIZATION: "{{ flightctl_organization | default('') }}"
       register: inv_output
       changed_when: false
+      no_log: true
 
     - name: Parse inventory JSON output
       ansible.builtin.set_fact:
