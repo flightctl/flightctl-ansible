@@ -8,81 +8,91 @@
   hosts: localhost
   gather_facts: false
   tasks:
-    - name: Run ansible-inventory with credentials supplied only via env vars
-      ansible.builtin.command: >
+    - name: Run ansible-inventory with credentials supplied only via env vars, writing output directly to file
+      ansible.builtin.shell: >
         ansible-inventory -i ./.config/flightctl/env_only.inventory.yml --list
+        > /tmp/ansible_flightctl_inv.json
       environment:
         FLIGHTCTL_HOST: "{{ flightctl_host }}"
         FLIGHTCTL_TOKEN: "{{ flightctl_token }}"
         FLIGHTCTL_ORGANIZATION: "{{ flightctl_organization | default('') }}"
-      register: inv_output
       changed_when: false
       no_log: true
 
-    - name: Write inventory output to temp file
-      ansible.builtin.copy:
-        content: "{{ inv_output.stdout }}"
-        dest: /tmp/ansible_flightctl_inv.json
-        mode: '0600'
-      no_log: true
-
-    - name: Read inventory JSON from file
-      ansible.builtin.slurp:
-        src: /tmp/ansible_flightctl_inv.json
-      register: inv_raw
-
-    - name: Parse inventory JSON output
-      ansible.builtin.set_fact:
-        inv_json: "{{ inv_raw.content | b64decode | from_json }}"
+    - name: Count hosts returned by env-var-only inventory
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import json, sys
+            with open('/tmp/ansible_flightctl_inv.json') as f:
+                data = json.load(f)
+            hostvars = data.get('_meta', {}).get('hostvars', {})
+            print(len(hostvars))
+      register: inv_host_count
+      changed_when: false
 
     - name: Assert inventory returned at least one host
       ansible.builtin.assert:
         that:
-          - inv_json['_meta']['hostvars'] | length > 0
+          - inv_host_count.stdout | int > 0
         fail_msg: >
           Inventory returned no hosts when credentials were supplied via env vars.
           This indicates FLIGHTCTL_HOST / FLIGHTCTL_TOKEN were not read by the plugin
           (EDM-4975 regression — missing env: declarations in DOCUMENTATION block).
 
+    - name: Check if known test device is present in env-var-only inventory
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import json, sys
+            with open('/tmp/ansible_flightctl_inv.json') as f:
+                data = json.load(f)
+            hostvars = data.get('_meta', {}).get('hostvars', {})
+            print('yes' if 'ansible-integration-test-device' in hostvars else 'no')
+      register: device_present
+      changed_when: false
+
     - name: Assert known test device is present
       ansible.builtin.assert:
         that:
-          - "'ansible-integration-test-device' in inv_json['_meta']['hostvars']"
+          - device_present.stdout | trim == 'yes'
         fail_msg: >
           Expected device 'ansible-integration-test-device' not found in inventory.
-          Env var credential injection may have been ignored.
+          Env var credential injection may have been ignored (EDM-4975 regression).
 
     - name: Run ansible-inventory with an invalid token (negative case)
-      ansible.builtin.command: >
+      ansible.builtin.shell: >
         ansible-inventory -i ./.config/flightctl/env_only.inventory.yml --list
+        > /tmp/ansible_flightctl_inv_invalid.json
       environment:
         FLIGHTCTL_HOST: "{{ flightctl_host }}"
         FLIGHTCTL_TOKEN: "invalid-token-that-should-be-rejected"
         FLIGHTCTL_ORGANIZATION: "{{ flightctl_organization | default('') }}"
-      register: inv_invalid_token
       changed_when: false
       no_log: true
 
-    - name: Write invalid-token inventory output to temp file
-      ansible.builtin.copy:
-        content: "{{ inv_invalid_token.stdout }}"
-        dest: /tmp/ansible_flightctl_inv_invalid.json
-        mode: '0600'
-      no_log: true
-
-    - name: Read invalid-token inventory JSON from file
-      ansible.builtin.slurp:
-        src: /tmp/ansible_flightctl_inv_invalid.json
-      register: inv_invalid_raw
-
-    - name: Parse invalid-token inventory output
-      ansible.builtin.set_fact:
-        inv_invalid_json: "{{ inv_invalid_raw.content | b64decode | from_json }}"
+    - name: Count hosts returned by invalid-token inventory
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import json, sys
+            with open('/tmp/ansible_flightctl_inv_invalid.json') as f:
+                data = json.load(f)
+            hostvars = data.get('_meta', {}).get('hostvars', {})
+            print(len(hostvars))
+      register: inv_invalid_host_count
+      changed_when: false
 
     - name: Assert invalid token yields empty inventory (negative case)
       ansible.builtin.assert:
         that:
-          - inv_invalid_json['_meta']['hostvars'] | length == 0
+          - inv_invalid_host_count.stdout | int == 0
         fail_msg: >
           Inventory returned hosts with an invalid token — the token env var is being
           ignored entirely and the plugin is falling back to another credential source
