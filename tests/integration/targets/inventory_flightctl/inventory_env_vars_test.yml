@@ -19,9 +19,16 @@
       changed_when: false
       no_log: true
 
+    - name: Write inventory output to temp file
+      ansible.builtin.copy:
+        content: "{{ inv_output.stdout }}"
+        dest: /tmp/ansible_flightctl_inv.json
+        mode: '0600'
+      no_log: true
+
     - name: Parse inventory JSON output
       ansible.builtin.set_fact:
-        inv_json: "{{ inv_output.stdout | to_json | from_json | from_json }}"
+        inv_json: "{{ lookup('file', '/tmp/ansible_flightctl_inv.json') | from_json }}"
 
     - name: Assert inventory returned at least one host
       ansible.builtin.assert:
@@ -51,9 +58,16 @@
       changed_when: false
       no_log: true
 
+    - name: Write invalid-token inventory output to temp file
+      ansible.builtin.copy:
+        content: "{{ inv_invalid_token.stdout }}"
+        dest: /tmp/ansible_flightctl_inv_invalid.json
+        mode: '0600'
+      no_log: true
+
     - name: Parse invalid-token inventory output
       ansible.builtin.set_fact:
-        inv_invalid_json: "{{ inv_invalid_token.stdout | to_json | from_json | from_json }}"
+        inv_invalid_json: "{{ lookup('file', '/tmp/ansible_flightctl_inv_invalid.json') | from_json }}"
 
     - name: Assert invalid token yields empty inventory (negative case)
       ansible.builtin.assert:
@@ -63,3 +77,11 @@
           Inventory returned hosts with an invalid token — the token env var is being
           ignored entirely and the plugin is falling back to another credential source
           (EDM-4975 regression).
+
+    - name: Remove temp inventory JSON files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/ansible_flightctl_inv.json
+        - /tmp/ansible_flightctl_inv_invalid.json
