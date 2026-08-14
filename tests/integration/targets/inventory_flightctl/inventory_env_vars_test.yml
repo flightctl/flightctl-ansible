@@ -26,9 +26,14 @@
         mode: '0600'
       no_log: true
 
+    - name: Read inventory JSON from file
+      ansible.builtin.slurp:
+        src: /tmp/ansible_flightctl_inv.json
+      register: inv_raw
+
     - name: Parse inventory JSON output
       ansible.builtin.set_fact:
-        inv_json: "{{ lookup('file', '/tmp/ansible_flightctl_inv.json') | from_json }}"
+        inv_json: "{{ inv_raw.content | b64decode | from_json }}"
 
     - name: Assert inventory returned at least one host
       ansible.builtin.assert:
@@ -65,9 +70,14 @@
         mode: '0600'
       no_log: true
 
+    - name: Read invalid-token inventory JSON from file
+      ansible.builtin.slurp:
+        src: /tmp/ansible_flightctl_inv_invalid.json
+      register: inv_invalid_raw
+
     - name: Parse invalid-token inventory output
       ansible.builtin.set_fact:
-        inv_invalid_json: "{{ lookup('file', '/tmp/ansible_flightctl_inv_invalid.json') | from_json }}"
+        inv_invalid_json: "{{ inv_invalid_raw.content | b64decode | from_json }}"
 
     - name: Assert invalid token yields empty inventory (negative case)
       ansible.builtin.assert:
