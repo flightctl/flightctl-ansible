@@ -1,0 +1,10 @@
+bugfixes:
+  - >-
+    Added a pydantic ``ValidationError`` fallback to the shared API module
+    (``module_utils/api_module.py``) so that ``get()`` and ``list()`` retry
+    against the client SDK's raw JSON endpoints instead of crashing. This fixes
+    unhandled tracebacks in ``flightctl_resource_info`` and other modules when
+    the API returns mount-only application volumes without the required
+    ``image`` field, matching the fix previously applied to the inventory
+    plugin. The pydantic-detection helper is now shared via
+    ``module_utils/sdk_utils.py``.

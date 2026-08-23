@@ -16,6 +16,7 @@ from .constants import API_MAPPING, NESTED_RESOURCES, ResourceType
 from .core import FlightctlModule
 from .exceptions import FlightctlException, FlightctlApiException
 from .options import ApprovalOptions, GetOptions
+from .sdk_utils import is_pydantic_validation_error, raw_response_to_dict
 from .utils import diff_dicts, get_patch, json_patch
 
 
@@ -79,6 +80,39 @@ class ListResult:
         res = dict(
             data=[d.to_dict() for d in self.data],
         )
+        if self.metadata:
+            res['metadata'] = self.metadata.to_dict()
+        if self.summary:
+            res['summary'] = self.summary.to_dict()
+        return res
+
+
+@dataclass
+class RawResource:
+    """Wraps a raw JSON dict so it satisfies the ``ResourceProtocol.to_dict()`` interface.
+
+    Used as a fallback when the client SDK cannot deserialize an API response
+    into its pydantic model (see ``sdk_utils.is_pydantic_validation_error``).
+    """
+    raw: Dict[str, Any]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return self.raw
+
+
+@dataclass
+class RawListResponse:
+    """Raw-JSON stand-in for a client SDK list response (``items``/``metadata``/``summary``).
+
+    Mirrors the attributes ``get_one_or_many()`` reads off a list response so the
+    raw-JSON fallback is a drop-in replacement for the deserialized model.
+    """
+    items: List[RawResource]
+    metadata: Optional[RawResource] = None
+    summary: Optional[RawResource] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        res: Dict[str, Any] = dict(items=[i.to_dict() for i in self.items])
         if self.metadata:
             res['metadata'] = self.metadata.to_dict()
         if self.summary:
@@ -229,9 +263,10 @@ class FlightctlAPIModule(FlightctlModule):
         api_instance = api_type.api(self._get_client(options.resource))
 
         if options.resource is ResourceType.DEVICE and options.rendered:
-            get_call = getattr(api_instance, api_type.rendered)
+            get_method = api_type.rendered
         else:
-            get_call = getattr(api_instance, api_type.get)
+            get_method = api_type.get
+        get_call = getattr(api_instance, get_method)
 
         not_found_exc = _resolve_for_version(api_type.api_version, "exceptions", "NotFoundException")
         api_exc = _resolve_for_version(api_type.api_version, "exceptions", "ApiException")
@@ -247,6 +282,37 @@ class FlightctlAPIModule(FlightctlModule):
             return None
         except api_exc as e:
             raise FlightctlApiException(f"Unable to fetch {options.resource.value} - {options.name}: {e}")
+        except Exception as e:
+            # The client SDK raises a pydantic ValidationError (not an ApiException)
+            # when a valid API response cannot be deserialized into its model, e.g.
+            # a device with a mount-only application volume that lacks `image`.
+            # Fall back to raw JSON so the read still succeeds. See EDM-5201.
+            if is_pydantic_validation_error(e):
+                self.warn(
+                    "Flight Control client SDK raised a pydantic validation error while "
+                    f"deserializing {options.resource.value} - {options.name}; "
+                    f"falling back to raw JSON deserialization: {e}"
+                )
+                return self._get_raw(api_instance, get_method, options)
+            raise
+
+    def _get_raw(self, api_instance: Any, get_method: str, options: GetOptions) -> RawResource:
+        """Fetch a single resource as raw JSON, bypassing SDK pydantic deserialization.
+
+        Retries the request against the SDK's ``*_without_preload_content`` variant,
+        which returns the raw HTTP response instead of a pydantic model.
+        """
+        raw_call = getattr(api_instance, f"{get_method}_without_preload_content")
+        try:
+            if options.resource in NESTED_RESOURCES:
+                response = self.call_api(raw_call, options.parent_name, options.name)
+            elif options.resource is ResourceType.FLEET:
+                response = self.call_api(raw_call, options.name, options.summary)
+            else:
+                response = self.call_api(raw_call, options.name)
+        except Exception as e:
+            raise FlightctlApiException(f"Unable to fetch {options.resource.value} - {options.name}: {e}")
+        return RawResource(raw_response_to_dict(response))
 
     def list(self, options: GetOptions) -> ListProtocol:
         """
@@ -273,6 +339,43 @@ class FlightctlAPIModule(FlightctlModule):
                 return self.call_api(list_call, **options.request_params)
         except api_exc as e:
             raise FlightctlApiException(f"Unable to list {options.resource.value}: {e}")
+        except Exception as e:
+            # See the comment in get(): the SDK raises a pydantic ValidationError
+            # (not an ApiException) when a list response cannot be deserialized.
+            # Fall back to raw JSON. See EDM-5201.
+            if is_pydantic_validation_error(e):
+                self.warn(
+                    "Flight Control client SDK raised a pydantic validation error while "
+                    f"deserializing the {options.resource.value} list; "
+                    f"falling back to raw JSON deserialization: {e}"
+                )
+                return self._list_raw(api_instance, api_type.list, options)
+            raise
+
+    def _list_raw(self, api_instance: Any, list_method: str, options: GetOptions) -> RawListResponse:
+        """List resources as raw JSON, bypassing SDK pydantic deserialization.
+
+        Retries the request against the SDK's ``*_without_preload_content`` variant
+        and wraps the payload so it exposes the ``items``/``metadata``/``summary``
+        interface ``get_one_or_many()`` expects.
+        """
+        raw_call = getattr(api_instance, f"{list_method}_without_preload_content")
+        try:
+            if options.resource in NESTED_RESOURCES:
+                response = self.call_api(raw_call, options.parent_name, **options.request_params)
+            else:
+                response = self.call_api(raw_call, **options.request_params)
+        except Exception as e:
+            raise FlightctlApiException(f"Unable to list {options.resource.value}: {e}")
+
+        data = raw_response_to_dict(response)
+        metadata = data.get('metadata')
+        summary = data.get('summary')
+        return RawListResponse(
+            items=[RawResource(item) for item in data.get('items', [])],
+            metadata=RawResource(metadata) if metadata else None,
+            summary=RawResource(summary) if summary else None,
+        )
 
     def get_one_or_many(
         self, options: GetOptions,

@@ -2,6 +2,8 @@ from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
 
+import json
+
 import pytest
 from unittest.mock import MagicMock, patch
 
@@ -433,3 +435,192 @@ def test_delete_catalog_item(api_module):
     }):
         api_module.delete(ResourceType.CATALOG_ITEM, "my-item", "my-catalog")
         mock_api_instance.delete_catalog_item.assert_called_once()
+
+
+# --- pydantic ValidationError raw-JSON fallback (EDM-5201) ---
+
+def _make_pydantic_error(msg="ApplicationVolume requires image"):
+    """Build an exception matching the pydantic ValidationError heuristic.
+
+    Detection is by type name + module, so pydantic need not be installed.
+    """
+    class ValidationError(Exception):
+        __module__ = "pydantic_core._pydantic_core"
+
+    return ValidationError(msg)
+
+
+def _raw_response(payload):
+    resp = MagicMock()
+    resp.data = json.dumps(payload).encode()
+    return resp
+
+
+def test_get_device_pydantic_fallback(api_module):
+    """A device with a mount-only application volume (no image) must not crash get()."""
+    device_json = {
+        "metadata": {"name": "edge-1"},
+        "spec": {
+            "applications": [
+                {"name": "app", "volumes": [{"name": "data", "mountPath": "/data"}]}
+            ]
+        },
+    }
+    mock_api_instance = MagicMock()
+    mock_api_instance.get_device.side_effect = _make_pydantic_error()
+    mock_api_instance.get_device_without_preload_content.return_value = _raw_response(device_json)
+
+    with patch.dict('plugins.module_utils.constants.API_MAPPING', {
+        ResourceType.DEVICE: MagicMock(
+            api=MagicMock(return_value=mock_api_instance),
+            api_version='v1beta1',
+            get='get_device',
+            rendered='get_rendered_device',
+        ),
+    }):
+        from plugins.module_utils.options import GetOptions
+        options = GetOptions(resource=ResourceType.DEVICE, name="edge-1")
+        result = api_module.get(options)
+
+        mock_api_instance.get_device_without_preload_content.assert_called_once()
+        assert result.to_dict() == device_json
+
+
+def test_get_rendered_device_pydantic_fallback(api_module):
+    """The rendered device path must use the rendered raw endpoint for fallback."""
+    device_json = {"metadata": {"name": "edge-1"}}
+    mock_api_instance = MagicMock()
+    mock_api_instance.get_rendered_device.side_effect = _make_pydantic_error()
+    mock_api_instance.get_rendered_device_without_preload_content.return_value = _raw_response(device_json)
+
+    with patch.dict('plugins.module_utils.constants.API_MAPPING', {
+        ResourceType.DEVICE: MagicMock(
+            api=MagicMock(return_value=mock_api_instance),
+            api_version='v1beta1',
+            get='get_device',
+            rendered='get_rendered_device',
+        ),
+    }):
+        from plugins.module_utils.options import GetOptions
+        options = GetOptions(resource=ResourceType.DEVICE, name="edge-1", rendered=True)
+        result = api_module.get(options)
+
+        mock_api_instance.get_rendered_device_without_preload_content.assert_called_once()
+        mock_api_instance.get_device_without_preload_content.assert_not_called()
+        assert result.to_dict() == device_json
+
+
+def test_get_non_pydantic_error_reraises(api_module):
+    """Unexpected non-pydantic, non-API errors must propagate unchanged."""
+    mock_api_instance = MagicMock()
+    mock_api_instance.get_device.side_effect = RuntimeError("unexpected")
+
+    with patch.dict('plugins.module_utils.constants.API_MAPPING', {
+        ResourceType.DEVICE: MagicMock(
+            api=MagicMock(return_value=mock_api_instance),
+            api_version='v1beta1',
+            get='get_device',
+            rendered='get_rendered_device',
+        ),
+    }):
+        from plugins.module_utils.options import GetOptions
+        options = GetOptions(resource=ResourceType.DEVICE, name="edge-1")
+        with pytest.raises(RuntimeError, match="unexpected"):
+            api_module.get(options)
+        mock_api_instance.get_device_without_preload_content.assert_not_called()
+
+
+def test_get_raw_fallback_failure_raises_flightctl_exception(api_module):
+    """If the raw fallback request itself fails, raise a clean FlightctlApiException."""
+    mock_api_instance = MagicMock()
+    mock_api_instance.get_device.side_effect = _make_pydantic_error()
+    mock_api_instance.get_device_without_preload_content.side_effect = ConnectionError("timeout")
+
+    with patch.dict('plugins.module_utils.constants.API_MAPPING', {
+        ResourceType.DEVICE: MagicMock(
+            api=MagicMock(return_value=mock_api_instance),
+            api_version='v1beta1',
+            get='get_device',
+            rendered='get_rendered_device',
+        ),
+    }):
+        from plugins.module_utils.options import GetOptions
+        options = GetOptions(resource=ResourceType.DEVICE, name="edge-1")
+        with pytest.raises(FlightctlException, match="Unable to fetch Device - edge-1"):
+            api_module.get(options)
+
+
+def test_list_devices_pydantic_fallback(api_module):
+    """list() must fall back to raw JSON and preserve items/metadata/summary."""
+    list_json = {
+        "items": [
+            {"metadata": {"name": "edge-1"}},
+            {"metadata": {"name": "edge-2"}},
+        ],
+        "metadata": {"continue": "next-token"},
+        "summary": {"total": 2},
+    }
+    mock_api_instance = MagicMock()
+    mock_api_instance.list_devices.side_effect = _make_pydantic_error()
+    mock_api_instance.list_devices_without_preload_content.return_value = _raw_response(list_json)
+
+    with patch.dict('plugins.module_utils.constants.API_MAPPING', {
+        ResourceType.DEVICE: MagicMock(
+            api=MagicMock(return_value=mock_api_instance),
+            api_version='v1beta1',
+            list='list_devices',
+        ),
+    }):
+        from plugins.module_utils.options import GetOptions
+        options = GetOptions(resource=ResourceType.DEVICE)
+        result = api_module.list(options)
+
+        mock_api_instance.list_devices_without_preload_content.assert_called_once()
+        assert [item.to_dict() for item in result.items] == list_json["items"]
+        assert result.metadata.to_dict() == {"continue": "next-token"}
+        assert result.summary.to_dict() == {"total": 2}
+
+
+def test_get_one_or_many_list_fallback_serializes(api_module):
+    """End-to-end: get_one_or_many + ListResult.to_dict() must work over the raw fallback."""
+    list_json = {
+        "items": [{"metadata": {"name": "edge-1"}}],
+        "metadata": {"continue": None},
+    }
+    mock_api_instance = MagicMock()
+    mock_api_instance.list_devices.side_effect = _make_pydantic_error()
+    mock_api_instance.list_devices_without_preload_content.return_value = _raw_response(list_json)
+
+    with patch.dict('plugins.module_utils.constants.API_MAPPING', {
+        ResourceType.DEVICE: MagicMock(
+            api=MagicMock(return_value=mock_api_instance),
+            api_version='v1beta1',
+            list='list_devices',
+        ),
+    }):
+        from plugins.module_utils.options import GetOptions
+        options = GetOptions(resource=ResourceType.DEVICE)
+        result = api_module.get_one_or_many(options)
+
+        serialized = result.to_dict()
+        assert serialized["data"] == [{"metadata": {"name": "edge-1"}}]
+        assert serialized["metadata"] == {"continue": None}
+
+
+def test_list_raw_fallback_failure_raises_flightctl_exception(api_module):
+    """If the raw list fallback request fails, raise a clean FlightctlApiException."""
+    mock_api_instance = MagicMock()
+    mock_api_instance.list_devices.side_effect = _make_pydantic_error()
+    mock_api_instance.list_devices_without_preload_content.side_effect = ConnectionError("timeout")
+
+    with patch.dict('plugins.module_utils.constants.API_MAPPING', {
+        ResourceType.DEVICE: MagicMock(
+            api=MagicMock(return_value=mock_api_instance),
+            api_version='v1beta1',
+            list='list_devices',
+        ),
+    }):
+        from plugins.module_utils.options import GetOptions
+        options = GetOptions(resource=ResourceType.DEVICE)
+        with pytest.raises(FlightctlException, match="Unable to list Device"):
+            api_module.list(options)
