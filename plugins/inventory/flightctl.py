@@ -152,8 +152,8 @@ else:
 
 from ..module_utils.config_loader import ConfigLoader
 from ..module_utils.exceptions import ValidationException, FlightctlApiException, FlightctlException
+from ..module_utils.oidc_auth import oidc_password_grant
 from ..module_utils.sdk_utils import is_pydantic_validation_error as _is_pydantic_validation_error
-from ansible.module_utils.urls import open_url
 from ansible.plugins.inventory import BaseInventoryPlugin, Constructable
 from ansible.utils.display import Display
 from contextlib import contextmanager
@@ -274,108 +274,14 @@ class InventoryModule(BaseInventoryPlugin, Constructable):
             # Ensure the created temp file is deleted when our module exits
             self.add_cleanup_file(temp_file.name)
 
-    def _fetch_auth_config(self, host: str, verify_ssl: bool,
-                           ca_path: str | None = None) -> dict:
-        auth_config_url = host.rstrip('/') + "/api/v1/auth/config"
-        try:
-            resp = open_url(auth_config_url, validate_certs=verify_ssl,
-                            ca_path=ca_path, timeout=10)
-            return json.loads(resp.read())
-        except Exception as exc:
-            raise ValidationException(
-                f"Failed to fetch auth config from {auth_config_url}: {exc}"
-            ) from exc
-
-    @staticmethod
-    def _select_oidc_provider(auth_config: dict) -> dict:
-        providers = auth_config.get("providers") or []
-        default_name = auth_config.get("defaultProvider")
-
-        oidc_providers = [
-            p for p in providers
-            if (p.get("spec") or {}).get("providerType") == "oidc"
-        ]
-        if not oidc_providers:
-            raise ValidationException(
-                "No OIDC provider found in auth config"
-            )
-
-        if default_name:
-            for p in oidc_providers:
-                name = (p.get("metadata") or {}).get("name")
-                if name == default_name:
-                    return p
-
-        return oidc_providers[0]
-
     def _oidc_password_grant(self, host: str, username: str, password: str,
                              verify_ssl: bool, ca_path: str | None = None) -> str:
-        import urllib.error
-        import urllib.parse
+        """Delegate to the shared OIDC password-grant helper (see EDM-5200).
 
-        auth_config = self._fetch_auth_config(host, verify_ssl, ca_path)
-        provider = self._select_oidc_provider(auth_config)
-        spec = provider.get("spec", {})
-        issuer = spec.get("issuer")
-        client_id = spec.get("clientId")
-        scopes = spec.get("scopes")
-
-        if not issuer:
-            raise ValidationException(
-                "OIDC provider in auth config has no issuer URL"
-            )
-        if not client_id:
-            raise ValidationException(
-                "OIDC provider in auth config has no clientId"
-            )
-
-        discovery_url = issuer.rstrip('/') + "/.well-known/openid-configuration"
-        try:
-            resp = open_url(discovery_url, validate_certs=verify_ssl,
-                            ca_path=ca_path, timeout=10)
-            token_endpoint = json.loads(resp.read()).get("token_endpoint")
-        except Exception as exc:
-            raise ValidationException(
-                f"OIDC discovery failed at {discovery_url}: {exc}"
-            ) from exc
-
-        if not token_endpoint:
-            raise ValidationException(
-                f"token_endpoint missing from OIDC discovery at {discovery_url}"
-            )
-
-        scope_str = " ".join(scopes) if scopes else "openid"
-        payload = urllib.parse.urlencode({
-            "grant_type": "password",
-            "username": username,
-            "password": password,
-            "client_id": client_id,
-            "scope": scope_str,
-        }).encode()
-
-        try:
-            resp = open_url(
-                token_endpoint, data=payload,
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-                validate_certs=verify_ssl, ca_path=ca_path, timeout=10,
-            )
-            data = json.loads(resp.read())
-        except urllib.error.HTTPError as exc:
-            body = exc.read().decode(errors="replace")
-            raise ValidationException(
-                f"OIDC token request failed ({exc.code}): {body}"
-            ) from exc
-        except Exception as exc:
-            raise ValidationException(
-                f"OIDC token request failed: {exc}"
-            ) from exc
-
-        token = data.get("id_token") or data.get("access_token")
-        if not token:
-            raise ValidationException(
-                "No token returned by OIDC password grant"
-            )
-        return token
+        The discovery + password-grant logic is shared with ``api_module.py`` and
+        ``imagebuilder_module.py`` via ``plugins/module_utils/oidc_auth.py``.
+        """
+        return oidc_password_grant(host, username, password, verify_ssl, ca_path)
 
     def _setup_connection_configuration(self) -> Configuration:
         """

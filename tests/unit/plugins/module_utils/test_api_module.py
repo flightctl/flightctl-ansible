@@ -51,7 +51,13 @@ def api_module_with_user_pass():
         flightctl_username='test-user',
         flightctl_password='test-pass'
     ))
-    return FlightctlAPIModule(argument_spec={})
+    # username/password now triggers an OIDC password grant during construction
+    # (EDM-5200); patch it so no network call is made in unit tests.
+    with patch(
+        'plugins.module_utils.api_module.oidc_password_grant',
+        return_value='oidc-bearer-token',
+    ):
+        return FlightctlAPIModule(argument_spec={})
 
 
 @patch('plugins.module_utils.api_module.EnrollmentrequestApi')
@@ -135,7 +141,9 @@ def test_token_auth(mock_api, api_module_with_token):
 
 
 @patch('plugins.module_utils.api_module.CertificatesigningrequestApi')
-def test_basic_auth(mock_api, api_module_with_user_pass):
+def test_username_password_uses_oidc_bearer(mock_api, api_module_with_user_pass):
+    # With username/password (no token), set_auth() performs an OIDC password
+    # grant and sends a Bearer token — never HTTP Basic Auth (EDM-5200).
     mock_api_instance = MagicMock()
     mock_api.return_value = mock_api_instance
     mock_csr = MagicMock(spec=CertificateSigningRequest)
@@ -148,9 +156,47 @@ def test_basic_auth(mock_api, api_module_with_user_pass):
     mock_api_instance.update_certificate_signing_request_approval.assert_called_with(
         input.name,
         mock_csr,
-        _headers={'Authorization': 'Basic dGVzdC11c2VyOnRlc3QtcGFzcw=='},
+        _headers={'Authorization': 'Bearer oidc-bearer-token'},
         _request_timeout=10
     )
+
+
+def test_set_auth_calls_oidc_grant_with_base_host():
+    # The OIDC grant must receive the base host with any /api/v1 suffix stripped,
+    # matching the inventory plugin (EDM-5200).
+    set_module_args(dict(
+        flightctl_host='https://test-flightctl-url.com/api/v1',
+        flightctl_username='test-user',
+        flightctl_password='test-pass',
+        flightctl_validate_certs=False,
+    ))
+    with patch(
+        'plugins.module_utils.api_module.oidc_password_grant',
+        return_value='oidc-bearer-token',
+    ) as mock_grant:
+        module = FlightctlAPIModule(argument_spec={})
+
+    mock_grant.assert_called_once_with(
+        'https://test-flightctl-url.com', 'test-user', 'test-pass', False, None
+    )
+    assert module.headers == {'Authorization': 'Bearer oidc-bearer-token'}
+
+
+def test_set_auth_never_sends_basic_auth():
+    # Regression guard for EDM-5200: no code path may emit a Basic Auth header.
+    set_module_args(dict(
+        flightctl_host='https://test-flightctl-url.com/',
+        flightctl_username='test-user',
+        flightctl_password='test-pass',
+    ))
+    with patch(
+        'plugins.module_utils.api_module.oidc_password_grant',
+        return_value='oidc-bearer-token',
+    ):
+        module = FlightctlAPIModule(argument_spec={})
+
+    assert module.headers is not None
+    assert not module.headers['Authorization'].startswith('Basic ')
 
 
 # --- AuthProvider tests ---

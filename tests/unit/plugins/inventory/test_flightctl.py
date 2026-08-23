@@ -566,7 +566,7 @@ class TestBuildAuthHeaders(unittest.TestCase):
 class TestOidcPasswordGrant(unittest.TestCase):
     """Test the OIDC password grant flow in InventoryModule._oidc_password_grant."""
 
-    OPEN_URL = "plugins.inventory.flightctl.open_url"
+    OPEN_URL = "plugins.module_utils.oidc_auth.open_url"
 
     SAMPLE_AUTH_CONFIG = {
         "providers": [{
@@ -855,7 +855,7 @@ class TestSetupConnectionOidcIntegration(unittest.TestCase):
         )
         self.assertEqual(config.access_token, 'oidc-token')
 
-    @patch("plugins.inventory.flightctl.open_url")
+    @patch("plugins.module_utils.oidc_auth.open_url")
     def test_oidc_grant_passes_ca_path_to_open_url(self, mock_open):
         def _resp(body):
             r = MagicMock()

@@ -6,11 +6,11 @@ from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
 
-from base64 import b64encode
 from typing import Any, Callable, Dict, Optional
 
 from .core import FlightctlModule
 from .exceptions import FlightctlApiException
+from .oidc_auth import oidc_password_grant
 
 try:
     from flightctl.imagebuilder.api_client import ApiClient
@@ -66,12 +66,16 @@ class FlightctlImageBuilderModule(FlightctlModule):
         self._imageexport_api = None
 
     def _set_auth_headers(self) -> None:
+        # When only username/password are provided, perform an OIDC password grant
+        # to obtain a Bearer token (see EDM-5200) — no HTTP Basic Auth is ever sent.
         if self.token:
             self.headers = {'Authorization': f'Bearer {self.token}'}
         elif self.username and self.password:
-            basic_credentials = f"{self.username}:{self.password}"
-            encoded = b64encode(basic_credentials.encode('utf-8')).decode('utf-8')
-            self.headers = {'Authorization': f'Basic {encoded}'}
+            base_host = self.url.geturl().rstrip('/').removesuffix('/api/v1')
+            token = oidc_password_grant(
+                base_host, self.username, self.password, self.verify_ssl, self.ca_path
+            )
+            self.headers = {'Authorization': f'Bearer {token}'}
         else:
             self.headers = None
 
