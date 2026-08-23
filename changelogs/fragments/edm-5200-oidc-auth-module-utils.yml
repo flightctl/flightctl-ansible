@@ -1,0 +1,12 @@
+bugfixes:
+  - >-
+    Replaced broken HTTP Basic Auth with an OIDC Resource Owner Password Grant
+    flow in the shared API module (``module_utils/api_module.py``) and the image
+    builder module (``module_utils/imagebuilder_module.py``). Modules such as
+    ``flightctl_resource``, ``flightctl_resource_info``,
+    ``flightctl_certificate_management``, ``flightctl_enrollment_config_info`` and
+    the image builder modules now authenticate with a Bearer token when given
+    ``username``/``password``, fixing authentication against Flight Control
+    servers that only accept OIDC. This matches the fix previously applied to the
+    inventory plugin. The OIDC discovery and password-grant logic is now shared
+    via ``module_utils/oidc_auth.py``.
