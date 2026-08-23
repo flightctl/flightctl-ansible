@@ -13,6 +13,7 @@ from plugins.module_utils.api_module import FlightctlAPIModule
 from plugins.module_utils.constants import ResourceType
 from plugins.module_utils.exceptions import FlightctlException
 from plugins.module_utils.options import ApprovalOptions
+from plugins.module_utils.sdk_utils import is_pydantic_validation_error
 
 from flightctl.exceptions import ApiException, NotFoundException
 from flightctl.models.auth_provider import AuthProvider
@@ -454,6 +455,78 @@ def _raw_response(payload):
     resp = MagicMock()
     resp.data = json.dumps(payload).encode()
     return resp
+
+
+def _real_sdk_pydantic_error():
+    """Produce a *genuine* SDK pydantic ValidationError for the EDM-5201 scenario.
+
+    Builds a device whose compose application has a mount-only ``ApplicationVolume``
+    (no required ``image`` field) and lets the real SDK model raise. Returns the
+    exception, or ``None`` if the SDK model shape changed so the caller can skip
+    rather than fail spuriously.
+    """
+    try:
+        from flightctl.models.device import Device
+
+        Device.from_dict({
+            "apiVersion": "v1beta1",
+            "kind": "Device",
+            "metadata": {"name": "edge-1"},
+            "spec": {
+                "applications": [
+                    {
+                        "name": "myapp",
+                        "appType": "compose",
+                        "image": "quay.io/app:latest",
+                        "volumes": [
+                            {"name": "data", "mount": {"type": "filesystem", "path": "/data"}}
+                        ],
+                    }
+                ]
+            },
+        })
+    except Exception as e:  # noqa: BLE001 - we want whatever the SDK raises
+        return e
+    return None
+
+
+def test_get_device_real_sdk_pydantic_error_fallback(api_module):
+    """End-to-end with a *genuine* SDK pydantic ValidationError (mount-only volume).
+
+    Proves the ticket premise against the real SDK: the mount-only volume makes
+    the SDK raise a real pydantic ValidationError, which get() must detect and
+    recover from via the raw-JSON fallback.
+    """
+    real_err = _real_sdk_pydantic_error()
+    if real_err is None or not is_pydantic_validation_error(real_err):
+        pytest.skip("SDK did not raise a detectable pydantic ValidationError for this payload")
+
+    device_json = {
+        "metadata": {"name": "edge-1"},
+        "spec": {
+            "applications": [
+                {"name": "myapp", "volumes": [{"name": "data", "mountPath": "/data"}]}
+            ]
+        },
+    }
+    mock_api_instance = MagicMock()
+    mock_api_instance.get_device.side_effect = real_err
+    mock_api_instance.get_device_without_preload_content.return_value = _raw_response(device_json)
+
+    with patch.dict('plugins.module_utils.constants.API_MAPPING', {
+        ResourceType.DEVICE: MagicMock(
+            api=MagicMock(return_value=mock_api_instance),
+            api_version='v1beta1',
+            get='get_device',
+            rendered='get_rendered_device',
+        ),
+    }):
+        from plugins.module_utils.options import GetOptions
+        options = GetOptions(resource=ResourceType.DEVICE, name="edge-1")
+        result = api_module.get(options)
+
+        mock_api_instance.get_device_without_preload_content.assert_called_once()
+        assert result.to_dict() == device_json
 
 
 def test_get_device_pydantic_fallback(api_module):
