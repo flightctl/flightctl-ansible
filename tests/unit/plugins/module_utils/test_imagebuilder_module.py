@@ -4,7 +4,6 @@ __metaclass__ = type
 
 import pytest
 from unittest.mock import MagicMock, patch
-from base64 import b64encode
 
 from tests.unit.utils import set_module_args
 from plugins.module_utils.exceptions import FlightctlApiException
@@ -24,14 +23,18 @@ def ib_module():
 
 
 @pytest.fixture
-def ib_module_basic_auth():
+def ib_module_user_pass():
     set_module_args(dict(
         flightctl_host='https://test-imagebuilder.com/',
         flightctl_username='admin',
         flightctl_password='secret'
     ))
+    # username/password now triggers an OIDC password grant (EDM-5200); patch it
+    # so no network call is made in unit tests.
     with patch('plugins.module_utils.imagebuilder_module.ApiClient'), \
-         patch('plugins.module_utils.imagebuilder_module.Configuration'):
+         patch('plugins.module_utils.imagebuilder_module.Configuration'), \
+         patch('plugins.module_utils.imagebuilder_module.oidc_password_grant',
+               return_value='oidc-bearer-token'):
         from plugins.module_utils.imagebuilder_module import FlightctlImageBuilderModule
         module = FlightctlImageBuilderModule(argument_spec={})
     return module
@@ -41,9 +44,34 @@ class TestAuthHeaders:
     def test_bearer_token(self, ib_module):
         assert ib_module.headers == {'Authorization': 'Bearer test-token'}
 
-    def test_basic_auth(self, ib_module_basic_auth):
-        expected = b64encode(b'admin:secret').decode('utf-8')
-        assert ib_module_basic_auth.headers == {'Authorization': f'Basic {expected}'}
+    def test_username_password_uses_oidc_bearer(self, ib_module_user_pass):
+        # With username/password (no token), an OIDC password grant is performed
+        # and a Bearer token is sent — never HTTP Basic Auth (EDM-5200).
+        assert ib_module_user_pass.headers == {'Authorization': 'Bearer oidc-bearer-token'}
+
+    def test_username_password_never_sends_basic_auth(self, ib_module_user_pass):
+        # Regression guard for EDM-5200.
+        assert not ib_module_user_pass.headers['Authorization'].startswith('Basic ')
+
+    def test_set_auth_calls_oidc_grant_with_base_host(self):
+        # The OIDC grant must receive the base host with any /api/v1 suffix stripped.
+        set_module_args(dict(
+            flightctl_host='https://test-imagebuilder.com/api/v1',
+            flightctl_username='admin',
+            flightctl_password='secret',
+            flightctl_validate_certs=False,
+        ))
+        with patch('plugins.module_utils.imagebuilder_module.ApiClient'), \
+             patch('plugins.module_utils.imagebuilder_module.Configuration'), \
+             patch('plugins.module_utils.imagebuilder_module.oidc_password_grant',
+                   return_value='oidc-bearer-token') as mock_grant:
+            from plugins.module_utils.imagebuilder_module import FlightctlImageBuilderModule
+            module = FlightctlImageBuilderModule(argument_spec={})
+
+        mock_grant.assert_called_once_with(
+            'https://test-imagebuilder.com', 'admin', 'secret', False, None
+        )
+        assert module.headers == {'Authorization': 'Bearer oidc-bearer-token'}
 
     def test_no_auth(self):
         set_module_args(dict(
