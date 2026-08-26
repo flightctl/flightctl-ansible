@@ -152,6 +152,7 @@ else:
 
 from ..module_utils.config_loader import ConfigLoader
 from ..module_utils.exceptions import ValidationException, FlightctlApiException, FlightctlException
+from ..module_utils.sdk_utils import is_pydantic_validation_error as _is_pydantic_validation_error
 from ansible.module_utils.urls import open_url
 from ansible.plugins.inventory import BaseInventoryPlugin, Constructable
 from ansible.utils.display import Display
@@ -592,10 +593,9 @@ def _build_auth_headers(config: Configuration) -> Dict[str, str] | None:
 
 
 # ---------------------- Static methods --------------------------
-def _is_pydantic_validation_error(exc: Exception) -> bool:
-    """Check if an exception is a pydantic ValidationError without importing pydantic."""
-    exc_type = type(exc)
-    return exc_type.__name__ == 'ValidationError' and 'pydantic' in getattr(exc_type, '__module__', '')
+# _is_pydantic_validation_error is imported from module_utils.sdk_utils (shared
+# with plugins/module_utils/api_module.py); see the import near the top of this
+# module.
 
 
 def _get_data_raw(
