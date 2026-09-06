@@ -12,7 +12,7 @@ from tests.unit.utils import set_module_args
 from plugins.module_utils.api_module import FlightctlAPIModule
 from plugins.module_utils.constants import ResourceType
 from plugins.module_utils.exceptions import FlightctlException
-from plugins.module_utils.options import ApprovalOptions
+from plugins.module_utils.options import ApplicationOptions, ApprovalOptions
 from plugins.module_utils.sdk_utils import is_pydantic_validation_error
 
 from flightctl.exceptions import ApiException, NotFoundException
@@ -743,3 +743,59 @@ def test_list_raw_fallback_failure_raises_flightctl_exception(api_module):
         options = GetOptions(resource=ResourceType.DEVICE)
         with pytest.raises(FlightctlException, match="Unable to list Device"):
             api_module.list(options)
+
+
+@pytest.mark.parametrize(
+    ("resource", "state", "method_name"),
+    [
+        (ResourceType.DEVICE, "started", "start_device_application"),
+        (ResourceType.DEVICE, "stopped", "stop_device_application"),
+        (ResourceType.DEVICE, "restarted", "restart_device_application"),
+        (ResourceType.FLEET, "started", "start_fleet_application"),
+        (ResourceType.FLEET, "stopped", "stop_fleet_application"),
+    ],
+)
+def test_application_action_calls_matching_generated_client_method(
+    api_module, resource, state, method_name
+):
+    api_instance = MagicMock()
+    expected = MagicMock()
+    action_call = MagicMock(return_value=expected)
+    setattr(api_instance, method_name, action_call)
+    api_resource = MagicMock(api=MagicMock(return_value=api_instance), api_version="v1beta1")
+    options = ApplicationOptions(resource, "target-a", "workload", state)
+
+    with patch.dict('plugins.module_utils.api_module.API_MAPPING', {resource: api_resource}):
+        result = api_module.application_action(options)
+
+    assert result is expected
+    action_call.assert_called_once_with(
+        "target-a", "workload", _headers=None, _request_timeout=10
+    )
+
+
+def test_application_action_wraps_generated_client_error(api_module):
+    api_instance = MagicMock()
+    api_instance.start_device_application.side_effect = ApiException("server error")
+    api_resource = MagicMock(api=MagicMock(return_value=api_instance), api_version="v1beta1")
+    options = ApplicationOptions(ResourceType.DEVICE, "edge-1", "workload", "started")
+
+    with patch.dict('plugins.module_utils.api_module.API_MAPPING', {ResourceType.DEVICE: api_resource}):
+        with pytest.raises(
+            FlightctlException,
+            match="Unable to start application workload on Device edge-1",
+        ):
+            api_module.application_action(options)
+
+
+def test_application_action_reports_missing_generated_client_method(api_module):
+    api_instance = MagicMock(spec=[])
+    api_resource = MagicMock(api=MagicMock(return_value=api_instance), api_version="v1beta1")
+    options = ApplicationOptions(ResourceType.DEVICE, "edge-1", "workload", "started")
+
+    with patch.dict('plugins.module_utils.api_module.API_MAPPING', {ResourceType.DEVICE: api_resource}):
+        with pytest.raises(
+            FlightctlException,
+            match="Application action started is not supported for Device",
+        ):
+            api_module.application_action(options)

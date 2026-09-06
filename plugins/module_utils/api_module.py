@@ -15,7 +15,7 @@ from .constants import API_MAPPING, NESTED_RESOURCES, ResourceType
 from .core import FlightctlModule
 from .exceptions import FlightctlException, FlightctlApiException
 from .oidc_auth import oidc_password_grant
-from .options import ApprovalOptions, GetOptions
+from .options import ApplicationOptions, ApprovalOptions, GetOptions
 from .sdk_utils import is_pydantic_validation_error, raw_response_to_dict
 from .utils import diff_dicts, get_patch, json_patch
 
@@ -614,6 +614,36 @@ class FlightctlAPIModule(FlightctlModule):
                 self.call_api(api_instance.update_certificate_signing_request_approval, input.name, csr)
             except ApiException as e:
                 raise FlightctlApiException(f"Unable to approve {input.resource.value} - {input.name}: {e}")
+
+    def application_action(self, options: ApplicationOptions) -> ResourceProtocol:
+        """Perform a lifecycle action on an application."""
+        actions = {
+            ResourceType.DEVICE: {
+                "started": ("start", "start_device_application"),
+                "stopped": ("stop", "stop_device_application"),
+                "restarted": ("restart", "restart_device_application"),
+            },
+            ResourceType.FLEET: {
+                "started": ("start", "start_fleet_application"),
+                "stopped": ("stop", "stop_fleet_application"),
+            },
+        }
+        action, method_name = actions[options.resource][options.state]
+        api_type = API_MAPPING[options.resource]
+        api_instance = api_type.api(self._get_client(options.resource))
+
+        if not hasattr(api_instance, method_name):
+            raise FlightctlException(
+                f"Application action {options.state} is not supported for {options.resource.value}"
+            )
+
+        try:
+            action_call = getattr(api_instance, method_name)
+            return self.call_api(action_call, options.name, options.app_name)
+        except ApiException as e:
+            raise FlightctlApiException(
+                f"Unable to {action} application {options.app_name} on {options.resource.value} {options.name}: {e}"
+            ) from e
 
     def decommission(self, device_name: str, definition: Dict[str, Any]) -> ResourceProtocol:
         """
