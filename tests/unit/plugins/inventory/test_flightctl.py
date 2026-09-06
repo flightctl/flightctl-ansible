@@ -12,6 +12,7 @@ from plugins.inventory.flightctl import (
     _get_data,
     _get_data_raw,
     _is_pydantic_validation_error,
+    _prepare_additional_groups_info,
     _render_hostname_expression,
     _resolve_hostname,
     _validate_device,
@@ -262,6 +263,22 @@ class TestFlightCtlInventoryModule(unittest.TestCase):
 
         # Assert ansible_host was set to IP without CIDR
         mock_inventory.set_variable.assert_any_call('device-1', 'ansible_host', '192.168.2.73')
+
+
+class TestAdditionalGroupFieldSelectors(unittest.TestCase):
+    def test_os_mode_field_selector_is_accepted(self):
+        static_groups, keyed_groups = _prepare_additional_groups_info([
+            {
+                'name': 'image_mode_devices',
+                'field_selectors': ['status.capabilities.osMode=image'],
+            },
+        ])
+
+        self.assertEqual(
+            static_groups,
+            {'image_mode_devices': ('', 'status.capabilities.osMode=image')},
+        )
+        self.assertEqual(keyed_groups, [])
 
 
 class TestRenderHostnameExpression(unittest.TestCase):
