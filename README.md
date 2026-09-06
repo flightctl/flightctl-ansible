@@ -22,7 +22,7 @@ If used with Ansible Automation Platform (AAP), the minimum supported version is
   
 ### Flight Control Service compatibility  
   
-Requires Flight Control version 0.7 or greater.
+Requires Flight Control API version 1.3 or greater.
 
 See the [Ansible Core Support Matrix](https://docs.ansible.com/ansible/latest/reference_appendices/release_and_maintenance.html#ansible-core-support-matrix) to see which ansible versions are compatible with python versions.
 
@@ -56,13 +56,13 @@ A specific version of the collection can be installed by using the `version` key
 ---
 collections:
   - name: flightctl.core
-    version: 1.6.0
+    version: 1.7.0
 ```
 
 or using the ansible-galaxy command as follows
 
 ```shell
-ansible-galaxy collection install flightctl.core:1.6.0
+ansible-galaxy collection install flightctl.core:1.7.0
 ```
 
 Refer to the following for more details.
