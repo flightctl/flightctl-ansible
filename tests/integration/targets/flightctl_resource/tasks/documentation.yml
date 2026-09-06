@@ -1,0 +1,22 @@
+---
+- name: Run ansible-doc for the Flight Control resource module
+  ansible.builtin.command: ansible-doc flightctl.core.flightctl_resource
+  register: doc_output
+  changed_when: false
+
+- name: Assert API 1.3 resource examples are documented
+  ansible.builtin.assert:
+    that:
+      - "item in (doc_output.stdout | lower)"
+    fail_msg: "Required phrase '{{ item }}' is missing in ansible-doc output"
+  loop:
+    - "apptype: vm"
+    - "publishports:"
+    - "osmode: image"
+    - "osmode: package"
+
+- name: Assert catalog item references cover each supported resource location
+  ansible.builtin.assert:
+    that:
+      - "(doc_output.stdout | lower | regex_findall('catalogitemref:') | length) >= 3"
+    fail_msg: "Expected catalogItemRef examples for OS, application, and image volume"
