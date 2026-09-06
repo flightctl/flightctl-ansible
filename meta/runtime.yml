@@ -6,3 +6,5 @@ action_groups:
     - flightctl_resource_info
     - flightctl_certificate_management
     - flightctl_enrollment_config_info
+    - flightctl_image_builder
+    - flightctl_image_builder_info
