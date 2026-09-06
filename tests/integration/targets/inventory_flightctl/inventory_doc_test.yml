@@ -8,6 +8,10 @@
       - "returns ansible inventory"
       - "flightctl_config_file"
       - "flightctl-client"
+      - "status.capabilities.osmode=image"
+      - "group_by: status.capabilities.osmode"
+      - "field_selectors:"
+      - "- status.capabilities.osmode=image"
   tasks:
     - name: Run ansible-doc to get plugin help text
       ansible.builtin.command: ansible-doc -t inventory flightctl.core.flightctl
