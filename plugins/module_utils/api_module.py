@@ -280,6 +280,8 @@ class FlightctlAPIModule(FlightctlModule):
 
         try:
             if options.resource in NESTED_RESOURCES:
+                if options.deployments:
+                    return self.call_api(get_call, options.parent_name, options.name, **options.request_params)
                 return self.call_api(get_call, options.parent_name, options.name)
             elif options.resource is ResourceType.FLEET:
                 return self.call_api(get_call, options.name, options.summary)
@@ -314,7 +316,10 @@ class FlightctlAPIModule(FlightctlModule):
         raw_call = getattr(api_instance, f"{get_method}_without_preload_content")
         try:
             if options.resource in NESTED_RESOURCES:
-                response = self.call_api(raw_call, options.parent_name, options.name)
+                if options.deployments:
+                    response = self.call_api(raw_call, options.parent_name, options.name, **options.request_params)
+                else:
+                    response = self.call_api(raw_call, options.parent_name, options.name)
             elif options.resource is ResourceType.FLEET:
                 response = self.call_api(raw_call, options.name, options.summary)
             else:

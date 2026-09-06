@@ -478,11 +478,13 @@ def test_get_catalog_item_deployments(api_module):
             name="my-item",
             catalog_name="my-catalog",
             deployments=True,
+            limit=10,
+            continue_token="next-page",
         )
         result = api_module.get_one_or_many(options)
 
         mock_api_instance.get_catalog_item_deployments.assert_called_once_with(
-            "my-catalog", "my-item", _headers=None, _request_timeout=10
+            "my-catalog", "my-item", limit=10, var_continue="next-page", _headers=None, _request_timeout=10
         )
         mock_api_instance.get_catalog_item.assert_not_called()
         assert result.to_dict() == {
@@ -698,11 +700,13 @@ def test_get_catalog_item_deployments_pydantic_fallback(api_module):
             name="my-item",
             catalog_name="my-catalog",
             deployments=True,
+            limit=10,
+            continue_token="next-page",
         )
         result = api_module.get_one_or_many(options)
 
         mock_api_instance.get_catalog_item_deployments_without_preload_content.assert_called_once_with(
-            "my-catalog", "my-item", _headers=None, _request_timeout=10
+            "my-catalog", "my-item", limit=10, var_continue="next-page", _headers=None, _request_timeout=10
         )
         assert result.to_dict() == {
             "data": [{"catalog": "my-catalog", "catalogItem": "my-item"}],
