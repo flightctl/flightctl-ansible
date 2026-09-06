@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Tuple
 from .api_module import FlightctlAPIModule
 from .constants import ResourceType
 from .exceptions import FlightctlException, ValidationException
-from .options import ApprovalOptions, GetOptions
+from .options import ApplicationOptions, ApprovalOptions, GetOptions
 from .resources import create_definitions
 
 try:
@@ -253,3 +253,93 @@ def perform_approval(module: FlightctlAPIModule) -> None:
         raise FlightctlException(f"Failed to approve resource: {e}") from e
 
     module.exit_json(**{"changed": True})
+
+
+def _application_value(item: Any, name: str) -> Any:
+    """Read an application field from a generated client model or raw resource."""
+    if isinstance(item, dict):
+        return item.get(name)
+    actual_instance = getattr(item, "actual_instance", None)
+    if actual_instance is not None:
+        item = actual_instance
+    return getattr(item, name, None)
+
+
+def _find_application(resource: Any, resource_type: ResourceType, app_name: str) -> Any:
+    """Find an application in a Device spec or Fleet device template."""
+    raw = getattr(resource, "raw", None)
+    item = raw if isinstance(raw, dict) else resource
+    spec = _application_value(item, "spec")
+
+    if resource_type is ResourceType.FLEET:
+        template = _application_value(spec, "template")
+        spec = _application_value(template, "spec")
+
+    applications = _application_value(spec, "applications") or []
+    return next(
+        (
+            application
+            for application in applications
+            if _application_value(application, "name") == app_name
+        ),
+        None,
+    )
+
+
+def _application_desired_state(application: Any) -> Any:
+    """Return the API 1.3 desired lifecycle state from an application spec."""
+    desired_state = _application_value(application, "desired_state")
+    if desired_state is None:
+        desired_state = _application_value(application, "desiredState")
+    return getattr(desired_state, "value", desired_state)
+
+
+def perform_application_action(module: FlightctlAPIModule) -> None:
+    """Start, stop, or restart an application on a Device or Fleet."""
+    try:
+        resource = ResourceType(module.params.get("kind"))
+    except (TypeError, ValueError):
+        raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
+
+    options = ApplicationOptions(
+        resource=resource,
+        name=module.params.get("name"),
+        app_name=module.params.get("app_name"),
+        state=module.params.get("state"),
+    )
+
+    try:
+        existing = module.get(
+            GetOptions(
+                resource=options.resource,
+                name=options.name,
+                rendered=True if options.resource is ResourceType.DEVICE else None,
+            )
+        )
+    except Exception as e:
+        raise FlightctlException(f"Failed to get resource: {e}") from e
+
+    if existing is None:
+        raise FlightctlException(f"{options.resource.value} '{options.name}' not found")
+
+    application = _find_application(existing, options.resource, options.app_name)
+    if application is None:
+        raise FlightctlException(
+            f"Application '{options.app_name}' not found on {options.resource.value} '{options.name}'"
+        )
+
+    expected_state = {"started": "running", "stopped": "stopped"}.get(options.state)
+    if expected_state is not None and expected_state == _application_desired_state(application):
+        module.exit_json(changed=False, result=existing.to_dict())
+        return
+
+    if module.check_mode:
+        module.exit_json(changed=True, result=existing.to_dict())
+        return
+
+    try:
+        result = module.application_action(options)
+    except Exception as e:
+        raise FlightctlException(f"Failed to {options.state} application: {e}") from e
+
+    module.exit_json(changed=True, result=result.to_dict())

@@ -4,10 +4,11 @@ __metaclass__ = type
 
 import pytest
 from unittest.mock import MagicMock
+from types import SimpleNamespace
 
 from plugins.module_utils.constants import ResourceType
 from plugins.module_utils.exceptions import FlightctlException, FlightctlApiException, ValidationException
-from plugins.module_utils.runner import perform_approval
+from plugins.module_utils.runner import perform_application_action, perform_approval
 
 from flightctl.models.enrollment_request import EnrollmentRequest
 from flightctl.models.certificate_signing_request import CertificateSigningRequest
@@ -130,3 +131,205 @@ def test_perform_approval__no_approval(mock_module):
     mock_module.params["approved"] = None
     with pytest.raises(ValidationException, match="Approved must be specified"):
         perform_approval(mock_module)
+
+
+def _application(name, desired_state):
+    return SimpleNamespace(
+        actual_instance=SimpleNamespace(name=name, desired_state=desired_state)
+    )
+
+
+def _resource(applications, resource=ResourceType.DEVICE):
+    spec = SimpleNamespace(applications=applications)
+    if resource is ResourceType.FLEET:
+        spec = SimpleNamespace(template=SimpleNamespace(spec=spec))
+    return SimpleNamespace(spec=spec, to_dict=MagicMock(return_value={"kind": resource.value}))
+
+
+@pytest.fixture
+def application_module():
+    module = MagicMock()
+    module.check_mode = False
+    module.params = {
+        "kind": ResourceType.DEVICE.value,
+        "name": "edge-1",
+        "app_name": "workload",
+        "state": "started",
+    }
+    return module
+
+
+def test_application_action_is_idempotent_when_device_is_already_started(application_module):
+    resource = _resource([_application("workload", "running")])
+    application_module.get.return_value = resource
+
+    perform_application_action(application_module)
+
+    application_module.application_action.assert_not_called()
+    application_module.exit_json.assert_called_once_with(changed=False, result=resource.to_dict())
+
+
+def test_application_action_starts_device_when_its_application_is_stopped(application_module):
+    existing = _resource([_application("workload", "stopped")])
+    updated = _resource([_application("workload", "running")])
+    application_module.get.return_value = existing
+    application_module.application_action.return_value = updated
+
+    perform_application_action(application_module)
+
+    options = application_module.application_action.call_args.args[0]
+    assert options.resource is ResourceType.DEVICE
+    assert options.name == "edge-1"
+    assert options.app_name == "workload"
+    assert options.state == "started"
+    application_module.exit_json.assert_called_once_with(changed=True, result=updated.to_dict())
+
+
+def test_application_action_is_idempotent_when_device_is_already_stopped(application_module):
+    application_module.params["state"] = "stopped"
+    resource = _resource([_application("workload", "stopped")])
+    application_module.get.return_value = resource
+
+    perform_application_action(application_module)
+
+    application_module.application_action.assert_not_called()
+    application_module.exit_json.assert_called_once_with(changed=False, result=resource.to_dict())
+
+
+def test_application_action_restarts_device_even_when_it_is_already_running(application_module):
+    application_module.params["state"] = "restarted"
+    existing = _resource([_application("workload", "running")])
+    updated = _resource([_application("workload", "running")])
+    application_module.get.return_value = existing
+    application_module.application_action.return_value = updated
+
+    perform_application_action(application_module)
+
+    application_module.application_action.assert_called_once()
+    application_module.exit_json.assert_called_once_with(changed=True, result=updated.to_dict())
+
+
+def test_application_action_restarts_device_when_its_desired_state_is_unknown(application_module):
+    application_module.params["state"] = "restarted"
+    existing = _resource([_application("workload", None)])
+    updated = _resource([_application("workload", "running")])
+    application_module.get.return_value = existing
+    application_module.application_action.return_value = updated
+
+    perform_application_action(application_module)
+
+    application_module.application_action.assert_called_once()
+    application_module.exit_json.assert_called_once_with(changed=True, result=updated.to_dict())
+
+
+def test_application_action_starts_fleet_when_its_application_is_stopped(application_module):
+    application_module.params.update(
+        {"kind": ResourceType.FLEET.value, "name": "fleet-a", "state": "started"}
+    )
+    existing = _resource([_application("workload", "stopped")], ResourceType.FLEET)
+    updated = _resource([_application("workload", "running")], ResourceType.FLEET)
+    application_module.get.return_value = existing
+    application_module.application_action.return_value = updated
+
+    perform_application_action(application_module)
+
+    options = application_module.application_action.call_args.args[0]
+    assert options.resource is ResourceType.FLEET
+    assert options.state == "started"
+    application_module.exit_json.assert_called_once_with(changed=True, result=updated.to_dict())
+
+
+def test_application_action_handles_fleet_template_applications(application_module):
+    application_module.params.update(
+        {"kind": ResourceType.FLEET.value, "name": "fleet-a", "state": "stopped"}
+    )
+    existing = _resource([_application("workload", "running")], ResourceType.FLEET)
+    updated = _resource([_application("workload", "stopped")], ResourceType.FLEET)
+    application_module.get.return_value = existing
+    application_module.application_action.return_value = updated
+
+    perform_application_action(application_module)
+
+    get_options = application_module.get.call_args.args[0]
+    assert get_options.resource is ResourceType.FLEET
+    assert get_options.rendered is None
+    options = application_module.application_action.call_args.args[0]
+    assert options.resource is ResourceType.FLEET
+    assert options.state == "stopped"
+    application_module.exit_json.assert_called_once_with(changed=True, result=updated.to_dict())
+
+
+def test_application_action_uses_rendered_device(application_module):
+    application_module.get.return_value = _resource([_application("workload", "running")])
+
+    perform_application_action(application_module)
+
+    get_options = application_module.get.call_args.args[0]
+    assert get_options.resource is ResourceType.DEVICE
+    assert get_options.rendered is True
+
+
+def test_application_action_check_mode_does_not_call_api(application_module):
+    application_module.check_mode = True
+    existing = _resource([_application("workload", "stopped")])
+    application_module.get.return_value = existing
+
+    perform_application_action(application_module)
+
+    application_module.application_action.assert_not_called()
+    application_module.exit_json.assert_called_once_with(changed=True, result=existing.to_dict())
+
+
+def test_application_restart_check_mode_does_not_call_api(application_module):
+    application_module.params["state"] = "restarted"
+    application_module.check_mode = True
+    existing = _resource([_application("workload", "running")])
+    application_module.get.return_value = existing
+
+    perform_application_action(application_module)
+
+    application_module.application_action.assert_not_called()
+    application_module.exit_json.assert_called_once_with(changed=True, result=existing.to_dict())
+
+
+def test_application_action_reads_desired_state_from_raw_resource(application_module):
+    raw_resource = SimpleNamespace(
+        raw={"spec": {"applications": [{"name": "workload", "desiredState": "running"}]}},
+        to_dict=MagicMock(return_value={"kind": "Device"}),
+    )
+    application_module.get.return_value = raw_resource
+
+    perform_application_action(application_module)
+
+    application_module.application_action.assert_not_called()
+    application_module.exit_json.assert_called_once_with(changed=False, result=raw_resource.to_dict())
+
+
+def test_application_action_rejects_fleet_restart_before_reading_target(application_module):
+    application_module.params.update(
+        {"kind": ResourceType.FLEET.value, "name": "fleet-a", "state": "restarted"}
+    )
+
+    with pytest.raises(ValidationException, match="Restarting applications is only supported for Device"):
+        perform_application_action(application_module)
+
+    application_module.get.assert_not_called()
+    application_module.application_action.assert_not_called()
+
+
+def test_application_action_rejects_missing_application(application_module):
+    application_module.get.return_value = _resource([_application("other-workload", "running")])
+
+    with pytest.raises(FlightctlException, match="Application 'workload' not found on Device 'edge-1'"):
+        perform_application_action(application_module)
+
+    application_module.application_action.assert_not_called()
+
+
+def test_application_action_rejects_missing_target(application_module):
+    application_module.get.return_value = None
+
+    with pytest.raises(FlightctlException, match="Device 'edge-1' not found"):
+        perform_application_action(application_module)
+
+    application_module.application_action.assert_not_called()
