@@ -8,3 +8,4 @@ action_groups:
     - flightctl_enrollment_config_info
     - flightctl_image_builder
     - flightctl_image_builder_info
+    - flightctl_application
