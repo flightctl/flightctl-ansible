@@ -171,7 +171,7 @@ result:
       description:
         - Request metadata for requesting additional resources from list endpoints.
       type: dict
-      returned: When C(name) is not used and a list of objects is fetched
+      returned: When C(name) is not used, or when C(deployments=true), and a list of objects is fetched
       contains:
         continue:
           description: An opaque token used to issue another request to the endpoint that served a list to retrieve the next set of available objects.
