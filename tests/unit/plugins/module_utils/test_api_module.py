@@ -446,8 +446,49 @@ def test_get_catalog_item(api_module):
         from plugins.module_utils.options import GetOptions
         options = GetOptions(resource=ResourceType.CATALOG_ITEM, name="my-item", catalog_name="my-catalog")
         result = api_module.get(options)
-        mock_api_instance.get_catalog_item.assert_called_once()
+        mock_api_instance.get_catalog_item.assert_called_once_with(
+            "my-catalog", "my-item", _headers=None, _request_timeout=10
+        )
+        mock_api_instance.get_catalog_item_deployments.assert_not_called()
         assert result == mock_item
+
+
+def test_get_catalog_item_deployments(api_module):
+    mock_api_instance = MagicMock()
+    mock_deployment = MagicMock()
+    mock_deployment.to_dict.return_value = {"catalog": "my-catalog", "catalogItem": "my-item"}
+    mock_metadata = MagicMock()
+    mock_metadata.to_dict.return_value = {"continue": None}
+    mock_deployments = MagicMock()
+    mock_deployments.items = [mock_deployment]
+    mock_deployments.metadata = mock_metadata
+    mock_api_instance.get_catalog_item_deployments.return_value = mock_deployments
+
+    with patch.dict('plugins.module_utils.constants.API_MAPPING', {
+        ResourceType.CATALOG_ITEM: MagicMock(
+            api=MagicMock(return_value=mock_api_instance),
+            api_version='v1alpha1',
+            get='get_catalog_item',
+            deployments='get_catalog_item_deployments',
+        ),
+    }):
+        from plugins.module_utils.options import GetOptions
+        options = GetOptions(
+            resource=ResourceType.CATALOG_ITEM,
+            name="my-item",
+            catalog_name="my-catalog",
+            deployments=True,
+        )
+        result = api_module.get_one_or_many(options)
+
+        mock_api_instance.get_catalog_item_deployments.assert_called_once_with(
+            "my-catalog", "my-item", _headers=None, _request_timeout=10
+        )
+        mock_api_instance.get_catalog_item.assert_not_called()
+        assert result.to_dict() == {
+            "data": [{"catalog": "my-catalog", "catalogItem": "my-item"}],
+            "metadata": {"continue": None},
+        }
 
 
 def test_list_catalog_items(api_module):
@@ -465,7 +506,10 @@ def test_list_catalog_items(api_module):
         from plugins.module_utils.options import GetOptions
         options = GetOptions(resource=ResourceType.CATALOG_ITEM, catalog_name="my-catalog")
         result = api_module.list(options)
-        mock_api_instance.list_catalog_items.assert_called_once()
+        mock_api_instance.list_catalog_items.assert_called_once_with(
+            "my-catalog", _headers=None, _request_timeout=10
+        )
+        mock_api_instance.get_catalog_item_deployments.assert_not_called()
         assert result == mock_list_response
 
 
@@ -627,6 +671,43 @@ def test_get_rendered_device_pydantic_fallback(api_module):
         mock_api_instance.get_rendered_device_without_preload_content.assert_called_once()
         mock_api_instance.get_device_without_preload_content.assert_not_called()
         assert result.to_dict() == device_json
+
+
+def test_get_catalog_item_deployments_pydantic_fallback(api_module):
+    deployments_json = {
+        "items": [{"catalog": "my-catalog", "catalogItem": "my-item"}],
+        "metadata": {"continue": None},
+    }
+    mock_api_instance = MagicMock()
+    mock_api_instance.get_catalog_item_deployments.side_effect = _make_pydantic_error()
+    mock_api_instance.get_catalog_item_deployments_without_preload_content.return_value = _raw_response(
+        deployments_json
+    )
+
+    with patch.dict('plugins.module_utils.constants.API_MAPPING', {
+        ResourceType.CATALOG_ITEM: MagicMock(
+            api=MagicMock(return_value=mock_api_instance),
+            api_version='v1alpha1',
+            get='get_catalog_item',
+            deployments='get_catalog_item_deployments',
+        ),
+    }):
+        from plugins.module_utils.options import GetOptions
+        options = GetOptions(
+            resource=ResourceType.CATALOG_ITEM,
+            name="my-item",
+            catalog_name="my-catalog",
+            deployments=True,
+        )
+        result = api_module.get_one_or_many(options)
+
+        mock_api_instance.get_catalog_item_deployments_without_preload_content.assert_called_once_with(
+            "my-catalog", "my-item", _headers=None, _request_timeout=10
+        )
+        assert result.to_dict() == {
+            "data": [{"catalog": "my-catalog", "catalogItem": "my-item"}],
+            "metadata": {"continue": None},
+        }
 
 
 def test_get_non_pydantic_error_reraises(api_module):
