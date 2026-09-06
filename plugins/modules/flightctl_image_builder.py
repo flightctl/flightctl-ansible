@@ -54,15 +54,22 @@ EXAMPLES = r"""
     kind: ImageBuild
     state: present
     resource_definition:
-      apiVersion: imagebuilder.flightctl.io/v1alpha1
+      apiVersion: v1alpha1
       kind: ImageBuild
       metadata:
         name: my-build
       spec:
         source:
-          containerFile: "FROM quay.io/centos/centos:stream9"
+          repository: source-repository
+          imageName: centos-bootc/centos-bootc
+          imageTag: stream9
         destination:
-          image: "quay.io/myorg/myimage:latest"
+          repository: destination-repository
+          imageName: flightctl-onboarded
+          imageTag: latest
+        binding:
+          type: late
+        onboarding: true
 
 - name: Cancel a running image build
   flightctl.core.flightctl_image_builder:

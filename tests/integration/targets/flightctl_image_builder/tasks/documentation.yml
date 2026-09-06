@@ -1,0 +1,23 @@
+---
+- name: Run ansible-doc for the Flight Control image builder module
+  ansible.builtin.command: ansible-doc flightctl.core.flightctl_image_builder
+  register: doc_output
+  changed_when: false
+
+- name: Assert the current ImageBuild example is documented
+  ansible.builtin.assert:
+    that:
+      - "item in (doc_output.stdout | lower)"
+    fail_msg: "Required ImageBuild example field '{{ item }}' is missing in ansible-doc output"
+  loop:
+    - "source:"
+    - "repository: source-repository"
+    - "imagename: centos-bootc/centos-bootc"
+    - "imagetag: stream9"
+    - "destination:"
+    - "repository: destination-repository"
+    - "imagename: flightctl-onboarded"
+    - "imagetag: latest"
+    - "binding:"
+    - "type: late"
+    - "onboarding: true"
