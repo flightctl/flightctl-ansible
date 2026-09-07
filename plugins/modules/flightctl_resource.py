@@ -84,6 +84,66 @@ EXAMPLES = r"""
           fleet: default
           novalue: ""
 
+- name: Create a device with VM and catalog-backed application content
+  flightctl.core.flightctl_resource:
+    kind: Device
+    resource_definition:
+      apiVersion: flightctl.io/v1beta1
+      kind: Device
+      metadata:
+        name: vm-catalog-device
+      spec:
+        os:
+          catalogItemRef:
+            catalog: operating-systems
+            item: rhel-edge
+            version: "9.6"
+        applications:
+          - name: virtual-machine
+            appType: vm
+            image: quay.io/example/virtual-machine:latest
+            publishPorts:
+              - "2222:22/tcp"
+          - name: catalog-application
+            appType: compose
+            catalogItemRef:
+              catalog: applications
+              item: catalog-application
+              version: "1.0.0"
+            volumes:
+              - name: application-content
+                image:
+                  catalogItemRef:
+                    catalog: applications
+                    item: application-content
+                    version: "1.0.0"
+                mount:
+                  path: /opt/application
+
+- name: Create an enrollment request for an image-managed device
+  flightctl.core.flightctl_resource:
+    kind: EnrollmentRequest
+    resource_definition:
+      apiVersion: flightctl.io/v1beta1
+      kind: EnrollmentRequest
+      metadata:
+        name: image-managed-device
+      spec:
+        csr: "{{ lookup('file', 'device.csr') }}"
+        osMode: image
+
+- name: Create an enrollment request for a package-managed device
+  flightctl.core.flightctl_resource:
+    kind: EnrollmentRequest
+    resource_definition:
+      apiVersion: flightctl.io/v1beta1
+      kind: EnrollmentRequest
+      metadata:
+        name: package-managed-device
+      spec:
+        csr: "{{ lookup('file', 'device.csr') }}"
+        osMode: package
+
 - name: Delete a device
   flightctl.core.flightctl_resource:
     kind: Device

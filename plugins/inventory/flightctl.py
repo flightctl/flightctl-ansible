@@ -88,6 +88,7 @@ options:
           description: |
             Dotted path on the device object used to create groups (e.g. C(metadata.labels.site)). When provided,
             devices are grouped by the value(s) at this path. Also accepts C(keyed_by) for backward compatibility.
+            Use C(status.capabilities.osMode) to group image- and package-managed devices by OS mode.
           type: str
         label_selectors:
           description: list of label selectors in format "key = value" or "key != value"
@@ -98,6 +99,8 @@ options:
           description: |
             list of field selectors in format "field <op> value" to be matched against fields,
             where <op> is one of != == = >= <= > < in notin contains notcontains ! notexists
+            For example, C(status.capabilities.osMode=image) selects image-managed devices;
+            use C(status.capabilities.osMode=package) for package-managed devices.
           type: list
           elements: str
           default: []
@@ -131,6 +134,16 @@ options:
 requirements:
     - "python >= 3.12"
     - "flightctl-client"
+'''
+
+EXAMPLES = r'''
+# inventory.yml
+plugin: flightctl.core.flightctl
+additional_groups:
+  - group_by: status.capabilities.osMode
+  - name: image_managed_devices
+    field_selectors:
+      - status.capabilities.osMode=image
 '''
 
 try:
