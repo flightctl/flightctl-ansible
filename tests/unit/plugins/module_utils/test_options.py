@@ -6,7 +6,7 @@ import pytest
 
 from plugins.module_utils.constants import ResourceType
 from plugins.module_utils.exceptions import ValidationException
-from plugins.module_utils.options import GetOptions
+from plugins.module_utils.options import ApplicationOptions, GetOptions
 
 
 class TestGetOptionsListOnlyResources:
@@ -94,3 +94,44 @@ class TestGetOptionsCatalog:
     def test_template_version_without_fleet_name_raises(self):
         with pytest.raises(ValidationException, match="TemplateVersion requires a parent name"):
             GetOptions(resource=ResourceType.TEMPLATE_VERSION)
+
+
+class TestApplicationOptions:
+    def test_device_action_options_are_valid(self):
+        options = ApplicationOptions(
+            resource=ResourceType.DEVICE,
+            name="edge-1",
+            app_name="workload",
+            state="started",
+        )
+
+        assert options.resource is ResourceType.DEVICE
+        assert options.name == "edge-1"
+        assert options.app_name == "workload"
+        assert options.state == "started"
+
+    def test_rejects_unsupported_resource(self):
+        with pytest.raises(
+            ValidationException,
+            match="CertificateSigningRequest does not support application actions",
+        ):
+            ApplicationOptions(ResourceType.CSR, "request-1", "workload", "started")
+
+    def test_rejects_missing_target_name(self):
+        with pytest.raises(ValidationException, match="Name must be specified"):
+            ApplicationOptions(ResourceType.DEVICE, "", "workload", "started")
+
+    def test_rejects_missing_application_name(self):
+        with pytest.raises(ValidationException, match="Application name must be specified"):
+            ApplicationOptions(ResourceType.DEVICE, "edge-1", "", "started")
+
+    def test_rejects_invalid_state(self):
+        with pytest.raises(ValidationException, match="Invalid application state: running"):
+            ApplicationOptions(ResourceType.DEVICE, "edge-1", "workload", "running")
+
+    def test_rejects_fleet_restart(self):
+        with pytest.raises(
+            ValidationException,
+            match="Restarting applications is only supported for Device",
+        ):
+            ApplicationOptions(ResourceType.FLEET, "fleet-a", "workload", "restarted")

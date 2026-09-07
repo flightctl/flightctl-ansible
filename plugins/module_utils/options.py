@@ -41,6 +41,26 @@ class ApprovalOptions:
 
 
 @dataclass
+class ApplicationOptions:
+    resource: ResourceType
+    name: str
+    app_name: str
+    state: str
+
+    def __post_init__(self):
+        if self.resource not in [ResourceType.DEVICE, ResourceType.FLEET]:
+            raise ValidationException(f"Kind {self.resource.value} does not support application actions")
+        if not self.name:
+            raise ValidationException("Name must be specified")
+        if not self.app_name:
+            raise ValidationException("Application name must be specified")
+        if self.state not in ["started", "stopped", "restarted"]:
+            raise ValidationException(f"Invalid application state: {self.state}")
+        if self.resource is ResourceType.FLEET and self.state == "restarted":
+            raise ValidationException("Restarting applications is only supported for Device")
+
+
+@dataclass
 class GetOptions:
     resource: ResourceType
     name: Optional[str] = None
