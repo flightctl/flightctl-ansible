@@ -4,6 +4,37 @@ flightctl collection Release Notes
 
 .. contents:: Topics
 
+v1.7.0
+======
+
+Release Summary
+---------------
+
+Added support for Flight Control API v1.3.
+
+Major Changes
+-------------
+
+- Updated the Ansible collection to support Flight Control API version 1.3.
+
+Minor Changes
+-------------
+
+- Added the ``deployments`` option to ``flightctl_resource_info`` for querying the device and fleet deployments of a named ``CatalogItem``.
+- Added the ``flightctl_application`` module to start, stop, and restart applications on Devices and Fleets.
+- Updated collection requirements to install ``flightctl-client==1.3.0`` from PyPI instead of the client repository's ``main`` branch.
+
+Bugfixes
+--------
+
+- Added a pydantic ``ValidationError`` fallback to the shared API module (``module_utils/api_module.py``) so that ``get()`` and ``list()`` retry against the client SDK's raw JSON endpoints instead of crashing. This fixes unhandled tracebacks in ``flightctl_resource_info`` and other modules when the API returns mount-only application volumes without the required ``image`` field, matching the fix previously applied to the inventory plugin. The pydantic-detection helper is now shared via ``module_utils/sdk_utils.py``.
+- Replaced broken HTTP Basic Auth with an OIDC Resource Owner Password Grant flow in the shared API module (``module_utils/api_module.py``) and the image builder module (``module_utils/imagebuilder_module.py``). Modules such as ``flightctl_resource``, ``flightctl_resource_info``, ``flightctl_certificate_management``, ``flightctl_enrollment_config_info`` and the image builder modules now authenticate with a Bearer token when given ``username``/``password``, fixing authentication against Flight Control servers that only accept OIDC. This matches the fix previously applied to the inventory plugin. The OIDC discovery and password-grant logic is now shared via ``module_utils/oidc_auth.py``.
+
+New Modules
+-----------
+
+- flightctl_application - Start, stop, or restart Flight Control applications.
+
 v1.6.1
 ======
 
@@ -15,10 +46,10 @@ Bug fix release addressing inventory plugin crashes and authentication issues.
 Bugfixes
 --------
 
-- Deferred ``jsonschema`` and ``pyyaml`` import checks in ``ConfigLoader`` to ``_load_config_file()`` so that the inventory plugin no longer raises ``ImportError`` when these packages are absent and no config file is used.
-- Added missing ``env`` declarations to all inventory plugin connection options so that environment variables (``FLIGHTCTL_TOKEN``, ``FLIGHTCTL_HOST``, etc.) are no longer silently ignored by ``get_option()``, restoring AAP Credential Type injection support.
-- Replaced broken HTTP Basic Auth with an OIDC Resource Owner Password Grant flow in the inventory plugin, matching the ``flightctl`` CLI behavior and fixing authentication against RHEM servers that only accept Bearer tokens.
 - Added a pydantic ``ValidationError`` fallback in the inventory plugin that retries device list calls using raw JSON endpoints, fixing crashes when the API returns mount-only application volumes without the required ``image`` field.
+- Added missing ``env`` declarations to all inventory plugin connection options so that environment variables (``FLIGHTCTL_TOKEN``, ``FLIGHTCTL_HOST``, etc.) are no longer silently ignored by ``get_option()``, restoring AAP Credential Type injection support.
+- Deferred ``jsonschema`` and ``pyyaml`` import checks in ``ConfigLoader`` to ``_load_config_file()`` so that the inventory plugin no longer raises ``ImportError`` when these packages are absent and no config file is used.
+- Replaced broken HTTP Basic Auth with an OIDC Resource Owner Password Grant flow in the inventory plugin, matching the ``flightctl`` CLI behavior and fixing authentication against RHEM servers that only accept Bearer tokens.
 
 v1.6.0
 ======
@@ -45,9 +76,15 @@ Major Changes
 -------------
 
 - Added ``flightctl_image_builder`` and ``flightctl_image_builder_info`` modules.
-- Added v1alpha1 API support for Catalog and CatalogItem resources.
 - Added support for AuthProvider, Catalog, CatalogItem, Event, Organization, and EnrollmentConfig resource types.
+- Added v1alpha1 API support for Catalog and CatalogItem resources.
 - Updated the Ansible collection to support Flight Control API version 1.1.
+
+New Modules
+-----------
+
+- flightctl_image_builder - Manage Flight Control Image Builder resources.
+- flightctl_image_builder_info - Get information about Flight Control Image Builder resources.
 
 v1.4.0
 ======
@@ -74,12 +111,11 @@ Added support for Flight Control API v0.10.0 and improved the FlightCtl inventor
 Minor Changes
 -------------
 
-- Updated the Ansible collection to support Flight Control API version 0.10.0.
+- Added `hostnames` option for selecting the device field (dot path) as the inventory hostname.
 - Added support for Basic auth (username/password) in the inventory plugin for environments with proxies that accept HTTP Basic.
 - Improved documentation and examples for `flightctl_config_file` (FlightCtl config) and config precedence.
-- Added `hostnames` option for selecting the device field (dot path) as the inventory hostname.
 - Inventory plugin now supports `group_by` option for grouping devices by a field value.
-
+- Updated the Ansible collection to support Flight Control API version 0.10.0.
 
 Bugfixes
 --------

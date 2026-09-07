@@ -1,4 +1,0 @@
-minor_changes:
-  - >-
-    Added the ``flightctl_application`` module to start, stop, and restart
-    applications on Devices and Fleets.
