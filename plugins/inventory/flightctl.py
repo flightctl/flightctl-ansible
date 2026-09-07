@@ -707,6 +707,7 @@ def _prepare_additional_groups_info(additional_groups: List[Dict[str, Any]]) -> 
                                        "metadata.nameOrAlias",
                                        "metadata.owner",
                                        "status.applicationsSummary.status",
+                                       "status.capabilities.osMode",
                                        "status.lastSeen",
                                        "status.lifecycle.status",
                                        "status.summary.status",
