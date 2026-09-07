@@ -1,5 +1,12 @@
 ---
 - include_tasks: enrollment-approval.yml
 - include_tasks: enrollment-denial.yml
-- include_tasks: certificate-signing-approval.yml
-- include_tasks: certificate-signing-denial.yml
+
+# Excluded from the integration suite:
+# - certificate-signing-approval.yml
+# - certificate-signing-denial.yml
+# Flight Control API v1.3 requires super-admin privileges to approve or deny
+# server-svc CSRs, while this test environment provides only a non-super-admin
+# bearer token.
+# - include_tasks: certificate-signing-approval.yml
+# - include_tasks: certificate-signing-denial.yml
