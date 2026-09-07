@@ -1,0 +1,107 @@
+---
+# Verifies that the inventory plugin reads all connection options from environment
+# variables — the same mechanism AAP uses when injecting credentials via a
+# Credential Type (EDM-4975).  No host, token, or organization is present in
+# the inventory file itself; they must be picked up from the environment.
+
+- name: Test inventory plugin reads credentials from environment variables (AAP Credential Type simulation)
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Run ansible-inventory with credentials supplied only via env vars, writing output directly to file
+      ansible.builtin.shell: >
+        ansible-inventory -i ./.config/flightctl/env_only.inventory.yml --list
+        > /tmp/ansible_flightctl_inv.json
+      environment:
+        FLIGHTCTL_HOST: "{{ flightctl_host }}"
+        FLIGHTCTL_TOKEN: "{{ flightctl_token }}"
+        FLIGHTCTL_ORGANIZATION: "{{ flightctl_organization | default('') }}"
+      changed_when: false
+      no_log: true
+
+    - name: Count hosts returned by env-var-only inventory
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import json, sys
+            with open('/tmp/ansible_flightctl_inv.json') as f:
+                data = json.load(f)
+            hostvars = data.get('_meta', {}).get('hostvars', {})
+            print(len(hostvars))
+      register: inv_host_count
+      changed_when: false
+
+    - name: Assert inventory returned at least one host
+      ansible.builtin.assert:
+        that:
+          - inv_host_count.stdout | int > 0
+        fail_msg: >
+          Inventory returned no hosts when credentials were supplied via env vars.
+          This indicates FLIGHTCTL_HOST / FLIGHTCTL_TOKEN were not read by the plugin
+          (EDM-4975 regression — missing env: declarations in DOCUMENTATION block).
+
+    - name: Check if known test device is present in env-var-only inventory
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import json, sys
+            with open('/tmp/ansible_flightctl_inv.json') as f:
+                data = json.load(f)
+            hostvars = data.get('_meta', {}).get('hostvars', {})
+            print('yes' if 'ansible-integration-test-device' in hostvars else 'no')
+      register: device_present
+      changed_when: false
+
+    - name: Assert known test device is present
+      ansible.builtin.assert:
+        that:
+          - device_present.stdout | trim == 'yes'
+        fail_msg: >
+          Expected device 'ansible-integration-test-device' not found in inventory.
+          Env var credential injection may have been ignored (EDM-4975 regression).
+
+    - name: Run ansible-inventory with an invalid token (negative case)
+      ansible.builtin.shell: >
+        ansible-inventory -i ./.config/flightctl/env_only.inventory.yml --list
+        > /tmp/ansible_flightctl_inv_invalid.json
+      environment:
+        FLIGHTCTL_HOST: "{{ flightctl_host }}"
+        FLIGHTCTL_TOKEN: "invalid-token-that-should-be-rejected"
+        FLIGHTCTL_ORGANIZATION: "{{ flightctl_organization | default('') }}"
+      changed_when: false
+      no_log: true
+
+    - name: Count hosts returned by invalid-token inventory
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import json, sys
+            with open('/tmp/ansible_flightctl_inv_invalid.json') as f:
+                data = json.load(f)
+            hostvars = data.get('_meta', {}).get('hostvars', {})
+            print(len(hostvars))
+      register: inv_invalid_host_count
+      changed_when: false
+
+    - name: Assert invalid token yields empty inventory (negative case)
+      ansible.builtin.assert:
+        that:
+          - inv_invalid_host_count.stdout | int == 0
+        fail_msg: >
+          Inventory returned hosts with an invalid token — the token env var is being
+          ignored entirely and the plugin is falling back to another credential source
+          (EDM-4975 regression).
+
+    - name: Remove temp inventory JSON files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /tmp/ansible_flightctl_inv.json
+        - /tmp/ansible_flightctl_inv_invalid.json
