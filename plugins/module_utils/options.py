@@ -49,6 +49,7 @@ class GetOptions:
     owner: Optional[str] = None
     fleet_name: Optional[str] = None
     catalog_name: Optional[str] = None
+    deployments: bool = False
     rendered: Optional[bool] = None
     summary: Optional[bool] = None
     summary_only: Optional[bool] = None
@@ -69,6 +70,11 @@ class GetOptions:
             raise ValidationException("Fleet name field is only valid for TemplateVersion kind")
         if self.catalog_name and self.resource is not ResourceType.CATALOG_ITEM:
             raise ValidationException("Catalog name field is only valid for CatalogItem kind")
+        if self.deployments:
+            if self.resource is not ResourceType.CATALOG_ITEM:
+                raise ValidationException("Deployments field is only valid for CatalogItem kind")
+            if not self.catalog_name or not self.name:
+                raise ValidationException("Deployments field requires catalog name and item name")
         if self.resource in NESTED_RESOURCES and not self.parent_name:
             raise ValidationException(f"{self.resource.value} requires a parent name")
         if self.summary_only:
