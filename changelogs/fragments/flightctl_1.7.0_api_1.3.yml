@@ -1,0 +1,6 @@
+release_summary: >-
+  Added support for Flight Control API v1.3.
+
+major_changes:
+  - >-
+    Updated the Ansible collection to support Flight Control API version 1.3.
