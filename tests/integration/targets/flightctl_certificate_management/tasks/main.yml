@@ -1,5 +1,6 @@
 ---
+# EDM-5484: Flight Control v1.3 rejects the generic CSR signers from the
+# public API. CSR update behavior remains unit-tested; end-to-end CSR tests
+# require a device-authenticated request and cannot use this admin-token setup.
 - include_tasks: enrollment-approval.yml
 - include_tasks: enrollment-denial.yml
-- include_tasks: certificate-signing-approval.yml
-- include_tasks: certificate-signing-denial.yml
