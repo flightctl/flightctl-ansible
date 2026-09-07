@@ -1,5 +1,0 @@
----
-minor_changes:
-  - >-
-    Added the ``deployments`` option to ``flightctl_resource_info`` for
-    querying the device and fleet deployments of a named ``CatalogItem``.
