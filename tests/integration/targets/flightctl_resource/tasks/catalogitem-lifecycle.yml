@@ -64,6 +64,21 @@
           - get_result.result.data[0].spec.displayName == "Test Application"
           - get_result.result.data[0].spec.type == "container"
 
+    - name: Get deployments for catalog item
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: CatalogItem
+        catalog_name: "{{ catalog_name }}"
+        name: "{{ item_name }}"
+        deployments: true
+      register: deployments_result
+
+    - name: Assert catalog item deployments were fetched
+      ansible.builtin.assert:
+        that:
+          - deployments_result is success
+          - deployments_result.result.data is defined
+
     - name: List catalog items in the catalog
       flightctl.core.flightctl_resource_info:
         <<: *connection_info

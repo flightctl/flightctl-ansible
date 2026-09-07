@@ -73,6 +73,36 @@ class TestGetOptionsCatalog:
     def test_catalog_item_with_catalog_name(self):
         opts = GetOptions(resource=ResourceType.CATALOG_ITEM, name="my-item", catalog_name="my-catalog")
         assert opts.parent_name == "my-catalog"
+        assert opts.deployments is False
+
+    def test_catalog_item_deployments_with_catalog_name_and_item_name(self):
+        opts = GetOptions(
+            resource=ResourceType.CATALOG_ITEM,
+            name="my-item",
+            catalog_name="my-catalog",
+            deployments=True,
+        )
+        assert opts.deployments is True
+
+    def test_deployments_invalid_for_non_catalog_item(self):
+        with pytest.raises(ValidationException, match="Deployments field is only valid for CatalogItem kind"):
+            GetOptions(resource=ResourceType.DEVICE, name="device-1", deployments=True)
+
+    def test_catalog_item_deployments_without_item_name_raises(self):
+        with pytest.raises(ValidationException, match="Deployments field requires catalog name and item name"):
+            GetOptions(
+                resource=ResourceType.CATALOG_ITEM,
+                catalog_name="my-catalog",
+                deployments=True,
+            )
+
+    def test_catalog_item_deployments_without_catalog_name_raises(self):
+        with pytest.raises(ValidationException, match="Deployments field requires catalog name and item name"):
+            GetOptions(
+                resource=ResourceType.CATALOG_ITEM,
+                name="my-item",
+                deployments=True,
+            )
 
     def test_catalog_item_without_catalog_name_raises(self):
         with pytest.raises(ValidationException, match="CatalogItem requires a parent name"):

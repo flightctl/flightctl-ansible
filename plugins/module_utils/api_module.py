@@ -9,7 +9,7 @@ __metaclass__ = type
 import importlib
 from datetime import datetime
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, Union, cast
 
 from .constants import API_MAPPING, NESTED_RESOURCES, ResourceType
 from .core import FlightctlModule
@@ -267,7 +267,9 @@ class FlightctlAPIModule(FlightctlModule):
         api_type = API_MAPPING[options.resource]
         api_instance = api_type.api(self._get_client(options.resource))
 
-        if options.resource is ResourceType.DEVICE and options.rendered:
+        if options.resource is ResourceType.CATALOG_ITEM and options.deployments:
+            get_method = api_type.deployments
+        elif options.resource is ResourceType.DEVICE and options.rendered:
             get_method = api_type.rendered
         else:
             get_method = api_type.get
@@ -278,6 +280,8 @@ class FlightctlAPIModule(FlightctlModule):
 
         try:
             if options.resource in NESTED_RESOURCES:
+                if options.deployments:
+                    return self.call_api(get_call, options.parent_name, options.name, **options.request_params)
                 return self.call_api(get_call, options.parent_name, options.name)
             elif options.resource is ResourceType.FLEET:
                 return self.call_api(get_call, options.name, options.summary)
@@ -301,7 +305,9 @@ class FlightctlAPIModule(FlightctlModule):
                 return self._get_raw(api_instance, get_method, options)
             raise
 
-    def _get_raw(self, api_instance: Any, get_method: str, options: GetOptions) -> RawResource:
+    def _get_raw(
+        self, api_instance: Any, get_method: str, options: GetOptions
+    ) -> Union[RawListResponse, RawResource]:
         """Fetch a single resource as raw JSON, bypassing SDK pydantic deserialization.
 
         Retries the request against the SDK's ``*_without_preload_content`` variant,
@@ -310,14 +316,24 @@ class FlightctlAPIModule(FlightctlModule):
         raw_call = getattr(api_instance, f"{get_method}_without_preload_content")
         try:
             if options.resource in NESTED_RESOURCES:
-                response = self.call_api(raw_call, options.parent_name, options.name)
+                if options.deployments:
+                    response = self.call_api(raw_call, options.parent_name, options.name, **options.request_params)
+                else:
+                    response = self.call_api(raw_call, options.parent_name, options.name)
             elif options.resource is ResourceType.FLEET:
                 response = self.call_api(raw_call, options.name, options.summary)
             else:
                 response = self.call_api(raw_call, options.name)
         except Exception as e:
             raise FlightctlApiException(f"Unable to fetch {options.resource.value} - {options.name}: {e}")
-        return RawResource(raw_response_to_dict(response))
+        data = raw_response_to_dict(response)
+        if options.deployments:
+            metadata = data.get('metadata')
+            return RawListResponse(
+                items=[RawResource(item) for item in data.get('items', [])],
+                metadata=RawResource(metadata) if metadata else None,
+            )
+        return RawResource(data)
 
     def list(self, options: GetOptions) -> ListProtocol:
         """
@@ -403,6 +419,9 @@ class FlightctlAPIModule(FlightctlModule):
             response = self.get(options)
             if not response:
                 return ListResult(data=[])
+            if options.deployments:
+                deployments = cast(ListProtocol, response)
+                return ListResult(data=deployments.items, metadata=deployments.metadata)
             return ListResult(data=[response])
         else:
             response = self.list(options)

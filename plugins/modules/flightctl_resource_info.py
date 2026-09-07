@@ -34,6 +34,10 @@ options:
     description:
       - Use to specify a catalog name that owns the associated resources. Only applicable when O(kind=CatalogItem).
     type: str
+  deployments:
+    description:
+      - Return deployments for a CatalogItem. Requires O(kind=CatalogItem), O(catalog_name), and O(name).
+    type: bool
   label_selector:
     description:
       - A selector to restrict the list of returned objects by their labels.  Accepts a a comma-separated list of key1=value1,key2=value2
@@ -119,6 +123,13 @@ EXAMPLES = r"""
   flightctl.core.flightctl_resource_info:
     kind: TemplateVersion
     fleet_name: test_fleet
+
+- name: Get deployments for a CatalogItem
+  flightctl.core.flightctl_resource_info:
+    kind: CatalogItem
+    catalog_name: my-catalog
+    name: my-item
+    deployments: true
 """
 
 
@@ -160,7 +171,7 @@ result:
       description:
         - Request metadata for requesting additional resources from list endpoints.
       type: dict
-      returned: When C(name) is not used and a list of objects is fetched
+      returned: When C(name) is not used, or when C(deployments=true), and a list of objects is fetched
       contains:
         continue:
           description: An opaque token used to issue another request to the endpoint that served a list to retrieve the next set of available objects.
@@ -193,6 +204,7 @@ def main():
         field_selector=dict(type="str"),
         fleet_name=dict(type="str"),
         catalog_name=dict(type="str"),
+        deployments=dict(type="bool"),
         owner=dict(type="str"),
         rendered=dict(type="bool"),
         summary=dict(type="bool"),
@@ -218,6 +230,7 @@ def main():
         field_selector=module.params.get("field_selector"),
         fleet_name=module.params.get("fleet_name"),
         catalog_name=module.params.get("catalog_name"),
+        deployments=module.params.get("deployments"),
         owner=module.params.get("owner"),
         rendered=module.params.get("rendered"),
         summary=module.params.get("summary"),
