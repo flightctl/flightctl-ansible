@@ -15,7 +15,7 @@ env:
 
 jobs:
   integration-tests:
-    runs-on: "ubuntu-latest"
+    runs-on: "ubuntu-24.04"
     strategy:
       matrix:
         versions:
@@ -68,7 +68,7 @@ jobs:
           collection-src-directory: ./collection
 
   test-integration-downstream:
-    runs-on: "ubuntu-latest"
+    runs-on: "ubuntu-24.04"
     needs: integration-tests
     strategy:
       matrix:
