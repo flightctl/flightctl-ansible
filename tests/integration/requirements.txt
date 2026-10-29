@@ -1,4 +1,4 @@
 jsonschema
 jsonpatch
-flightctl-client==1.3.0
+git+https://github.com/flightctl/flightctl-python-client.git@main
 websockets>=15.0.1
