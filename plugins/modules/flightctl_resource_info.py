@@ -221,29 +221,29 @@ def main():
     )
 
     try:
-        resource = ResourceType(module.params.get("kind"))
-    except (TypeError, ValueError):
-        raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
+        try:
+            resource = ResourceType(module.params.get("kind"))
+        except (TypeError, ValueError):
+            raise ValidationException(f"Invalid Kind {module.params.get('kind')}")
 
-    options = GetOptions(
-        resource=resource,
-        name=module.params.get("name"),
-        label_selector=module.params.get("label_selector"),
-        field_selector=module.params.get("field_selector"),
-        fleet_name=module.params.get("fleet_name"),
-        catalog_name=module.params.get("catalog_name"),
-        deployments=module.params.get("deployments"),
-        owner=module.params.get("owner"),
-        rendered=module.params.get("rendered"),
-        summary=module.params.get("summary"),
-        summary_only=module.params.get("summary_only"),
-        status_filter=module.params.get("status_filter"),
-        limit=module.params.get("limit"),
-        continue_token=module.params.get("continue_token")
-    )
+        options = GetOptions(
+            resource=resource,
+            name=module.params.get("name"),
+            label_selector=module.params.get("label_selector"),
+            field_selector=module.params.get("field_selector"),
+            fleet_name=module.params.get("fleet_name"),
+            catalog_name=module.params.get("catalog_name"),
+            deployments=module.params.get("deployments"),
+            owner=module.params.get("owner"),
+            rendered=module.params.get("rendered"),
+            summary=module.params.get("summary"),
+            summary_only=module.params.get("summary_only"),
+            status_filter=module.params.get("status_filter"),
+            limit=module.params.get("limit"),
+            continue_token=module.params.get("continue_token")
+        )
 
-    # Attempt to look up resource based on the provided name
-    try:
+        # Attempt to look up resource based on the provided name
         result = module.get_one_or_many(options)
     except FlightctlException as e:
         module.fail_json(msg=f"Failed to get resource: {e}")
