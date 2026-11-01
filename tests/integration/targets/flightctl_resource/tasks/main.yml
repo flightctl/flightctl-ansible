@@ -5,6 +5,9 @@
 - include_tasks: resourcesync-lifecycle.yml
 - include_tasks: authprovider-lifecycle.yml
 - include_tasks: enrollment-hook-policy-lifecycle.yml
+  when:
+    - flightctl_enrollment_hook_test_organization is defined
+    - flightctl_enrollment_hook_test_organization | default('') | length > 0
 - include_tasks: catalog-lifecycle.yml
 - include_tasks: catalogitem-lifecycle.yml
 - include_tasks: idempotency.yml
