@@ -1,0 +1,235 @@
+---
+- name: Test EnrollmentHookPolicy lifecycle
+  vars:
+    policy_name: default
+    policy_token: ansible-integration-test-token
+    connection_info: &connection_info
+      flightctl_token: "{{ flightctl_token | default(omit)}}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_organization: "{{ flightctl_enrollment_hook_test_organization }}"
+      flightctl_validate_certs: false
+  block:
+    - name: Require a dedicated organization for enrollment hook policy testing
+      ansible.builtin.assert:
+        that:
+          - flightctl_enrollment_hook_test_organization is defined
+          - flightctl_enrollment_hook_test_organization | default('') | length > 0
+        fail_msg: >-
+          Set flightctl_enrollment_hook_test_organization to a dedicated,
+          disposable v1.4 test organization. This test manages the only
+          permitted EnrollmentHookPolicy name, default.
+
+    - name: Check for an existing enrollment hook policy
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: EnrollmentHookPolicy
+        name: "{{ policy_name }}"
+      register: existing_policy
+
+    - name: Refuse to overwrite an existing enrollment hook policy
+      ansible.builtin.assert:
+        that:
+          - existing_policy is success
+          - existing_policy.result.data | length == 0
+        fail_msg: >-
+          EnrollmentHookPolicy/default already exists in the dedicated test
+          organization. Remove it manually only after confirming that its
+          bearer token and configuration are disposable.
+
+    - name: Create an enrollment hook policy
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: EnrollmentHookPolicy
+        name: "{{ policy_name }}"
+        resource_definition:
+          spec:
+            afterEnrolling:
+              failurePolicy: Block
+              controlPlaneActions:
+                - url: https://example.com/hooks/enrollment
+                  timeout: 30s
+                  retry:
+                    maxAttempts: 3
+                    backoffPolicy: exponential
+                    backoffDelay: 2s
+                    maxBackoff: 20s
+                    deadline: 1m
+                  auth:
+                    bearerToken: "{{ policy_token }}"
+      register: create_result
+
+    - name: Assert the enrollment hook policy was created
+      ansible.builtin.assert:
+        that:
+          - create_result is success
+          - create_result.changed | bool
+          - create_result.result.kind == "EnrollmentHookPolicy"
+          - create_result.result.metadata.name == policy_name
+          - create_result.result.spec.afterEnrolling.failurePolicy == "Block"
+          - create_result.result.spec.afterEnrolling.controlPlaneActions[0].auth.bearerToken == "**********"
+
+    - name: Get the enrollment hook policy
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: EnrollmentHookPolicy
+        name: "{{ policy_name }}"
+      register: get_result
+
+    - name: Assert the enrollment hook policy was fetched
+      ansible.builtin.assert:
+        that:
+          - get_result is success
+          - get_result.result.data | length == 1
+          - get_result.result.data[0].metadata.name == policy_name
+          - >-
+            get_result.result.data[0].spec.afterEnrolling.controlPlaneActions[0].url ==
+            "https://example.com/hooks/enrollment"
+          - get_result.result.data[0].spec.afterEnrolling.controlPlaneActions[0].retry.maxAttempts == 3
+          - get_result.result.data[0].spec.afterEnrolling.controlPlaneActions[0].auth.bearerToken == "**********"
+
+    - name: List enrollment hook policies
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: EnrollmentHookPolicy
+      register: list_result
+
+    - name: Assert the enrollment hook policy is present in the list
+      ansible.builtin.assert:
+        that:
+          - list_result is success
+          - policy_name in (list_result.result.data | map(attribute='metadata.name') | list)
+
+    - name: Patch the enrollment hook policy
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: EnrollmentHookPolicy
+        name: "{{ policy_name }}"
+        resource_definition:
+          spec:
+            afterEnrolling:
+              failurePolicy: Continue
+              controlPlaneActions:
+                - url: https://example.com/hooks/enrollment
+                  timeout: 45s
+                  retry:
+                    maxAttempts: 4
+                    backoffPolicy: exponential
+                    backoffDelay: 3s
+                    maxBackoff: 30s
+                    deadline: 2m
+                  auth:
+                    bearerToken: "{{ policy_token }}"
+      register: patch_result
+
+    - name: Assert the enrollment hook policy was patched
+      ansible.builtin.assert:
+        that:
+          - patch_result is success
+          - patch_result.changed | bool
+          - patch_result.result.spec.afterEnrolling.failurePolicy == "Continue"
+          - patch_result.result.spec.afterEnrolling.controlPlaneActions[0].timeout == "45s"
+
+    - name: Get the patched enrollment hook policy
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: EnrollmentHookPolicy
+        name: "{{ policy_name }}"
+      register: get_after_patch
+
+    - name: Assert the enrollment hook policy patch was persisted
+      ansible.builtin.assert:
+        that:
+          - get_after_patch is success
+          - get_after_patch.result.data[0].spec.afterEnrolling.failurePolicy == "Continue"
+          - get_after_patch.result.data[0].spec.afterEnrolling.controlPlaneActions[0].timeout == "45s"
+          - get_after_patch.result.data[0].spec.afterEnrolling.controlPlaneActions[0].retry.maxAttempts == 4
+
+    - name: Replace the enrollment hook policy
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: EnrollmentHookPolicy
+        name: "{{ policy_name }}"
+        force_update: true
+        resource_definition:
+          spec:
+            afterEnrolling:
+              failurePolicy: Block
+              controlPlaneActions:
+                - url: https://example.com/hooks/replaced-enrollment
+                  timeout: 60s
+                  retry:
+                    maxAttempts: 2
+                    backoffPolicy: exponential
+                    backoffDelay: 1s
+                    maxBackoff: 10s
+                    deadline: 30s
+                  auth:
+                    bearerToken: "{{ policy_token }}"
+      register: replace_result
+
+    - name: Assert the enrollment hook policy was replaced
+      ansible.builtin.assert:
+        that:
+          - replace_result is success
+          - replace_result.changed | bool
+          - replace_result.result.spec.afterEnrolling.failurePolicy == "Block"
+          - >-
+            replace_result.result.spec.afterEnrolling.controlPlaneActions[0].url ==
+            "https://example.com/hooks/replaced-enrollment"
+          - replace_result.result.spec.afterEnrolling.controlPlaneActions[0].auth.bearerToken == "**********"
+
+    - name: Get the replaced enrollment hook policy
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: EnrollmentHookPolicy
+        name: "{{ policy_name }}"
+      register: get_after_replace
+
+    - name: Assert the enrollment hook policy replacement was persisted
+      ansible.builtin.assert:
+        that:
+          - get_after_replace is success
+          - get_after_replace.result.data[0].spec.afterEnrolling.failurePolicy == "Block"
+          - >-
+            get_after_replace.result.data[0].spec.afterEnrolling.controlPlaneActions[0].url ==
+            "https://example.com/hooks/replaced-enrollment"
+          - get_after_replace.result.data[0].spec.afterEnrolling.controlPlaneActions[0].timeout == "60s"
+          - get_after_replace.result.data[0].spec.afterEnrolling.controlPlaneActions[0].retry.maxAttempts == 2
+
+    - name: Delete the enrollment hook policy
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: EnrollmentHookPolicy
+        name: "{{ policy_name }}"
+        state: absent
+      register: delete_result
+
+    - name: Assert the enrollment hook policy was deleted
+      ansible.builtin.assert:
+        that:
+          - delete_result is success
+          - delete_result.changed | bool
+
+    - name: Get the deleted enrollment hook policy
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: EnrollmentHookPolicy
+        name: "{{ policy_name }}"
+      register: get_after_delete
+
+    - name: Assert the enrollment hook policy is absent
+      ansible.builtin.assert:
+        that:
+          - get_after_delete is success
+          - get_after_delete.result.data | length == 0
+
+  always:
+    - name: Delete the enrollment hook policy during cleanup
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: EnrollmentHookPolicy
+        name: "{{ policy_name }}"
+        state: absent
+      when:
+        - create_result is defined
+        - create_result.changed | default(false) | bool
