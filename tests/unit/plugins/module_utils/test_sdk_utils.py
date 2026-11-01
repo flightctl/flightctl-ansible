@@ -78,7 +78,7 @@ class TestNormalizeSdkOutput:
             }
         })
 
-        assert normalized["spec"]["actions"][0]["auth"]["bearerToken"] == "**********"
+        assert normalized["spec"]["actions"][0]["auth"]["bearerToken"] == "*****"
         assert "real-token" not in json.dumps(normalized)
 
     def test_preserves_json_compatible_values(self):

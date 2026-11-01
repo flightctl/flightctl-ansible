@@ -66,7 +66,7 @@
           - create_result.result.kind == "EnrollmentHookPolicy"
           - create_result.result.metadata.name == policy_name
           - create_result.result.spec.afterEnrolling.failurePolicy == "Block"
-          - create_result.result.spec.afterEnrolling.controlPlaneActions[0].auth.bearerToken == "**********"
+          - create_result.result.spec.afterEnrolling.controlPlaneActions[0].auth.bearerToken == "*****"
 
     - name: Get the enrollment hook policy
       flightctl.core.flightctl_resource_info:
@@ -85,7 +85,7 @@
             get_result.result.data[0].spec.afterEnrolling.controlPlaneActions[0].url ==
             "https://example.com/hooks/enrollment"
           - get_result.result.data[0].spec.afterEnrolling.controlPlaneActions[0].retry.maxAttempts == 3
-          - get_result.result.data[0].spec.afterEnrolling.controlPlaneActions[0].auth.bearerToken == "**********"
+          - get_result.result.data[0].spec.afterEnrolling.controlPlaneActions[0].auth.bearerToken == "*****"
 
     - name: List enrollment hook policies
       flightctl.core.flightctl_resource_info:
@@ -118,7 +118,7 @@
                     maxBackoff: 30s
                     deadline: 2m
                   auth:
-                    bearerToken: "{{ policy_token }}"
+                    bearerToken: "*****"
       register: patch_result
 
     - name: Assert the enrollment hook policy was patched
@@ -164,7 +164,7 @@
                     maxBackoff: 10s
                     deadline: 30s
                   auth:
-                    bearerToken: "{{ policy_token }}"
+                    bearerToken: "*****"
       register: replace_result
 
     - name: Assert the enrollment hook policy was replaced
@@ -176,7 +176,7 @@
           - >-
             replace_result.result.spec.afterEnrolling.controlPlaneActions[0].url ==
             "https://example.com/hooks/replaced-enrollment"
-          - replace_result.result.spec.afterEnrolling.controlPlaneActions[0].auth.bearerToken == "**********"
+          - replace_result.result.spec.afterEnrolling.controlPlaneActions[0].auth.bearerToken == "*****"
 
     - name: Get the replaced enrollment hook policy
       flightctl.core.flightctl_resource_info:

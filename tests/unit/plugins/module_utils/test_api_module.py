@@ -525,8 +525,26 @@ def test_enrollment_hook_policy_authentication_output_is_masked_and_serializable
         "controlPlaneActions"
     ][0]["auth"]["bearerToken"]
 
-    assert bearer_token == "**********"
+    assert bearer_token == "*****"
     assert "test-token" not in json.dumps(serialized)
+
+
+def test_enrollment_hook_policy_masked_output_can_be_reused_for_replace(
+        api_module, enrollment_hook_policy_definition):
+    policy = EnrollmentHookPolicy.from_dict(enrollment_hook_policy_definition)
+    definition = ListResult(data=[policy]).to_dict()["data"][0]
+    definition["spec"]["afterEnrolling"]["failurePolicy"] = "Continue"
+    mock_api_instance = MagicMock()
+    mock_api_instance.replace_enrollment_hook_policy.return_value = policy
+    mapping = API_MAPPING[ResourceType.ENROLLMENT_HOOK_POLICY]
+
+    with patch.object(mapping, 'api', return_value=mock_api_instance):
+        api_module.replace(ResourceType.ENROLLMENT_HOOK_POLICY, definition)
+
+    request = mock_api_instance.replace_enrollment_hook_policy.call_args.args[1]
+    action = request.spec.after_enrolling.control_plane_actions[0]
+    assert request.spec.after_enrolling.failure_policy == "Continue"
+    assert action.auth.bearer_token.get_secret_value() == "*****"
 
 
 @pytest.mark.parametrize(

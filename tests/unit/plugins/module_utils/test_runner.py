@@ -93,7 +93,7 @@ def test_perform_action_accepts_enrollment_hook_policy(
     bearer_token = result["spec"]["afterEnrolling"]["controlPlaneActions"][0][
         "auth"
     ]["bearerToken"]
-    assert bearer_token == "**********"
+    assert bearer_token == "*****"
     assert "test-token" not in json.dumps(result)
 
 
