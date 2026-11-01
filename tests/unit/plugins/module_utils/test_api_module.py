@@ -1157,7 +1157,7 @@ def test_list_raw_fallback_failure_raises_flightctl_exception(api_module):
         with pytest.raises(FlightctlException, match="Unable to list Device"):
             api_module.list(options)
 
-+# --- LabelSyncMapping tests ---
+# --- LabelSyncMapping tests ---
 
 @pytest.fixture
 def scalar_label_sync_mapping_definition():
