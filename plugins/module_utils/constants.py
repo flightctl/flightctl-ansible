@@ -21,6 +21,7 @@ class ResourceType(Enum):
     ENROLLMENT_HOOK_POLICY = "EnrollmentHookPolicy"
     EVENT = "Event"
     FLEET = "Fleet"
+    LABEL_SYNC_MAPPING = "LabelSyncMapping"
     ORGANIZATION = "Organization"
     REPOSITORY = "Repository"
     RESOURCE_SYNC = "ResourceSync"
@@ -42,6 +43,7 @@ try:
     from flightctl.api.device_api import DeviceApi
     from flightctl.api.event_api import EventApi
     from flightctl.api.fleet_api import FleetApi
+    from flightctl.api.labelsyncmapping_api import LabelsyncmappingApi
     from flightctl.api.certificatesigningrequest_api import CertificatesigningrequestApi
     from flightctl.api.enrollmenthookpolicy_api import EnrollmenthookpolicyApi
     from flightctl.api.enrollmentrequest_api import EnrollmentrequestApi
@@ -54,6 +56,7 @@ try:
     from flightctl.models.device import Device
     from flightctl.models.event import Event
     from flightctl.models.fleet import Fleet
+    from flightctl.models.label_sync_mapping import LabelSyncMapping
     from flightctl.models.certificate_signing_request import CertificateSigningRequest
     from flightctl.models.enrollment_hook_policy import EnrollmentHookPolicy
     from flightctl.models.enrollment_request import EnrollmentRequest
@@ -74,12 +77,14 @@ try:
     class ApiResource:
         api: Union[
             AuthproviderApi, CatalogApi, DeviceApi, EventApi, FleetApi,
+            LabelsyncmappingApi,
             CertificatesigningrequestApi, EnrollmenthookpolicyApi,
             EnrollmentrequestApi,
             OrganizationApi, RepositoryApi, ResourcesyncApi,
         ]
         model: Union[
             AuthProvider, Catalog, CatalogItem, Device, Event, Fleet,
+            LabelSyncMapping,
             CertificateSigningRequest, EnrollmentHookPolicy,
             EnrollmentRequest, Organization, Repository, ResourceSync,
             EnrollmentConfig, TemplateVersion,
@@ -152,6 +157,16 @@ try:
             patch='patch_fleet',
             replace='replace_fleet',
             delete='delete_fleet',
+        ),
+        ResourceType.LABEL_SYNC_MAPPING: ApiResource(
+            api=LabelsyncmappingApi,
+            model=LabelSyncMapping,
+            get='get_label_sync_mapping',
+            create='create_label_sync_mapping',
+            list='list_label_sync_mappings',
+            patch='patch_label_sync_mapping',
+            replace='replace_label_sync_mapping',
+            delete='delete_label_sync_mapping',
         ),
         ResourceType.CSR: ApiResource(
             api=CertificatesigningrequestApi,

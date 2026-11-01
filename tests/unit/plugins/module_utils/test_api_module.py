@@ -21,6 +21,7 @@ from flightctl.models.auth_provider import AuthProvider
 from flightctl.models.enrollment_request_approval import EnrollmentRequestApproval
 from flightctl.models.certificate_signing_request import CertificateSigningRequest
 from flightctl.models.enrollment_hook_policy import EnrollmentHookPolicy
+from flightctl.models.label_sync_mapping import LabelSyncMapping
 from flightctl.v1alpha1.exceptions import (
     NotFoundException as V1Alpha1NotFoundException,
 )
@@ -1155,3 +1156,356 @@ def test_list_raw_fallback_failure_raises_flightctl_exception(api_module):
         options = GetOptions(resource=ResourceType.DEVICE)
         with pytest.raises(FlightctlException, match="Unable to list Device"):
             api_module.list(options)
+
++# --- LabelSyncMapping tests ---
+
+@pytest.fixture
+def scalar_label_sync_mapping_definition():
+    return {
+        "apiVersion": "flightctl.io/v1beta1",
+        "kind": "LabelSyncMapping",
+        "metadata": {"name": "sync-site"},
+        "spec": {
+            "resourceType": "Device",
+            "key": "example.com/site",
+            "expression": '"edge"',
+        },
+    }
+
+
+@pytest.fixture
+def map_label_sync_mapping_definition():
+    return {
+        "apiVersion": "flightctl.io/v1beta1",
+        "kind": "LabelSyncMapping",
+        "metadata": {"name": "sync-labels"},
+        "spec": {
+            "resourceType": "Device",
+            "expression": '{"example.com/site": "edge"}',
+        },
+    }
+
+
+@pytest.fixture
+def null_key_label_sync_mapping_definition(map_label_sync_mapping_definition):
+    return map_label_sync_mapping_definition | {
+        "metadata": {"name": "sync-labels-null"},
+        "spec": map_label_sync_mapping_definition["spec"] | {"key": None},
+    }
+
+
+def test_label_sync_mapping_mapping():
+    mapping = API_MAPPING[ResourceType.LABEL_SYNC_MAPPING]
+
+    assert mapping.api.__name__ == "LabelsyncmappingApi"
+    assert mapping.model is LabelSyncMapping
+    assert mapping.api_version == "v1beta1"
+    assert mapping.get == "get_label_sync_mapping"
+    assert mapping.list == "list_label_sync_mappings"
+    assert mapping.create == "create_label_sync_mapping"
+    assert mapping.patch == "patch_label_sync_mapping"
+    assert mapping.replace == "replace_label_sync_mapping"
+    assert mapping.delete == "delete_label_sync_mapping"
+
+
+@pytest.mark.parametrize(
+    ("definition_fixture", "expected_key"),
+    [
+        ("scalar_label_sync_mapping_definition", "example.com/site"),
+        ("map_label_sync_mapping_definition", None),
+        ("null_key_label_sync_mapping_definition", None),
+    ],
+)
+def test_get_label_sync_mapping_preserves_schema_mode(
+    api_module, request, definition_fixture, expected_key,
+):
+    definition = request.getfixturevalue(definition_fixture)
+    response = LabelSyncMapping.from_dict(definition)
+    mapping = API_MAPPING[ResourceType.LABEL_SYNC_MAPPING]
+    mock_api_instance = MagicMock()
+    mock_api_instance.get_label_sync_mapping.return_value = response
+
+    with patch.object(mapping, "api", return_value=mock_api_instance):
+        result = api_module.get(GetOptions(
+            resource=ResourceType.LABEL_SYNC_MAPPING,
+            name=definition["metadata"]["name"],
+        ))
+
+    mock_api_instance.get_label_sync_mapping.assert_called_once_with(
+        definition["metadata"]["name"], _headers=None, _request_timeout=10,
+    )
+    assert result.to_dict()["spec"]["key"] == expected_key
+
+
+def test_list_label_sync_mappings_forwards_supported_pagination(api_module):
+    mapping = API_MAPPING[ResourceType.LABEL_SYNC_MAPPING]
+    mock_api_instance = MagicMock()
+    response = MagicMock()
+    mock_api_instance.list_label_sync_mappings.return_value = response
+
+    with patch.object(mapping, "api", return_value=mock_api_instance):
+        result = api_module.list(GetOptions(
+            resource=ResourceType.LABEL_SYNC_MAPPING,
+            limit=25,
+            continue_token="next-page",
+        ))
+
+    mock_api_instance.list_label_sync_mappings.assert_called_once_with(
+        limit=25, var_continue="next-page", _headers=None, _request_timeout=10,
+    )
+    assert result is response
+
+
+@pytest.mark.parametrize(
+    ("definition_fixture", "expected_key"),
+    [
+        ("scalar_label_sync_mapping_definition", "example.com/site"),
+        ("map_label_sync_mapping_definition", None),
+        ("null_key_label_sync_mapping_definition", None),
+    ],
+)
+def test_create_label_sync_mapping_preserves_schema_mode(
+    api_module, request, definition_fixture, expected_key,
+):
+    definition = request.getfixturevalue(definition_fixture)
+    mapping = API_MAPPING[ResourceType.LABEL_SYNC_MAPPING]
+    mock_api_instance = MagicMock()
+    response = LabelSyncMapping.from_dict(definition)
+    mock_api_instance.create_label_sync_mapping.return_value = response
+
+    with patch.object(mapping, "api", return_value=mock_api_instance):
+        result = api_module.create(ResourceType.LABEL_SYNC_MAPPING, definition)
+
+    request_obj = mock_api_instance.create_label_sync_mapping.call_args.args[0]
+    assert isinstance(request_obj, LabelSyncMapping)
+    assert request_obj.to_dict()["spec"]["key"] == expected_key
+    mock_api_instance.create_label_sync_mapping.assert_called_once_with(
+        request_obj, _headers=None, _request_timeout=10,
+    )
+    assert result.to_dict()["spec"]["key"] == expected_key
+
+
+def test_update_label_sync_mapping_can_switch_scalar_to_map(
+    api_module, scalar_label_sync_mapping_definition,
+):
+    existing = LabelSyncMapping.from_dict(scalar_label_sync_mapping_definition)
+    desired = {
+        "spec": {
+            "resourceType": "Device",
+            "key": None,
+            "expression": '{"example.com/site": "edge"}',
+        },
+    }
+    updated_definition = scalar_label_sync_mapping_definition | {
+        "spec": desired["spec"],
+    }
+    response = LabelSyncMapping.from_dict(updated_definition)
+    mapping = API_MAPPING[ResourceType.LABEL_SYNC_MAPPING]
+    mock_api_instance = MagicMock()
+    mock_api_instance.patch_label_sync_mapping.return_value = response
+
+    with patch.object(mapping, "api", return_value=mock_api_instance):
+        changed, result = api_module.update(
+            ResourceType.LABEL_SYNC_MAPPING, existing, desired,
+        )
+
+    patch_objects = mock_api_instance.patch_label_sync_mapping.call_args.args[1]
+    patch_values = [item.to_dict() for item in patch_objects]
+    assert {"op": "replace", "path": "/spec/key", "value": None} in patch_values
+    mock_api_instance.patch_label_sync_mapping.assert_called_once_with(
+        "sync-site", patch_objects, _headers=None, _request_timeout=10,
+    )
+    assert changed is True
+    assert result.to_dict()["spec"]["key"] is None
+
+
+def test_update_scalar_label_sync_mapping_keeps_string_key(
+    api_module, scalar_label_sync_mapping_definition,
+):
+    existing = LabelSyncMapping.from_dict(scalar_label_sync_mapping_definition)
+    desired = {
+        "spec": {
+            "resourceType": "Device",
+            "key": "example.com/site",
+            "expression": '"branch"',
+        },
+    }
+    updated_definition = scalar_label_sync_mapping_definition | {
+        "spec": desired["spec"],
+    }
+    response = LabelSyncMapping.from_dict(updated_definition)
+    mapping = API_MAPPING[ResourceType.LABEL_SYNC_MAPPING]
+    mock_api_instance = MagicMock()
+    mock_api_instance.patch_label_sync_mapping.return_value = response
+
+    with patch.object(mapping, "api", return_value=mock_api_instance):
+        changed, result = api_module.update(
+            ResourceType.LABEL_SYNC_MAPPING, existing, desired,
+        )
+
+    patch_objects = mock_api_instance.patch_label_sync_mapping.call_args.args[1]
+    assert all(item.to_dict()["path"] != "/spec/key" for item in patch_objects)
+    mock_api_instance.patch_label_sync_mapping.assert_called_once_with(
+        "sync-site", patch_objects, _headers=None, _request_timeout=10,
+    )
+    assert changed is True
+    assert result.to_dict()["spec"]["key"] == "example.com/site"
+
+
+def test_update_map_label_sync_mapping_keeps_null_key_when_omitted(
+    api_module, map_label_sync_mapping_definition,
+):
+    existing = LabelSyncMapping.from_dict(map_label_sync_mapping_definition)
+    desired = {
+        "spec": {
+            "resourceType": "Device",
+            "expression": '{"example.com/site": "branch"}',
+        },
+    }
+    updated_definition = map_label_sync_mapping_definition | {
+        "spec": desired["spec"],
+    }
+    response = LabelSyncMapping.from_dict(updated_definition)
+    mapping = API_MAPPING[ResourceType.LABEL_SYNC_MAPPING]
+    mock_api_instance = MagicMock()
+    mock_api_instance.patch_label_sync_mapping.return_value = response
+
+    with patch.object(mapping, "api", return_value=mock_api_instance):
+        changed, result = api_module.update(
+            ResourceType.LABEL_SYNC_MAPPING, existing, desired,
+        )
+
+    patch_objects = mock_api_instance.patch_label_sync_mapping.call_args.args[1]
+    assert all(item.to_dict()["path"] != "/spec/key" for item in patch_objects)
+    mock_api_instance.patch_label_sync_mapping.assert_called_once_with(
+        "sync-labels", patch_objects, _headers=None, _request_timeout=10,
+    )
+    assert changed is True
+    assert result.to_dict()["spec"]["key"] is None
+
+
+@pytest.mark.parametrize(
+    ("definition_fixture", "expected_key"),
+    [
+        ("scalar_label_sync_mapping_definition", "example.com/site"),
+        ("map_label_sync_mapping_definition", None),
+    ],
+)
+def test_replace_label_sync_mapping_preserves_schema_mode(
+    api_module, request, definition_fixture, expected_key,
+):
+    definition = request.getfixturevalue(definition_fixture)
+    mapping = API_MAPPING[ResourceType.LABEL_SYNC_MAPPING]
+    mock_api_instance = MagicMock()
+    response = LabelSyncMapping.from_dict(definition)
+    mock_api_instance.replace_label_sync_mapping.return_value = response
+
+    with patch.object(mapping, "api", return_value=mock_api_instance):
+        result = api_module.replace(
+            ResourceType.LABEL_SYNC_MAPPING, definition,
+        )
+
+    name, request_obj = mock_api_instance.replace_label_sync_mapping.call_args.args
+    assert name == definition["metadata"]["name"]
+    assert request_obj.to_dict()["spec"]["key"] == expected_key
+    mock_api_instance.replace_label_sync_mapping.assert_called_once_with(
+        name, request_obj, _headers=None, _request_timeout=10,
+    )
+    assert result.to_dict()["spec"]["key"] == expected_key
+
+
+def test_delete_label_sync_mapping(api_module):
+    mapping = API_MAPPING[ResourceType.LABEL_SYNC_MAPPING]
+    mock_api_instance = MagicMock()
+    mock_api_instance.delete_label_sync_mapping.return_value = None
+
+    with patch.object(mapping, "api", return_value=mock_api_instance):
+        result = api_module.delete(ResourceType.LABEL_SYNC_MAPPING, "sync-site")
+
+    mock_api_instance.delete_label_sync_mapping.assert_called_once_with(
+        "sync-site", _headers=None, _request_timeout=10,
+    )
+    assert result is None
+
+
+@pytest.mark.parametrize(
+    ("spec_override", "error_match"),
+    [
+        ({"resourceType": "Fleet"}, "must be one of enum values"),
+        ({"expression": ""}, "at least 1 character"),
+        ({"key": "invalid key"}, "must validate the regular expression"),
+    ],
+)
+def test_create_label_sync_mapping_rejects_invalid_spec_before_api_call(
+    api_module, scalar_label_sync_mapping_definition, spec_override, error_match,
+):
+    definition = scalar_label_sync_mapping_definition | {
+        "spec": scalar_label_sync_mapping_definition["spec"] | spec_override,
+    }
+    mapping = API_MAPPING[ResourceType.LABEL_SYNC_MAPPING]
+    mock_api_instance = MagicMock()
+
+    with patch.object(mapping, "api", return_value=mock_api_instance), pytest.raises(
+        ValueError, match=error_match,
+    ):
+        api_module.create(ResourceType.LABEL_SYNC_MAPPING, definition)
+
+    mock_api_instance.create_label_sync_mapping.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("operation", "method_name", "error_match"),
+    [
+        ("get", "get_label_sync_mapping", "Unable to fetch LabelSyncMapping - sync-site"),
+        ("list", "list_label_sync_mappings", "Unable to list LabelSyncMapping"),
+        ("create", "create_label_sync_mapping", "Unable to create LabelSyncMapping"),
+        ("update", "patch_label_sync_mapping", "Unable to update LabelSyncMapping"),
+        ("replace", "replace_label_sync_mapping", "Unable to replace LabelSyncMapping"),
+        ("delete", "delete_label_sync_mapping", "Unable to delete LabelSyncMapping - sync-site"),
+    ],
+)
+def test_label_sync_mapping_api_errors_are_wrapped(
+    api_module,
+    scalar_label_sync_mapping_definition,
+    operation,
+    method_name,
+    error_match,
+):
+    mapping = API_MAPPING[ResourceType.LABEL_SYNC_MAPPING]
+    mock_api_instance = MagicMock()
+    getattr(mock_api_instance, method_name).side_effect = ApiException("server error")
+    existing = LabelSyncMapping.from_dict(scalar_label_sync_mapping_definition)
+    updated = {
+        "spec": {
+            "resourceType": "Device",
+            "key": "example.com/site",
+            "expression": '"branch"',
+        },
+    }
+
+    calls = {
+        "get": lambda: api_module.get(GetOptions(
+            resource=ResourceType.LABEL_SYNC_MAPPING,
+            name="sync-site",
+        )),
+        "list": lambda: api_module.list(GetOptions(
+            resource=ResourceType.LABEL_SYNC_MAPPING,
+        )),
+        "create": lambda: api_module.create(
+            ResourceType.LABEL_SYNC_MAPPING, scalar_label_sync_mapping_definition,
+        ),
+        "update": lambda: api_module.update(
+            ResourceType.LABEL_SYNC_MAPPING, existing, updated,
+        ),
+        "replace": lambda: api_module.replace(
+            ResourceType.LABEL_SYNC_MAPPING, scalar_label_sync_mapping_definition,
+        ),
+        "delete": lambda: api_module.delete(
+            ResourceType.LABEL_SYNC_MAPPING, "sync-site",
+        ),
+    }
+
+    with patch.object(mapping, "api", return_value=mock_api_instance), pytest.raises(
+        FlightctlException, match=error_match,
+    ):
+        calls[operation]()
