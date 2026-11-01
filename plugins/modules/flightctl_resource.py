@@ -89,6 +89,29 @@ EXAMPLES = r"""
     kind: Device
     name: "Example"
 
+- name: Create a scalar label sync mapping
+  flightctl.core.flightctl_resource:
+    resource_definition:
+      apiVersion: flightctl.io/v1beta1
+      kind: LabelSyncMapping
+      metadata:
+        name: sync-site
+      spec:
+        resourceType: Device
+        key: example.com/site
+        expression: '"edge"'
+
+- name: Create a map label sync mapping
+  flightctl.core.flightctl_resource:
+    resource_definition:
+      apiVersion: flightctl.io/v1beta1
+      kind: LabelSyncMapping
+      metadata:
+        name: sync-labels
+      spec:
+        resourceType: Device
+        expression: '{"example.com/site": "edge"}'
+
 - name: Create an enrollment hook policy
   flightctl.core.flightctl_resource:
     kind: EnrollmentHookPolicy

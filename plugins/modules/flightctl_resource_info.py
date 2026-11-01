@@ -41,10 +41,12 @@ options:
   label_selector:
     description:
       - A selector to restrict the list of returned objects by their labels.  Accepts a a comma-separated list of key1=value1,key2=value2
+      - This option is not supported when O(kind=LabelSyncMapping).
     type: str
   field_selector:
     description:
       - A selector to filter based on object fields.  Accepts a a comma-separated list of V(key1=value1,key2=value2)
+      - This option is not supported when O(kind=LabelSyncMapping).
     type: str
   owner:
     description:
