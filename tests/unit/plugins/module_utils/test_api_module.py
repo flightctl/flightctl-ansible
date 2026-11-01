@@ -9,16 +9,18 @@ from unittest.mock import MagicMock, patch
 
 from tests.unit.utils import set_module_args
 
-from plugins.module_utils.api_module import FlightctlAPIModule
-from plugins.module_utils.constants import ResourceType
+from plugins.module_utils.api_module import FlightctlAPIModule, ListResult
+from plugins.module_utils.constants import API_MAPPING, ResourceType
 from plugins.module_utils.exceptions import FlightctlException
-from plugins.module_utils.options import ApprovalOptions
+from plugins.module_utils.options import ApprovalOptions, GetOptions
 from plugins.module_utils.sdk_utils import is_pydantic_validation_error
 
+from flightctl.api.enrollmenthookpolicy_api import EnrollmenthookpolicyApi
 from flightctl.exceptions import ApiException, NotFoundException
 from flightctl.models.auth_provider import AuthProvider
 from flightctl.models.enrollment_request_approval import EnrollmentRequestApproval
 from flightctl.models.certificate_signing_request import CertificateSigningRequest
+from flightctl.models.enrollment_hook_policy import EnrollmentHookPolicy
 from flightctl.v1alpha1.exceptions import (
     NotFoundException as V1Alpha1NotFoundException,
 )
@@ -276,6 +278,331 @@ def test_delete_auth_provider(api_module):
     }):
         api_module.delete(ResourceType.AUTH_PROVIDER, "test-provider", None)
         mock_api_instance.delete_auth_provider.assert_called_once()
+
+
+# --- EnrollmentHookPolicy tests ---
+
+@pytest.fixture
+def enrollment_hook_policy_definition():
+    return {
+        "apiVersion": "flightctl.io/v1beta1",
+        "kind": "EnrollmentHookPolicy",
+        "metadata": {"name": "test-enrollment-hook-policy"},
+        "spec": {
+            "afterEnrolling": {
+                "failurePolicy": "Block",
+                "controlPlaneActions": [
+                    {
+                        "url": "https://example.com/hooks/enrollment",
+                        "timeout": "30s",
+                        "retry": {
+                            "maxAttempts": 3,
+                            "backoffPolicy": "exponential",
+                            "backoffDelay": "2s",
+                            "maxBackoff": "2m",
+                            "deadline": "10m",
+                        },
+                        "auth": {"bearerToken": "test-token"},
+                    }
+                ],
+            }
+        },
+    }
+
+
+def test_enrollment_hook_policy_mapping():
+    mapping = API_MAPPING[ResourceType.ENROLLMENT_HOOK_POLICY]
+
+    assert mapping.api is EnrollmenthookpolicyApi
+    assert mapping.model is EnrollmentHookPolicy
+    assert mapping.api_version == "v1beta1"
+    assert mapping.get == "get_enrollment_hook_policy"
+    assert mapping.list == "list_enrollment_hook_policies"
+    assert mapping.create == "create_enrollment_hook_policy"
+    assert mapping.patch == "patch_enrollment_hook_policy"
+    assert mapping.replace == "replace_enrollment_hook_policy"
+    assert mapping.delete == "delete_enrollment_hook_policy"
+
+
+def test_get_enrollment_hook_policy(api_module):
+    mock_api_instance = MagicMock()
+    mock_policy = MagicMock(spec=EnrollmentHookPolicy)
+    mock_api_instance.get_enrollment_hook_policy.return_value = mock_policy
+    mapping = API_MAPPING[ResourceType.ENROLLMENT_HOOK_POLICY]
+
+    with patch.object(mapping, 'api', return_value=mock_api_instance):
+        result = api_module.get(GetOptions(
+            resource=ResourceType.ENROLLMENT_HOOK_POLICY,
+            name="test-enrollment-hook-policy",
+        ))
+
+    mock_api_instance.get_enrollment_hook_policy.assert_called_once_with(
+        "test-enrollment-hook-policy", _headers=None, _request_timeout=10
+    )
+    assert result == mock_policy
+
+
+def test_list_enrollment_hook_policies(api_module):
+    mock_api_instance = MagicMock()
+    mock_list_response = MagicMock()
+    mock_api_instance.list_enrollment_hook_policies.return_value = mock_list_response
+    mapping = API_MAPPING[ResourceType.ENROLLMENT_HOOK_POLICY]
+
+    with patch.object(mapping, 'api', return_value=mock_api_instance):
+        result = api_module.list(GetOptions(
+            resource=ResourceType.ENROLLMENT_HOOK_POLICY,
+            label_selector="environment=test",
+            limit=10,
+        ))
+
+    mock_api_instance.list_enrollment_hook_policies.assert_called_once_with(
+        label_selector="environment=test", limit=10,
+        _headers=None, _request_timeout=10,
+    )
+    assert result == mock_list_response
+
+
+def test_create_enrollment_hook_policy(api_module, enrollment_hook_policy_definition):
+    mock_api_instance = MagicMock()
+    mock_response = MagicMock(spec=EnrollmentHookPolicy)
+    mock_api_instance.create_enrollment_hook_policy.return_value = mock_response
+    mapping = API_MAPPING[ResourceType.ENROLLMENT_HOOK_POLICY]
+
+    with patch.object(mapping, 'api', return_value=mock_api_instance):
+        result = api_module.create(
+            ResourceType.ENROLLMENT_HOOK_POLICY,
+            enrollment_hook_policy_definition,
+        )
+
+    request = mock_api_instance.create_enrollment_hook_policy.call_args.args[0]
+    action = request.spec.after_enrolling.control_plane_actions[0]
+    assert isinstance(request, EnrollmentHookPolicy)
+    assert request.spec.after_enrolling.failure_policy == "Block"
+    assert action.url == "https://example.com/hooks/enrollment"
+    assert action.timeout == "30s"
+    assert action.retry.max_attempts == 3
+    assert action.retry.backoff_policy == "exponential"
+    assert action.retry.backoff_delay == "2s"
+    assert action.retry.max_backoff == "2m"
+    assert action.retry.deadline == "10m"
+    assert action.auth.bearer_token.get_secret_value() == "test-token"
+    mock_api_instance.create_enrollment_hook_policy.assert_called_once_with(
+        request, _headers=None, _request_timeout=10
+    )
+    assert result == mock_response
+
+
+def test_update_enrollment_hook_policy(api_module, enrollment_hook_policy_definition):
+    existing = EnrollmentHookPolicy.from_dict(enrollment_hook_policy_definition)
+    desired = dict(enrollment_hook_policy_definition)
+    desired["spec"] = {
+        "afterEnrolling": {
+            "failurePolicy": "Continue",
+            "controlPlaneActions": [
+                {"url": "https://example.com/hooks/enrollment", "timeout": "45s"}
+            ],
+        }
+    }
+    mock_api_instance = MagicMock()
+    mock_response = MagicMock(spec=EnrollmentHookPolicy)
+    mock_api_instance.patch_enrollment_hook_policy.return_value = mock_response
+    mapping = API_MAPPING[ResourceType.ENROLLMENT_HOOK_POLICY]
+
+    with patch.object(mapping, 'api', return_value=mock_api_instance):
+        changed, result = api_module.update(
+            ResourceType.ENROLLMENT_HOOK_POLICY, existing, desired
+        )
+
+    call_args = mock_api_instance.patch_enrollment_hook_policy.call_args
+    assert call_args.args[0] == "test-enrollment-hook-policy"
+    patch_items = {
+        patch_item.to_dict()["path"]: patch_item.to_dict()
+        for patch_item in call_args.args[1]
+    }
+    assert patch_items == {
+        "/spec/afterEnrolling/controlPlaneActions": {
+            "op": "replace",
+            "path": "/spec/afterEnrolling/controlPlaneActions",
+            "value": [
+                {"url": "https://example.com/hooks/enrollment", "timeout": "45s"}
+            ],
+        },
+        "/spec/afterEnrolling/failurePolicy": {
+            "op": "replace",
+            "path": "/spec/afterEnrolling/failurePolicy",
+            "value": "Continue",
+        },
+    }
+    assert call_args.kwargs == {"_headers": None, "_request_timeout": 10}
+    assert changed is True
+    assert result == mock_response
+
+
+def test_replace_enrollment_hook_policy(api_module, enrollment_hook_policy_definition):
+    mock_api_instance = MagicMock()
+    mock_response = MagicMock(spec=EnrollmentHookPolicy)
+    mock_api_instance.replace_enrollment_hook_policy.return_value = mock_response
+    mapping = API_MAPPING[ResourceType.ENROLLMENT_HOOK_POLICY]
+
+    with patch.object(mapping, 'api', return_value=mock_api_instance):
+        result = api_module.replace(
+            ResourceType.ENROLLMENT_HOOK_POLICY,
+            enrollment_hook_policy_definition,
+        )
+
+    call_args = mock_api_instance.replace_enrollment_hook_policy.call_args
+    assert call_args.args[0] == "test-enrollment-hook-policy"
+    assert isinstance(call_args.args[1], EnrollmentHookPolicy)
+    assert call_args.kwargs == {"_headers": None, "_request_timeout": 10}
+    assert result == mock_response
+
+
+def test_delete_enrollment_hook_policy(api_module):
+    mock_api_instance = MagicMock()
+    mapping = API_MAPPING[ResourceType.ENROLLMENT_HOOK_POLICY]
+
+    with patch.object(mapping, 'api', return_value=mock_api_instance):
+        api_module.delete(
+            ResourceType.ENROLLMENT_HOOK_POLICY,
+            "test-enrollment-hook-policy",
+        )
+
+    mock_api_instance.delete_enrollment_hook_policy.assert_called_once_with(
+        "test-enrollment-hook-policy", _headers=None, _request_timeout=10
+    )
+
+
+def test_enrollment_hook_policy_requires_after_enrolling(
+        api_module, enrollment_hook_policy_definition):
+    invalid_definition = dict(enrollment_hook_policy_definition)
+    invalid_definition["spec"] = {}
+    mock_api_instance = MagicMock()
+    mapping = API_MAPPING[ResourceType.ENROLLMENT_HOOK_POLICY]
+
+    with patch.object(mapping, 'api', return_value=mock_api_instance):
+        with pytest.raises(ValueError, match="afterEnrolling"):
+            api_module.create(
+                ResourceType.ENROLLMENT_HOOK_POLICY,
+                invalid_definition,
+            )
+
+    mock_api_instance.create_enrollment_hook_policy.assert_not_called()
+
+
+def test_enrollment_hook_policy_status_conditions_serialize(
+        enrollment_hook_policy_definition):
+    response = dict(enrollment_hook_policy_definition)
+    response["status"] = {
+        "conditions": [
+            {
+                "status": "True",
+                "observedGeneration": 2,
+                "lastTransitionTime": "2026-01-01T00:00:00Z",
+                "message": "Enrollment hooks are configured",
+                "reason": "Configured",
+                "type": "EnrollmentHooks",
+            }
+        ]
+    }
+
+    serialized = EnrollmentHookPolicy.from_dict(response).to_dict()
+    condition = serialized["status"]["conditions"][0]
+
+    assert condition["status"] == "True"
+    assert condition["observedGeneration"] == 2
+    assert condition["lastTransitionTime"].isoformat() == "2026-01-01T00:00:00+00:00"
+    assert condition["message"] == "Enrollment hooks are configured"
+    assert condition["reason"] == "Configured"
+    assert condition["type"] == "EnrollmentHooks"
+
+
+def test_enrollment_hook_policy_authentication_output_is_masked_and_serializable(
+        enrollment_hook_policy_definition):
+    policy = EnrollmentHookPolicy.from_dict(enrollment_hook_policy_definition)
+
+    serialized = ListResult(data=[policy]).to_dict()
+    bearer_token = serialized["data"][0]["spec"]["afterEnrolling"][
+        "controlPlaneActions"
+    ][0]["auth"]["bearerToken"]
+
+    assert bearer_token == "*****"
+    assert "test-token" not in json.dumps(serialized)
+
+
+def test_enrollment_hook_policy_masked_output_can_be_reused_for_replace(
+        api_module, enrollment_hook_policy_definition):
+    policy = EnrollmentHookPolicy.from_dict(enrollment_hook_policy_definition)
+    definition = ListResult(data=[policy]).to_dict()["data"][0]
+    definition["spec"]["afterEnrolling"]["failurePolicy"] = "Continue"
+    mock_api_instance = MagicMock()
+    mock_api_instance.replace_enrollment_hook_policy.return_value = policy
+    mapping = API_MAPPING[ResourceType.ENROLLMENT_HOOK_POLICY]
+
+    with patch.object(mapping, 'api', return_value=mock_api_instance):
+        api_module.replace(ResourceType.ENROLLMENT_HOOK_POLICY, definition)
+
+    request = mock_api_instance.replace_enrollment_hook_policy.call_args.args[1]
+    action = request.spec.after_enrolling.control_plane_actions[0]
+    assert request.spec.after_enrolling.failure_policy == "Continue"
+    assert action.auth.bearer_token.get_secret_value() == "*****"
+
+
+@pytest.mark.parametrize(
+    ("operation", "api_method", "error_match"),
+    [
+        ("get", "get_enrollment_hook_policy", "Unable to fetch EnrollmentHookPolicy"),
+        ("list", "list_enrollment_hook_policies", "Unable to list EnrollmentHookPolicy"),
+        ("create", "create_enrollment_hook_policy", "Unable to create EnrollmentHookPolicy"),
+        ("update", "patch_enrollment_hook_policy", "Unable to update EnrollmentHookPolicy"),
+        ("replace", "replace_enrollment_hook_policy", "Unable to replace EnrollmentHookPolicy"),
+        ("delete", "delete_enrollment_hook_policy", "Unable to delete EnrollmentHookPolicy"),
+    ],
+)
+def test_enrollment_hook_policy_api_errors(
+        api_module, enrollment_hook_policy_definition,
+        operation, api_method, error_match):
+    mock_api_instance = MagicMock()
+    getattr(mock_api_instance, api_method).side_effect = ApiException("server error")
+    mapping = API_MAPPING[ResourceType.ENROLLMENT_HOOK_POLICY]
+    existing = EnrollmentHookPolicy.from_dict(enrollment_hook_policy_definition)
+    desired = dict(enrollment_hook_policy_definition)
+    desired["metadata"] = {
+        "name": "test-enrollment-hook-policy",
+        "labels": {"updated": "true"},
+    }
+
+    with patch.object(mapping, 'api', return_value=mock_api_instance):
+        with pytest.raises(FlightctlException, match=error_match):
+            if operation == "get":
+                api_module.get(GetOptions(
+                    resource=ResourceType.ENROLLMENT_HOOK_POLICY,
+                    name="test-enrollment-hook-policy",
+                ))
+            elif operation == "list":
+                api_module.list(GetOptions(
+                    resource=ResourceType.ENROLLMENT_HOOK_POLICY,
+                ))
+            elif operation == "create":
+                api_module.create(
+                    ResourceType.ENROLLMENT_HOOK_POLICY,
+                    enrollment_hook_policy_definition,
+                )
+            elif operation == "update":
+                api_module.update(
+                    ResourceType.ENROLLMENT_HOOK_POLICY,
+                    existing,
+                    desired,
+                )
+            elif operation == "replace":
+                api_module.replace(
+                    ResourceType.ENROLLMENT_HOOK_POLICY,
+                    enrollment_hook_policy_definition,
+                )
+            else:
+                api_module.delete(
+                    ResourceType.ENROLLMENT_HOOK_POLICY,
+                    "test-enrollment-hook-policy",
+                )
 
 
 # --- Event tests (list-only) ---

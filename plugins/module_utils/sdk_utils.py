@@ -10,6 +10,9 @@ import json
 from typing import Any, Dict
 
 
+_MASKED_VALUE_PLACEHOLDER = '*****'
+
+
 def is_pydantic_validation_error(exc: Exception) -> bool:
     """Check if an exception is a pydantic ValidationError without importing pydantic.
 
@@ -22,6 +25,26 @@ def is_pydantic_validation_error(exc: Exception) -> bool:
     """
     exc_type = type(exc)
     return exc_type.__name__ == 'ValidationError' and 'pydantic' in getattr(exc_type, '__module__', '')
+
+
+def normalize_sdk_output(value: Any) -> Any:
+    """Convert SDK values into JSON-safe output without exposing secrets.
+
+    Pydantic ``SecretStr`` values returned by the generated client cannot be
+    serialized by Ansible's JSON encoder. Replace them with Flight Control's
+    masked-value placeholder so the output can be safely reused in update and
+    replace requests without changing the stored secret.
+    """
+    value_type = type(value)
+    if value_type.__name__ == 'SecretStr' and 'pydantic' in getattr(value_type, '__module__', ''):
+        return _MASKED_VALUE_PLACEHOLDER
+    if isinstance(value, dict):
+        return {key: normalize_sdk_output(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [normalize_sdk_output(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(normalize_sdk_output(item) for item in value)
+    return value
 
 
 def raw_response_to_dict(response: Any) -> Dict[str, Any]:

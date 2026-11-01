@@ -2,15 +2,19 @@ from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
 
+import json
+
 import pytest
 from unittest.mock import MagicMock
 
+from plugins.module_utils.api_module import ListResult
 from plugins.module_utils.constants import ResourceType
 from plugins.module_utils.exceptions import FlightctlException, FlightctlApiException, ValidationException
-from plugins.module_utils.runner import perform_approval
+from plugins.module_utils.runner import perform_action, perform_approval
 
 from flightctl.models.enrollment_request import EnrollmentRequest
 from flightctl.models.certificate_signing_request import CertificateSigningRequest
+from flightctl.models.enrollment_hook_policy import EnrollmentHookPolicy
 
 
 @pytest.fixture
@@ -29,6 +33,142 @@ def mock_module():
     }
 
     return mock_module
+
+
+@pytest.fixture
+def enrollment_hook_policy_module():
+    module = MagicMock()
+    module.check_mode = False
+    module.params = {
+        "kind": ResourceType.ENROLLMENT_HOOK_POLICY.value,
+        "name": "test-enrollment-hook-policy",
+        "fleet_name": None,
+        "catalog_name": None,
+        "label_selector": None,
+        "state": "present",
+        "force_update": False,
+    }
+    return module
+
+
+@pytest.fixture
+def enrollment_hook_policy_definition():
+    return {
+        "apiVersion": "flightctl.io/v1beta1",
+        "kind": "EnrollmentHookPolicy",
+        "metadata": {"name": "test-enrollment-hook-policy"},
+        "spec": {
+            "afterEnrolling": {
+                "failurePolicy": "Continue",
+                "controlPlaneActions": [
+                    {
+                        "url": "https://example.com/hooks/enrollment",
+                        "auth": {"bearerToken": "test-token"},
+                    }
+                ],
+            }
+        },
+    }
+
+
+def test_perform_action_accepts_enrollment_hook_policy(
+        enrollment_hook_policy_module, enrollment_hook_policy_definition):
+    response = EnrollmentHookPolicy.from_dict(enrollment_hook_policy_definition)
+    enrollment_hook_policy_module.get_one_or_many.return_value = ListResult(data=[])
+    enrollment_hook_policy_module.create.return_value = response
+
+    changed, result = perform_action(
+        enrollment_hook_policy_module,
+        enrollment_hook_policy_definition,
+    )
+
+    get_options = enrollment_hook_policy_module.get_one_or_many.call_args.args[0]
+    assert get_options.resource is ResourceType.ENROLLMENT_HOOK_POLICY
+    enrollment_hook_policy_module.create.assert_called_once_with(
+        ResourceType.ENROLLMENT_HOOK_POLICY,
+        enrollment_hook_policy_definition,
+        None,
+    )
+    assert changed is True
+    bearer_token = result["spec"]["afterEnrolling"]["controlPlaneActions"][0][
+        "auth"
+    ]["bearerToken"]
+    assert bearer_token == "*****"
+    assert "test-token" not in json.dumps(result)
+
+
+@pytest.mark.parametrize(
+    ("state", "existing_data"),
+    [
+        pytest.param("present", [], id="create"),
+        pytest.param("present", [MagicMock()], id="update"),
+        pytest.param("absent", [MagicMock()], id="delete"),
+    ],
+)
+def test_perform_action_enrollment_hook_policy_check_mode_does_not_mutate(
+        enrollment_hook_policy_module, enrollment_hook_policy_definition,
+        state, existing_data):
+    enrollment_hook_policy_module.params["state"] = state
+    enrollment_hook_policy_module.check_mode = True
+    enrollment_hook_policy_module.get_one_or_many.return_value = ListResult(
+        data=existing_data
+    )
+    enrollment_hook_policy_module.exit_json.side_effect = SystemExit
+
+    with pytest.raises(SystemExit):
+        perform_action(
+            enrollment_hook_policy_module,
+            enrollment_hook_policy_definition,
+        )
+
+    enrollment_hook_policy_module.exit_json.assert_called_once_with(changed=True)
+    enrollment_hook_policy_module.create.assert_not_called()
+    enrollment_hook_policy_module.update.assert_not_called()
+    enrollment_hook_policy_module.replace.assert_not_called()
+    enrollment_hook_policy_module.delete.assert_not_called()
+
+
+def test_perform_action_enrollment_hook_policy_wraps_get_failure(
+        enrollment_hook_policy_module, enrollment_hook_policy_definition):
+    enrollment_hook_policy_module.get_one_or_many.side_effect = (
+        FlightctlApiException("server error")
+    )
+
+    with pytest.raises(FlightctlException, match="Failed to get resource: server error"):
+        perform_action(
+            enrollment_hook_policy_module,
+            enrollment_hook_policy_definition,
+        )
+
+
+@pytest.mark.parametrize(
+    ("state", "existing_data", "method", "error_match"),
+    [
+        pytest.param("present", [], "create", "Failed to create resource", id="create"),
+        pytest.param(
+            "present", [MagicMock()], "update", "Failed to update resource", id="update"
+        ),
+        pytest.param(
+            "absent", [MagicMock()], "delete", "Failed to delete resource", id="delete"
+        ),
+    ],
+)
+def test_perform_action_enrollment_hook_policy_wraps_mutation_failure(
+        enrollment_hook_policy_module, enrollment_hook_policy_definition,
+        state, existing_data, method, error_match):
+    enrollment_hook_policy_module.params["state"] = state
+    enrollment_hook_policy_module.get_one_or_many.return_value = ListResult(
+        data=existing_data
+    )
+    getattr(enrollment_hook_policy_module, method).side_effect = (
+        FlightctlApiException("server error")
+    )
+
+    with pytest.raises(FlightctlException, match=f"{error_match}: server error"):
+        perform_action(
+            enrollment_hook_policy_module,
+            enrollment_hook_policy_definition,
+        )
 
 
 def test_perform_approval__get_endpoint_failure(mock_module):

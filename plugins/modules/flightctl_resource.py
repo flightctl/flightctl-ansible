@@ -88,6 +88,21 @@ EXAMPLES = r"""
   flightctl.core.flightctl_resource:
     kind: Device
     name: "Example"
+
+- name: Create an enrollment hook policy
+  flightctl.core.flightctl_resource:
+    kind: EnrollmentHookPolicy
+    resource_definition:
+      apiVersion: flightctl.io/v1beta1
+      kind: EnrollmentHookPolicy
+      metadata:
+        name: default
+      spec:
+        afterEnrolling:
+          failurePolicy: Continue
+          controlPlaneActions:
+            - url: https://example.com/hooks/enrollment
+              timeout: 30s
 """
 
 RETURN = r"""
