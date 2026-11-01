@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 from tests.unit.utils import set_module_args
 
-from plugins.module_utils.api_module import FlightctlAPIModule
+from plugins.module_utils.api_module import FlightctlAPIModule, ListResult
 from plugins.module_utils.constants import API_MAPPING, ResourceType
 from plugins.module_utils.exceptions import FlightctlException
 from plugins.module_utils.options import ApprovalOptions, GetOptions
@@ -514,6 +514,19 @@ def test_enrollment_hook_policy_status_conditions_serialize(
     assert condition["message"] == "Enrollment hooks are configured"
     assert condition["reason"] == "Configured"
     assert condition["type"] == "EnrollmentHooks"
+
+
+def test_enrollment_hook_policy_authentication_output_is_masked_and_serializable(
+        enrollment_hook_policy_definition):
+    policy = EnrollmentHookPolicy.from_dict(enrollment_hook_policy_definition)
+
+    serialized = ListResult(data=[policy]).to_dict()
+    bearer_token = serialized["data"][0]["spec"]["afterEnrolling"][
+        "controlPlaneActions"
+    ][0]["auth"]["bearerToken"]
+
+    assert bearer_token == "**********"
+    assert "test-token" not in json.dumps(serialized)
 
 
 @pytest.mark.parametrize(

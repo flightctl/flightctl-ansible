@@ -16,7 +16,7 @@ from .core import FlightctlModule
 from .exceptions import FlightctlException, FlightctlApiException
 from .oidc_auth import oidc_password_grant
 from .options import ApprovalOptions, GetOptions
-from .sdk_utils import is_pydantic_validation_error, raw_response_to_dict
+from .sdk_utils import is_pydantic_validation_error, normalize_sdk_output, raw_response_to_dict
 from .utils import diff_dicts, get_patch, json_patch
 
 
@@ -84,7 +84,7 @@ class ListResult:
             res['metadata'] = self.metadata.to_dict()
         if self.summary:
             res['summary'] = self.summary.to_dict()
-        return res
+        return normalize_sdk_output(res)
 
 
 @dataclass

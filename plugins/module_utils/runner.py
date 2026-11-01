@@ -13,6 +13,7 @@ from .constants import ResourceType
 from .exceptions import FlightctlException, ValidationException
 from .options import ApprovalOptions, GetOptions
 from .resources import create_definitions
+from .sdk_utils import normalize_sdk_output
 
 try:
     from flightctl.models.enrollment_request import EnrollmentRequest
@@ -180,7 +181,7 @@ def perform_action(module, definition: Dict[str, Any]) -> Tuple[bool, Dict[str, 
     if result is None:
         raise FlightctlException("No result returned from operation.")
 
-    return changed, result.to_dict()
+    return changed, normalize_sdk_output(result.to_dict())
 
 
 def perform_approval(module: FlightctlAPIModule) -> None:

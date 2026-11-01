@@ -8,6 +8,7 @@ import pytest
 
 from plugins.module_utils.sdk_utils import (
     is_pydantic_validation_error,
+    normalize_sdk_output,
     raw_response_to_dict,
 )
 
@@ -56,3 +57,31 @@ class TestRawResponseToDict:
         response = type("Resp", (), {})()
         response.data = json.dumps({"items": [1, 2, 3]}).encode()
         assert raw_response_to_dict(response) == {"items": [1, 2, 3]}
+
+
+class TestNormalizeSdkOutput:
+    def test_masks_nested_pydantic_secret_strings(self):
+        class SecretStr:
+            __module__ = "pydantic.types"
+
+            def __str__(self):
+                return "**********"
+
+            def get_secret_value(self):
+                return "real-token"
+
+        normalized = normalize_sdk_output({
+            "spec": {
+                "actions": [
+                    {"auth": {"bearerToken": SecretStr()}},
+                ]
+            }
+        })
+
+        assert normalized["spec"]["actions"][0]["auth"]["bearerToken"] == "**********"
+        assert "real-token" not in json.dumps(normalized)
+
+    def test_preserves_json_compatible_values(self):
+        value = {"items": ["value", 1, True, None]}
+
+        assert normalize_sdk_output(value) == value
