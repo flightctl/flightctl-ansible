@@ -18,6 +18,7 @@ class ResourceType(Enum):
     CSR = "CertificateSigningRequest"
     DEVICE = "Device"
     ENROLLMENT = "EnrollmentRequest"
+    ENROLLMENT_HOOK_POLICY = "EnrollmentHookPolicy"
     EVENT = "Event"
     FLEET = "Fleet"
     ORGANIZATION = "Organization"
@@ -42,6 +43,7 @@ try:
     from flightctl.api.event_api import EventApi
     from flightctl.api.fleet_api import FleetApi
     from flightctl.api.certificatesigningrequest_api import CertificatesigningrequestApi
+    from flightctl.api.enrollmenthookpolicy_api import EnrollmenthookpolicyApi
     from flightctl.api.enrollmentrequest_api import EnrollmentrequestApi
     from flightctl.api.organization_api import OrganizationApi
     from flightctl.api.repository_api import RepositoryApi
@@ -53,6 +55,7 @@ try:
     from flightctl.models.event import Event
     from flightctl.models.fleet import Fleet
     from flightctl.models.certificate_signing_request import CertificateSigningRequest
+    from flightctl.models.enrollment_hook_policy import EnrollmentHookPolicy
     from flightctl.models.enrollment_request import EnrollmentRequest
     from flightctl.models.organization import Organization
     from flightctl.models.repository import Repository
@@ -71,13 +74,15 @@ try:
     class ApiResource:
         api: Union[
             AuthproviderApi, CatalogApi, DeviceApi, EventApi, FleetApi,
-            CertificatesigningrequestApi, EnrollmentrequestApi,
+            CertificatesigningrequestApi, EnrollmenthookpolicyApi,
+            EnrollmentrequestApi,
             OrganizationApi, RepositoryApi, ResourcesyncApi,
         ]
         model: Union[
             AuthProvider, Catalog, CatalogItem, Device, Event, Fleet,
-            CertificateSigningRequest, EnrollmentRequest, Organization,
-            Repository, ResourceSync, EnrollmentConfig, TemplateVersion,
+            CertificateSigningRequest, EnrollmentHookPolicy,
+            EnrollmentRequest, Organization, Repository, ResourceSync,
+            EnrollmentConfig, TemplateVersion,
         ]
 
         api_version: str = "v1beta1"
@@ -166,6 +171,16 @@ try:
             list='list_enrollment_requests',
             replace='replace_enrollment_request',
             delete='delete_enrollment_request',
+        ),
+        ResourceType.ENROLLMENT_HOOK_POLICY: ApiResource(
+            api=EnrollmenthookpolicyApi,
+            model=EnrollmentHookPolicy,
+            get='get_enrollment_hook_policy',
+            create='create_enrollment_hook_policy',
+            list='list_enrollment_hook_policies',
+            patch='patch_enrollment_hook_policy',
+            replace='replace_enrollment_hook_policy',
+            delete='delete_enrollment_hook_policy',
         ),
         ResourceType.REPOSITORY: ApiResource(
             api=RepositoryApi,
