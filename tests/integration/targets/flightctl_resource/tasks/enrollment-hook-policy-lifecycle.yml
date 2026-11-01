@@ -155,7 +155,7 @@
             afterEnrolling:
               failurePolicy: Block
               controlPlaneActions:
-                - url: https://example.com/hooks/replaced-enrollment
+                - url: https://example.com/hooks/enrollment
                   timeout: 60s
                   retry:
                     maxAttempts: 2
@@ -175,7 +175,7 @@
           - replace_result.result.spec.afterEnrolling.failurePolicy == "Block"
           - >-
             replace_result.result.spec.afterEnrolling.controlPlaneActions[0].url ==
-            "https://example.com/hooks/replaced-enrollment"
+            "https://example.com/hooks/enrollment"
           - replace_result.result.spec.afterEnrolling.controlPlaneActions[0].auth.bearerToken == "*****"
 
     - name: Get the replaced enrollment hook policy
@@ -192,7 +192,7 @@
           - get_after_replace.result.data[0].spec.afterEnrolling.failurePolicy == "Block"
           - >-
             get_after_replace.result.data[0].spec.afterEnrolling.controlPlaneActions[0].url ==
-            "https://example.com/hooks/replaced-enrollment"
+            "https://example.com/hooks/enrollment"
           - get_after_replace.result.data[0].spec.afterEnrolling.controlPlaneActions[0].timeout == "60s"
           - get_after_replace.result.data[0].spec.afterEnrolling.controlPlaneActions[0].retry.maxAttempts == 2
 
