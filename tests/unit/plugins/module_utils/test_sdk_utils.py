@@ -82,6 +82,9 @@ class TestNormalizeSdkOutput:
         assert "real-token" not in json.dumps(normalized)
 
     def test_preserves_json_compatible_values(self):
-        value = {"items": ["value", 1, True, None]}
+        value = {
+            "items": ["value", 1, True, None],
+            "coordinates": ("x", "y"),
+        }
 
         assert normalize_sdk_output(value) == value
