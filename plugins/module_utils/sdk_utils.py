@@ -24,6 +24,26 @@ def is_pydantic_validation_error(exc: Exception) -> bool:
     return exc_type.__name__ == 'ValidationError' and 'pydantic' in getattr(exc_type, '__module__', '')
 
 
+def normalize_sdk_output(value: Any) -> Any:
+    """Convert SDK values into JSON-safe output without exposing secrets.
+
+    Pydantic ``SecretStr`` values returned by the generated client cannot be
+    serialized by Ansible's JSON encoder. Converting them with ``str()`` keeps
+    Pydantic's masked representation while recursively preserving the rest of
+    the response structure.
+    """
+    value_type = type(value)
+    if value_type.__name__ == 'SecretStr' and 'pydantic' in getattr(value_type, '__module__', ''):
+        return str(value)
+    if isinstance(value, dict):
+        return {key: normalize_sdk_output(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [normalize_sdk_output(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(normalize_sdk_output(item) for item in value)
+    return value
+
+
 def raw_response_to_dict(response: Any) -> Dict[str, Any]:
     """Deserialize the body of a ``*_without_preload_content`` response to a dict.
 

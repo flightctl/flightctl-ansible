@@ -2,6 +2,8 @@ from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
 
+import json
+
 import pytest
 from unittest.mock import MagicMock
 
@@ -12,6 +14,7 @@ from plugins.module_utils.runner import perform_action, perform_approval
 
 from flightctl.models.enrollment_request import EnrollmentRequest
 from flightctl.models.certificate_signing_request import CertificateSigningRequest
+from flightctl.models.enrollment_hook_policy import EnrollmentHookPolicy
 
 
 @pytest.fixture
@@ -58,7 +61,10 @@ def enrollment_hook_policy_definition():
             "afterEnrolling": {
                 "failurePolicy": "Continue",
                 "controlPlaneActions": [
-                    {"url": "https://example.com/hooks/enrollment"}
+                    {
+                        "url": "https://example.com/hooks/enrollment",
+                        "auth": {"bearerToken": "test-token"},
+                    }
                 ],
             }
         },
@@ -67,8 +73,7 @@ def enrollment_hook_policy_definition():
 
 def test_perform_action_accepts_enrollment_hook_policy(
         enrollment_hook_policy_module, enrollment_hook_policy_definition):
-    response = MagicMock()
-    response.to_dict.return_value = enrollment_hook_policy_definition
+    response = EnrollmentHookPolicy.from_dict(enrollment_hook_policy_definition)
     enrollment_hook_policy_module.get_one_or_many.return_value = ListResult(data=[])
     enrollment_hook_policy_module.create.return_value = response
 
@@ -85,7 +90,11 @@ def test_perform_action_accepts_enrollment_hook_policy(
         None,
     )
     assert changed is True
-    assert result == enrollment_hook_policy_definition
+    bearer_token = result["spec"]["afterEnrolling"]["controlPlaneActions"][0][
+        "auth"
+    ]["bearerToken"]
+    assert bearer_token == "**********"
+    assert "test-token" not in json.dumps(result)
 
 
 @pytest.mark.parametrize(
