@@ -270,7 +270,7 @@ def test_fleet_rollout_delta_generation_uses_generic_patch(api_module):
     mapping = API_MAPPING[ResourceType.FLEET]
 
     with patch.object(mapping, "api", return_value=mock_api):
-        changed, _ = api_module.update(ResourceType.FLEET, existing, desired_definition)
+        changed = api_module.update(ResourceType.FLEET, existing, desired_definition)[0]
 
     assert changed is True
     patch_items = [item.to_dict() for item in mock_api.patch_fleet.call_args.args[1]]

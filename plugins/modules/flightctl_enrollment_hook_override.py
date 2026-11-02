@@ -13,7 +13,7 @@ module: flightctl_enrollment_hook_override
 short_description: Override a failed device enrollment hook
 version_added: 1.8.0
 author:
-  - "Flight Control contributors"
+  - "Flight Control contributors (@flightctl)"
 description:
   - Manually override a failed enrollment hook condition for a device.
   - This is an action and does not create or update an Ansible resource.
@@ -43,8 +43,15 @@ result:
   type: dict
 """
 
-from flightctl.api.device_api import DeviceApi
-from flightctl.exceptions import ApiException
+try:
+    from flightctl.api.device_api import DeviceApi
+    from flightctl.exceptions import ApiException
+except ImportError:  # The client is an optional runtime dependency.
+    DeviceApi = None
+
+    class ApiException(Exception):
+        """Placeholder when the optional client dependency is unavailable."""
+
 
 from ..module_utils.api_module import FlightctlAPIModule
 from ..module_utils.exceptions import FlightctlException

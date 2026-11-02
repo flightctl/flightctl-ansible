@@ -13,7 +13,7 @@ module: flightctl_label_sync_provenance_info
 short_description: Query LabelSyncMapping ownership for label keys
 version_added: 1.8.0
 author:
-  - "Flight Control contributors"
+  - "Flight Control contributors (@flightctl)"
 description:
   - Query the current LabelSyncMapping owners for a device or exact label keys.
   - This is a read-only query and does not create or update an Ansible resource.
@@ -69,9 +69,17 @@ result:
           elements: str
 """
 
-from flightctl.api.device_api import DeviceApi
-from flightctl.api.labelsyncmapping_api import LabelsyncmappingApi
-from flightctl.exceptions import ApiException
+try:
+    from flightctl.api.device_api import DeviceApi
+    from flightctl.api.labelsyncmapping_api import LabelsyncmappingApi
+    from flightctl.exceptions import ApiException
+except ImportError:  # The client is an optional runtime dependency.
+    DeviceApi = None
+    LabelsyncmappingApi = None
+
+    class ApiException(Exception):
+        """Placeholder when the optional client dependency is unavailable."""
+
 
 from ..module_utils.api_module import FlightctlAPIModule
 from ..module_utils.exceptions import FlightctlException
@@ -117,7 +125,7 @@ def main():
     module = FlightctlAPIModule(
         argument_spec=dict(
             name=dict(type="str"),
-            label_keys=dict(type="list", elements="str"),
+            label_keys=dict(type="list", elements="str", no_log=True),
         )
     )
 

@@ -342,6 +342,7 @@ def test_perform_action_label_sync_mapping_wraps_mutation_failure(
     with pytest.raises(FlightctlException, match=error_match):
         perform_action(label_sync_mapping_module, definition)
 
+
 def test_perform_approval__get_endpoint_failure(mock_module):
     mock_module.get.side_effect = FlightctlApiException("Oh No!")
     with pytest.raises(FlightctlException, match="Failed to get resource: .*"):

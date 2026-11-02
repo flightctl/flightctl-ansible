@@ -1159,6 +1159,7 @@ def test_list_raw_fallback_failure_raises_flightctl_exception(api_module):
 
 # --- LabelSyncMapping tests ---
 
+
 @pytest.fixture
 def scalar_label_sync_mapping_definition():
     return {
