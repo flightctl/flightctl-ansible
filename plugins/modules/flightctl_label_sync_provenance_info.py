@@ -50,23 +50,10 @@ EXAMPLES = r"""
 RETURN = r"""
 result:
   description:
-    - Label-sync provenance items, including each exact key and its current owners.
+    - Label-sync provenance response containing an items list. Each item includes
+      the exact key and its current owners.
   returned: success
   type: dict
-  contains:
-    items:
-      description:
-        - One item per owned device key or per supplied organization key.
-      type: list
-      elements: dict
-      contains:
-        key:
-          description: Exact label key.
-          type: str
-        owners:
-          description: Current owning LabelSyncMapping resource names.
-          type: list
-          elements: str
 """
 
 try:
