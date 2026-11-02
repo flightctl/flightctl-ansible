@@ -21,6 +21,8 @@ description:
     OS mode, image digests, and delta image hints.
   - These response fields are read-only. Use them with this info module rather
     than including them in a desired-state resource definition.
+  - v1.4 repository placement, catalog compatibility, event reasons/details,
+    and vulnerability source fields are preserved in returned API objects.
 options:
   kind:
     description:
@@ -147,6 +149,21 @@ EXAMPLES = r"""
     kind: Device
     name: "Example"
     rendered: true
+
+- name: Inspect repository placement and delta storage settings
+  flightctl.core.flightctl_resource_info:
+    kind: Repository
+    name: delta-repository
+
+- name: List v1.4 delta and enrollment-hook events
+  flightctl.core.flightctl_resource_info:
+    kind: Event
+
+- name: Inspect catalog compatibility requirements
+  flightctl.core.flightctl_resource_info:
+    kind: CatalogItem
+    catalog_name: edge-catalog
+    name: edge-agent
 """
 
 

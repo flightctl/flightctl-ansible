@@ -77,6 +77,21 @@ class ListProtocol(Protocol):
         return {}
 
 
+def _validate_resource_definition(
+    resource: ResourceType, definition: Dict[str, Any]
+) -> None:
+    if resource is not ResourceType.REPOSITORY:
+        return
+
+    spec = definition.get("spec")
+    if not isinstance(spec, dict):
+        return
+    if spec.get("repository") is not None and spec.get("namespace") is not None:
+        raise ValueError(
+            "Repository spec.repository and spec.namespace are mutually exclusive"
+        )
+
+
 @dataclass
 class ListResult:
     data: List[ResourceProtocol]
@@ -501,6 +516,7 @@ class FlightctlAPIModule(FlightctlModule):
         )
 
         try:
+            _validate_resource_definition(resource, definition)
             request_obj = api_type.model.from_dict(definition)
             if resource in NESTED_RESOURCES and parent_name:
                 return self.call_api(create_call, parent_name, request_obj)
@@ -536,6 +552,7 @@ class FlightctlAPIModule(FlightctlModule):
         Raises:
             FlightctlException: If the update fails or there are errors with the patch.
         """
+        _validate_resource_definition(resource, definition)
         changed: bool = False
         existing = existing_obj.to_dict()
         name = existing["metadata"]["name"]
@@ -599,6 +616,7 @@ class FlightctlAPIModule(FlightctlModule):
         )
 
         try:
+            _validate_resource_definition(resource, definition)
             request_obj = api_type.model.from_dict(definition)
             if resource in NESTED_RESOURCES and parent_name:
                 return self.call_api(replace_call, parent_name, name, request_obj)

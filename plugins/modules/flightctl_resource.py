@@ -143,6 +143,68 @@ EXAMPLES = r"""
           spec:
             os:
               image: quay.io/example/edge-os:latest
+
+- name: Configure an OCI repository for delta storage
+  flightctl.core.flightctl_resource:
+    kind: Repository
+    resource_definition:
+      apiVersion: flightctl.io/v1beta1
+      kind: Repository
+      metadata:
+        name: delta-repository
+      spec:
+        type: oci
+        registry: quay.io
+        namespace: flightctl
+        deltaStorageTarget: true
+
+- name: Configure an OAuth2 provider prompt
+  flightctl.core.flightctl_resource:
+    kind: AuthProvider
+    resource_definition:
+      apiVersion: flightctl.io/v1beta1
+      kind: AuthProvider
+      metadata:
+        name: example-oauth
+      spec:
+        providerType: oauth2
+        authorizationUrl: https://issuer.example/authorize
+        tokenUrl: https://issuer.example/token
+        userinfoUrl: https://issuer.example/userinfo
+        clientId: flightctl
+        clientSecret: secret
+        prompt: login consent
+        organizationAssignment:
+          type: static
+          organizationName: edge-org
+        roleAssignment:
+          type: static
+          roles: [viewer]
+
+- name: Publish a catalog version with device feature requirements
+  flightctl.core.flightctl_resource:
+    kind: CatalogItem
+    catalog_name: edge-catalog
+    resource_definition:
+      apiVersion: flightctl.io/v1alpha1
+      kind: CatalogItem
+      metadata:
+        name: edge-agent
+      spec:
+        type: container
+        artifacts:
+          - type: container
+            uri: quay.io/example/edge-agent
+        versions:
+          - version: 1.2.3
+            references:
+              container: 1.2.3
+            channels: [stable]
+            skipRange: ">=1.0.0 <2.0.0 || >=3.0.0"
+            deviceFeatures:
+              gpu.present: "true"
+              kvm.enabled: "false"
+              os.mode: image
 """
 
 RETURN = r"""
