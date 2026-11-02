@@ -2,39 +2,46 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
 import importlib
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, Union, cast
 
 from .constants import API_MAPPING, NESTED_RESOURCES, ResourceType
 from .core import FlightctlModule
-from .exceptions import FlightctlException, FlightctlApiException
+from .exceptions import FlightctlApiException, FlightctlException
 from .oidc_auth import oidc_password_grant
 from .options import ApprovalOptions, GetOptions
-from .sdk_utils import is_pydantic_validation_error, normalize_sdk_output, raw_response_to_dict
+from .sdk_utils import (
+    is_pydantic_validation_error,
+    normalize_sdk_output,
+    raw_response_to_dict,
+    serialize_sdk_output,
+)
 from .utils import diff_dicts, get_patch, json_patch
 
-
 try:
+    from flightctl.api.certificatesigningrequest_api import CertificatesigningrequestApi
+    from flightctl.api.enrollmentrequest_api import EnrollmentrequestApi
     from flightctl.api_client import ApiClient
     from flightctl.configuration import Configuration
-    from flightctl.api.enrollmentrequest_api import EnrollmentrequestApi
-    from flightctl.api.certificatesigningrequest_api import CertificatesigningrequestApi
     from flightctl.exceptions import ApiException
-    from flightctl.models.enrollment_request_approval import EnrollmentRequestApproval
-    from flightctl.models.list_meta import ListMeta
+    from flightctl.models.certificate_signing_request_status import (
+        CertificateSigningRequestStatus,
+    )
     from flightctl.models.condition import Condition
     from flightctl.models.condition_status import ConditionStatus
     from flightctl.models.condition_type import ConditionType
-    from flightctl.models.certificate_signing_request_status import CertificateSigningRequestStatus
     from flightctl.models.device_decommission import DeviceDecommission
-    from flightctl.models.device_decommission_target_type import DeviceDecommissionTargetType
-
+    from flightctl.models.device_decommission_target_type import (
+        DeviceDecommissionTargetType,
+    )
+    from flightctl.models.enrollment_request_approval import EnrollmentRequestApproval
+    from flightctl.models.list_meta import ListMeta
     from flightctl.v1alpha1.api_client import ApiClient as V1Alpha1ApiClient
     from flightctl.v1alpha1.configuration import Configuration as V1Alpha1Configuration
 
@@ -77,13 +84,11 @@ class ListResult:
     summary: Optional[Any] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        res = dict(
-            data=[d.to_dict() for d in self.data],
-        )
+        res = {"data": [serialize_sdk_output(d) for d in self.data]}
         if self.metadata:
-            res['metadata'] = self.metadata.to_dict()
+            res["metadata"] = serialize_sdk_output(self.metadata)
         if self.summary:
-            res['summary'] = self.summary.to_dict()
+            res["summary"] = serialize_sdk_output(self.summary)
         return normalize_sdk_output(res)
 
 
@@ -94,6 +99,7 @@ class RawResource:
     Used as a fallback when the client SDK cannot deserialize an API response
     into its pydantic model (see ``sdk_utils.is_pydantic_validation_error``).
     """
+
     raw: Dict[str, Any]
 
     def to_dict(self) -> Dict[str, Any]:
@@ -107,6 +113,7 @@ class RawListResponse:
     Mirrors the attributes ``get_one_or_many()`` reads off a list response so the
     raw-JSON fallback is a drop-in replacement for the deserialized model.
     """
+
     items: List[RawResource]
     metadata: Optional[RawResource] = None
     summary: Optional[RawResource] = None
@@ -114,9 +121,9 @@ class RawListResponse:
     def to_dict(self) -> Dict[str, Any]:
         res: Dict[str, Any] = dict(items=[i.to_dict() for i in self.items])
         if self.metadata:
-            res['metadata'] = self.metadata.to_dict()
+            res["metadata"] = self.metadata.to_dict()
         if self.summary:
-            res['summary'] = self.summary.to_dict()
+            res["summary"] = self.summary.to_dict()
         return res
 
 
@@ -154,10 +161,13 @@ class FlightctlAPIModule(FlightctlModule):
         )
 
         if CLIENT_IMPORT_ERROR:
-            self.fail_json(msg="Flight Control client import failed", error=str(CLIENT_IMPORT_ERROR))
+            self.fail_json(
+                msg="Flight Control client import failed",
+                error=str(CLIENT_IMPORT_ERROR),
+            )
 
-        host_url = self.url.geturl().rstrip('/')
-        if not host_url.endswith('/api/v1'):
+        host_url = self.url.geturl().rstrip("/")
+        if not host_url.endswith("/api/v1"):
             host_url = f"{host_url}/api/v1"
 
         client_config = Configuration(
@@ -190,13 +200,13 @@ class FlightctlAPIModule(FlightctlModule):
         original_param_serialize = client.param_serialize
 
         def param_serialize_with_org_id(*args: Any, **kwargs: Any):
-            query_params = kwargs.get('query_params')
+            query_params = kwargs.get("query_params")
             if query_params is None:
                 query_params = []
-                kwargs['query_params'] = query_params
+                kwargs["query_params"] = query_params
 
-            if not any(k == 'org_id' for k, _v in query_params):
-                query_params.append(('org_id', org_id))
+            if not any(k == "org_id" for k, _v in query_params):
+                query_params.append(("org_id", org_id))
 
             return original_param_serialize(*args, **kwargs)
 
@@ -212,17 +222,19 @@ class FlightctlAPIModule(FlightctlModule):
         the inventory plugin's behavior against OIDC-only servers.
         """
         if self.token:
-            self.headers = {'Authorization': f'Bearer {self.token}'}
+            self.headers = {"Authorization": f"Bearer {self.token}"}
         elif self.username and self.password:
-            base_host = self.url.geturl().rstrip('/').removesuffix('/api/v1')
+            base_host = self.url.geturl().rstrip("/").removesuffix("/api/v1")
             token = oidc_password_grant(
                 base_host, self.username, self.password, self.verify_ssl, self.ca_path
             )
-            self.headers = {'Authorization': f'Bearer {token}'}
+            self.headers = {"Authorization": f"Bearer {token}"}
         else:
             self.headers = None
 
-    def call_api(self, api_call: Callable, *args: tuple[Any, ...], **kwargs: dict[str, Any]) -> Any:
+    def call_api(
+        self, api_call: Callable, *args: tuple[Any, ...], **kwargs: dict[str, Any]
+    ) -> Any:
         """
         Makes a request to the api with shared args.
 
@@ -249,7 +261,8 @@ class FlightctlAPIModule(FlightctlModule):
         return self.client
 
     def get(
-        self, options: GetOptions,
+        self,
+        options: GetOptions,
     ) -> ResourceProtocol:
         """
         Makes an get query via the API.
@@ -275,13 +288,22 @@ class FlightctlAPIModule(FlightctlModule):
             get_method = api_type.get
         get_call = getattr(api_instance, get_method)
 
-        not_found_exc = _resolve_for_version(api_type.api_version, "exceptions", "NotFoundException")
-        api_exc = _resolve_for_version(api_type.api_version, "exceptions", "ApiException")
+        not_found_exc = _resolve_for_version(
+            api_type.api_version, "exceptions", "NotFoundException"
+        )
+        api_exc = _resolve_for_version(
+            api_type.api_version, "exceptions", "ApiException"
+        )
 
         try:
             if options.resource in NESTED_RESOURCES:
                 if options.deployments:
-                    return self.call_api(get_call, options.parent_name, options.name, **options.request_params)
+                    return self.call_api(
+                        get_call,
+                        options.parent_name,
+                        options.name,
+                        **options.request_params,
+                    )
                 return self.call_api(get_call, options.parent_name, options.name)
             elif options.resource is ResourceType.FLEET:
                 return self.call_api(get_call, options.name, options.summary)
@@ -290,7 +312,9 @@ class FlightctlAPIModule(FlightctlModule):
         except not_found_exc:
             return None
         except api_exc as e:
-            raise FlightctlApiException(f"Unable to fetch {options.resource.value} - {options.name}: {e}")
+            raise FlightctlApiException(
+                f"Unable to fetch {options.resource.value} - {options.name}: {e}"
+            )
         except Exception as e:
             # The client SDK raises a pydantic ValidationError (not an ApiException)
             # when a valid API response cannot be deserialized into its model, e.g.
@@ -317,20 +341,29 @@ class FlightctlAPIModule(FlightctlModule):
         try:
             if options.resource in NESTED_RESOURCES:
                 if options.deployments:
-                    response = self.call_api(raw_call, options.parent_name, options.name, **options.request_params)
+                    response = self.call_api(
+                        raw_call,
+                        options.parent_name,
+                        options.name,
+                        **options.request_params,
+                    )
                 else:
-                    response = self.call_api(raw_call, options.parent_name, options.name)
+                    response = self.call_api(
+                        raw_call, options.parent_name, options.name
+                    )
             elif options.resource is ResourceType.FLEET:
                 response = self.call_api(raw_call, options.name, options.summary)
             else:
                 response = self.call_api(raw_call, options.name)
         except Exception as e:
-            raise FlightctlApiException(f"Unable to fetch {options.resource.value} - {options.name}: {e}")
+            raise FlightctlApiException(
+                f"Unable to fetch {options.resource.value} - {options.name}: {e}"
+            )
         data = raw_response_to_dict(response)
         if options.deployments:
-            metadata = data.get('metadata')
+            metadata = data.get("metadata")
             return RawListResponse(
-                items=[RawResource(item) for item in data.get('items', [])],
+                items=[RawResource(item) for item in data.get("items", [])],
                 metadata=RawResource(metadata) if metadata else None,
             )
         return RawResource(data)
@@ -351,11 +384,15 @@ class FlightctlAPIModule(FlightctlModule):
         api_type = API_MAPPING[options.resource]
         api_instance = api_type.api(self._get_client(options.resource))
         list_call = getattr(api_instance, api_type.list)
-        api_exc = _resolve_for_version(api_type.api_version, "exceptions", "ApiException")
+        api_exc = _resolve_for_version(
+            api_type.api_version, "exceptions", "ApiException"
+        )
 
         try:
             if options.resource in NESTED_RESOURCES:
-                return self.call_api(list_call, options.parent_name, **options.request_params)
+                return self.call_api(
+                    list_call, options.parent_name, **options.request_params
+                )
             else:
                 return self.call_api(list_call, **options.request_params)
         except api_exc as e:
@@ -373,7 +410,9 @@ class FlightctlAPIModule(FlightctlModule):
                 return self._list_raw(api_instance, api_type.list, options)
             raise
 
-    def _list_raw(self, api_instance: Any, list_method: str, options: GetOptions) -> RawListResponse:
+    def _list_raw(
+        self, api_instance: Any, list_method: str, options: GetOptions
+    ) -> RawListResponse:
         """List resources as raw JSON, bypassing SDK pydantic deserialization.
 
         Retries the request against the SDK's ``*_without_preload_content`` variant
@@ -383,23 +422,26 @@ class FlightctlAPIModule(FlightctlModule):
         raw_call = getattr(api_instance, f"{list_method}_without_preload_content")
         try:
             if options.resource in NESTED_RESOURCES:
-                response = self.call_api(raw_call, options.parent_name, **options.request_params)
+                response = self.call_api(
+                    raw_call, options.parent_name, **options.request_params
+                )
             else:
                 response = self.call_api(raw_call, **options.request_params)
         except Exception as e:
             raise FlightctlApiException(f"Unable to list {options.resource.value}: {e}")
 
         data = raw_response_to_dict(response)
-        metadata = data.get('metadata')
-        summary = data.get('summary')
+        metadata = data.get("metadata")
+        summary = data.get("summary")
         return RawListResponse(
-            items=[RawResource(item) for item in data.get('items', [])],
+            items=[RawResource(item) for item in data.get("items", [])],
             metadata=RawResource(metadata) if metadata else None,
             summary=RawResource(summary) if summary else None,
         )
 
     def get_one_or_many(
-        self, options: GetOptions,
+        self,
+        options: GetOptions,
     ) -> ListResult:
         """
         Retrieves one or many resources from the API.
@@ -428,11 +470,13 @@ class FlightctlAPIModule(FlightctlModule):
             return ListResult(
                 data=response.items,
                 metadata=response.metadata,
-                summary=getattr(response, 'summary', None)
+                summary=getattr(response, "summary", None),
             )
 
     def create(
-        self, resource: ResourceType, definition: Dict[str, Any],
+        self,
+        resource: ResourceType,
+        definition: Dict[str, Any],
         parent_name: Optional[str] = None,
     ) -> ResourceProtocol:
         """
@@ -452,7 +496,9 @@ class FlightctlAPIModule(FlightctlModule):
         api_type = API_MAPPING[resource]
         api_instance = api_type.api(self._get_client(resource))
         create_call = getattr(api_instance, api_type.create)
-        api_exc = _resolve_for_version(api_type.api_version, "exceptions", "ApiException")
+        api_exc = _resolve_for_version(
+            api_type.api_version, "exceptions", "ApiException"
+        )
 
         try:
             request_obj = api_type.model.from_dict(definition)
@@ -463,7 +509,10 @@ class FlightctlAPIModule(FlightctlModule):
             raise FlightctlApiException(f"Unable to create {resource.value}: {e}")
 
     def update(
-        self, resource: ResourceType, existing_obj: ResourceProtocol, definition: Dict[str, Any],
+        self,
+        resource: ResourceType,
+        existing_obj: ResourceProtocol,
+        definition: Dict[str, Any],
         parent_name: Optional[str] = None,
     ) -> Tuple[bool, Dict[str, Any]]:
         """
@@ -501,13 +550,19 @@ class FlightctlAPIModule(FlightctlModule):
             api_type = API_MAPPING[resource]
             api_instance = api_type.api(self._get_client(resource))
             patch_call = getattr(api_instance, api_type.patch)
-            patch_cls = _resolve_for_version(api_type.api_version, "models.patch_request_inner", "PatchRequestInner")
-            api_exc = _resolve_for_version(api_type.api_version, "exceptions", "ApiException")
+            patch_cls = _resolve_for_version(
+                api_type.api_version, "models.patch_request_inner", "PatchRequestInner"
+            )
+            api_exc = _resolve_for_version(
+                api_type.api_version, "exceptions", "ApiException"
+            )
 
             try:
                 patch_params = [patch_cls.from_dict(p) for p in patch]
                 if resource in NESTED_RESOURCES and parent_name:
-                    response = self.call_api(patch_call, parent_name, name, patch_params)
+                    response = self.call_api(
+                        patch_call, parent_name, name, patch_params
+                    )
                 else:
                     response = self.call_api(patch_call, name, patch_params)
                 changed |= True
@@ -517,8 +572,10 @@ class FlightctlAPIModule(FlightctlModule):
         return changed, (response if diffs else existing_obj)
 
     def replace(
-            self, resource: ResourceType, definition: Dict[str, Any],
-            parent_name: Optional[str] = None,
+        self,
+        resource: ResourceType,
+        definition: Dict[str, Any],
+        parent_name: Optional[str] = None,
     ) -> ResourceProtocol:
         """
         Replaces an existing resource.
@@ -537,7 +594,9 @@ class FlightctlAPIModule(FlightctlModule):
         api_type = API_MAPPING[resource]
         api_instance = api_type.api(self._get_client(resource))
         replace_call = getattr(api_instance, api_type.replace)
-        api_exc = _resolve_for_version(api_type.api_version, "exceptions", "ApiException")
+        api_exc = _resolve_for_version(
+            api_type.api_version, "exceptions", "ApiException"
+        )
 
         try:
             request_obj = api_type.model.from_dict(definition)
@@ -547,7 +606,9 @@ class FlightctlAPIModule(FlightctlModule):
         except api_exc as e:
             raise FlightctlApiException(f"Unable to replace {resource.value}: {e}")
 
-    def delete(self, resource: ResourceType, name: str, parent_name: Optional[str] = None) -> Optional[ResourceProtocol]:
+    def delete(
+        self, resource: ResourceType, name: str, parent_name: Optional[str] = None
+    ) -> Optional[ResourceProtocol]:
         """
         Deletes resources from the API.
 
@@ -560,19 +621,25 @@ class FlightctlAPIModule(FlightctlModule):
             Optional[ResourceProtocol]: The response body of the delete operation.
         """
         if not name:
-            raise FlightctlApiException("A resource name must be provided for deletion.")
+            raise FlightctlApiException(
+                "A resource name must be provided for deletion."
+            )
 
         api_type = API_MAPPING[resource]
         api_instance = api_type.api(self._get_client(resource))
         delete_call = getattr(api_instance, api_type.delete)
-        api_exc = _resolve_for_version(api_type.api_version, "exceptions", "ApiException")
+        api_exc = _resolve_for_version(
+            api_type.api_version, "exceptions", "ApiException"
+        )
         try:
             if resource in NESTED_RESOURCES and parent_name:
                 response = self.call_api(delete_call, parent_name, name)
             else:
                 response = self.call_api(delete_call, name)
         except api_exc as e:
-            raise FlightctlApiException(f"Unable to delete {resource.value} - {name}: {e}")
+            raise FlightctlApiException(
+                f"Unable to delete {resource.value} - {name}: {e}"
+            )
 
         return response
 
@@ -594,22 +661,35 @@ class FlightctlAPIModule(FlightctlModule):
             try:
                 self.call_api(api_instance.approve_enrollment_request, input.name, body)
             except ApiException as e:
-                raise FlightctlApiException(f"Unable to approve {input.resource.value} - {input.name}: {e}")
+                raise FlightctlApiException(
+                    f"Unable to approve {input.resource.value} - {input.name}: {e}"
+                )
         else:
             api_instance = CertificatesigningrequestApi(self.client)
             try:
-                csr = self.call_api(api_instance.get_certificate_signing_request, input.name)
+                csr = self.call_api(
+                    api_instance.get_certificate_signing_request, input.name
+                )
 
                 if csr.status is None:
                     csr.status = CertificateSigningRequestStatus(conditions=[])
 
-                expected_type = ConditionType.CertificateSigningRequestApproved if input.approved else ConditionType.CertificateSigningRequestDenied
+                expected_type = (
+                    ConditionType.CertificateSigningRequestApproved
+                    if input.approved
+                    else ConditionType.CertificateSigningRequestDenied
+                )
 
                 # Idempotency of certificate approval/denial is no longer handled in Flight Control.
                 # This logic will be enforced within the Ansible collection instead.
 
-                approved_denied_types = {ConditionType.CertificateSigningRequestApproved, ConditionType.CertificateSigningRequestDenied}
-                existing_conditions = [c for c in csr.status.conditions if c.type in approved_denied_types]
+                approved_denied_types = {
+                    ConditionType.CertificateSigningRequestApproved,
+                    ConditionType.CertificateSigningRequestDenied,
+                }
+                existing_conditions = [
+                    c for c in csr.status.conditions if c.type in approved_denied_types
+                ]
                 if existing_conditions:
                     # If all existing AD conditions match the expected type it's an Idempotent case.
                     unique_types = {c.type for c in existing_conditions}
@@ -617,24 +697,40 @@ class FlightctlAPIModule(FlightctlModule):
                         return
 
                     # Otherwise, remove all AD conditions to allow a clean state change.
-                    csr.status.conditions = [c for c in csr.status.conditions if c.type not in approved_denied_types]
+                    csr.status.conditions = [
+                        c
+                        for c in csr.status.conditions
+                        if c.type not in approved_denied_types
+                    ]
 
                 approval_type = Condition(
                     type=expected_type,
                     status=ConditionStatus.ConditionStatusTrue,
                     observed_generation=1,
                     last_transition_time=datetime.now().isoformat() + "Z",
-                    message="The request has been approved." if input.approved else "The request has been denied.",
-                    reason="ManualApproval" if input.approved else "ManualDenial"
+                    message=(
+                        "The request has been approved."
+                        if input.approved
+                        else "The request has been denied."
+                    ),
+                    reason="ManualApproval" if input.approved else "ManualDenial",
                 )
 
                 csr.status.conditions.append(approval_type)
 
-                self.call_api(api_instance.update_certificate_signing_request_approval, input.name, csr)
+                self.call_api(
+                    api_instance.update_certificate_signing_request_approval,
+                    input.name,
+                    csr,
+                )
             except ApiException as e:
-                raise FlightctlApiException(f"Unable to approve {input.resource.value} - {input.name}: {e}")
+                raise FlightctlApiException(
+                    f"Unable to approve {input.resource.value} - {input.name}: {e}"
+                )
 
-    def decommission(self, device_name: str, definition: Dict[str, Any]) -> ResourceProtocol:
+    def decommission(
+        self, device_name: str, definition: Dict[str, Any]
+    ) -> ResourceProtocol:
         """
         Sends a decommission request for a device.
 
@@ -651,7 +747,9 @@ class FlightctlAPIModule(FlightctlModule):
         api_instance = api_type.api(self.client)
 
         if not hasattr(api_instance, "decommission_device"):
-            raise FlightctlException(f"Decommissioning is not supported for resource type {ResourceType.DEVICE}")
+            raise FlightctlException(
+                f"Decommissioning is not supported for resource type {ResourceType.DEVICE}"
+            )
 
         decommission_call = api_instance.decommission_device
 
@@ -660,10 +758,14 @@ class FlightctlAPIModule(FlightctlModule):
         try:
             target_enum = DeviceDecommissionTargetType(target)
         except ValueError:
-            raise FlightctlException(f"Invalid target value: {target}. Must be 'Unenroll' or 'FactoryReset'")
+            raise FlightctlException(
+                f"Invalid target value: {target}. Must be 'Unenroll' or 'FactoryReset'"
+            )
 
         try:
             device_decommission = DeviceDecommission(target=target_enum)
             return self.call_api(decommission_call, device_name, device_decommission)
         except ApiException as e:
-            raise FlightctlApiException(f"Unable to decommission device {device_name}: {e}")
+            raise FlightctlApiException(
+                f"Unable to decommission device {device_name}: {e}"
+            )

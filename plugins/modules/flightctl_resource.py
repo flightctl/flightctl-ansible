@@ -4,7 +4,7 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
@@ -126,6 +126,23 @@ EXAMPLES = r"""
           controlPlaneActions:
             - url: https://example.com/hooks/enrollment
               timeout: 30s
+
+- name: Configure delta generation for a fleet
+  flightctl.core.flightctl_resource:
+    kind: Fleet
+    resource_definition:
+      apiVersion: flightctl.io/v1beta1
+      kind: Fleet
+      metadata:
+        name: delta-enabled-fleet
+      spec:
+        rolloutPolicy:
+          deltaGeneration:
+            generateDelta: true
+        template:
+          spec:
+            os:
+              image: quay.io/example/edge-os:latest
 """
 
 RETURN = r"""
@@ -172,7 +189,7 @@ def main():
         catalog_name=dict(type="str"),
         api_version=dict(type="str"),
         resource_definition=dict(type="raw"),
-        **STATE_ARG_SPEC
+        **STATE_ARG_SPEC,
     )
 
     module = FlightctlAPIModule(

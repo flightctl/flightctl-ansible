@@ -4,7 +4,7 @@
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from __future__ import (absolute_import, division, print_function)
+from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
@@ -16,6 +16,11 @@ author:
   - "Alina Buzachis (@alinabuzachis)"
 description:
   - Get information about Flight Control resources.
+  - Device and rendered-resource responses automatically preserve the additive
+    v1.4 fields, including delta status, system information, GPU/KVM details,
+    OS mode, image digests, and delta image hints.
+  - These response fields are read-only. Use them with this info module rather
+    than including them in a desired-state resource definition.
 options:
   kind:
     description:
@@ -40,7 +45,8 @@ options:
     type: bool
   label_selector:
     description:
-      - A selector to restrict the list of returned objects by their labels.  Accepts a a comma-separated list of key1=value1,key2=value2
+      - A selector to restrict the list of returned objects by their labels.
+        Accepts a a comma-separated list of key1=value1,key2=value2
       - This option is not supported when O(kind=LabelSyncMapping).
     type: str
   field_selector:
@@ -62,11 +68,14 @@ options:
     type: bool
   summary_only:
     description:
-      - Return only the summary info for devices.  Only the O(owner) and O(label_selector) parameters are supported. Only applicable when O(kind=Device).
+      - Return only the summary info for devices. Only the O(owner) and
+        O(label_selector) parameters are supported. Only applicable when
+        O(kind=Device).
     type: bool
   status_filter:
     description:
-      - A filter to restrict the list of devices by the value of the filtered status key.  Only applicable when O(kind=Device).
+      - A filter to restrict the list of devices by the value of the filtered
+        status key. Only applicable when O(kind=Device).
     type: list
     elements: str
     default: []
@@ -132,6 +141,12 @@ EXAMPLES = r"""
     catalog_name: my-catalog
     name: my-item
     deployments: true
+
+- name: Inspect v1.4 device and rendered OS information
+  flightctl.core.flightctl_resource_info:
+    kind: Device
+    name: "Example"
+    rendered: true
 """
 
 
@@ -176,7 +191,9 @@ result:
       returned: When C(name) is not used, or when C(deployments=true), and a list of objects is fetched
       contains:
         continue:
-          description: An opaque token used to issue another request to the endpoint that served a list to retrieve the next set of available objects.
+          description: >-
+            An opaque token used to issue another request to the endpoint that
+            served a list to retrieve the next set of available objects.
           returned: When the total number of items queried is greater than C(limit) or the default limit.
           type: str
         remainingItemCount:
@@ -192,8 +209,8 @@ result:
 
 
 from ..module_utils.api_module import FlightctlAPIModule
-from ..module_utils.exceptions import FlightctlException, ValidationException
 from ..module_utils.constants import ResourceType
+from ..module_utils.exceptions import FlightctlException, ValidationException
 from ..module_utils.options import GetOptions
 
 
@@ -213,7 +230,7 @@ def main():
         summary_only=dict(type="bool"),
         status_filter=dict(type="list", elements="str", default=[]),
         limit=dict(type="int"),
-        continue_token=dict(type="str", no_log=True)
+        continue_token=dict(type="str", no_log=True),
     )
 
     module = FlightctlAPIModule(
@@ -240,7 +257,7 @@ def main():
             summary_only=module.params.get("summary_only"),
             status_filter=module.params.get("status_filter"),
             limit=module.params.get("limit"),
-            continue_token=module.params.get("continue_token")
+            continue_token=module.params.get("continue_token"),
         )
 
         # Attempt to look up resource based on the provided name
