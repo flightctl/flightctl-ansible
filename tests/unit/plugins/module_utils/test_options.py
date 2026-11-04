@@ -57,6 +57,53 @@ class TestGetOptionsAuthProvider:
         assert opts.name is None
 
 
+class TestGetOptionsLabelSyncMapping:
+    """Validate the list options supported by the v1.4 API."""
+
+    def test_name_succeeds(self):
+        opts = GetOptions(
+            resource=ResourceType.LABEL_SYNC_MAPPING,
+            name="sync-site",
+        )
+        assert opts.name == "sync-site"
+
+    @pytest.mark.parametrize(
+        ("selector", "message"),
+        [
+            ("label_selector", "Label selector is not supported for LabelSyncMapping"),
+            ("field_selector", "Field selector is not supported for LabelSyncMapping"),
+        ],
+    )
+    def test_unsupported_selector_raises(self, selector, message):
+        with pytest.raises(ValidationException, match=message):
+            GetOptions(
+                resource=ResourceType.LABEL_SYNC_MAPPING,
+                **{selector: "metadata.name=sync-site"},
+            )
+
+    def test_pagination_is_forwarded(self):
+        opts = GetOptions(
+            resource=ResourceType.LABEL_SYNC_MAPPING,
+            limit=25,
+            continue_token="next-page",
+        )
+        assert opts.request_params == {
+            "limit": 25,
+            "var_continue": "next-page",
+        }
+
+    def test_selectors_remain_supported_for_other_resources(self):
+        opts = GetOptions(
+            resource=ResourceType.DEVICE,
+            label_selector="environment=test",
+            field_selector="metadata.name=device-a",
+        )
+        assert opts.request_params == {
+            "label_selector": "environment=test",
+            "field_selector": "metadata.name=device-a",
+        }
+
+
 class TestGetOptionsCatalog:
     """Validate Catalog (non-nested) and CatalogItem (nested) options."""
 

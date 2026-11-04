@@ -1,0 +1,56 @@
+---
+- name: Test enrollment hook override action
+  vars:
+    connection_info: &connection_info
+      flightctl_token: "{{ flightctl_token | default(omit) }}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_organization: "{{ flightctl_enrollment_hook_override_test_organization }}"
+      flightctl_validate_certs: false
+  when:
+    - flightctl_enrollment_hook_override_test_device is defined
+    - flightctl_enrollment_hook_override_test_device | default('') | length > 0
+    - flightctl_enrollment_hook_override_test_organization is defined
+    - flightctl_enrollment_hook_override_test_organization | default('') | length > 0
+  block:
+    - name: Require a dedicated failed-enrollment-hook device
+      ansible.builtin.assert:
+        that:
+          - flightctl_enrollment_hook_override_test_device is defined
+          - flightctl_enrollment_hook_override_test_device | default('') | length > 0
+        fail_msg: >-
+          Set flightctl_enrollment_hook_override_test_device to a disposable
+          device with a failed enrollment hook in a v1.4 test organization.
+
+    - name: Check enrollment hook override
+      flightctl.core.flightctl_enrollment_hook_override:
+        <<: *connection_info
+        name: "{{ flightctl_enrollment_hook_override_test_device }}"
+      check_mode: true
+      register: check_result
+
+    - name: Assert check mode does not change the device
+      ansible.builtin.assert:
+        that:
+          - check_result is success
+          - check_result.changed | bool
+
+    - name: Override the failed enrollment hook
+      flightctl.core.flightctl_enrollment_hook_override:
+        <<: *connection_info
+        name: "{{ flightctl_enrollment_hook_override_test_device }}"
+      register: override_result
+
+    - name: Assert the enrollment hook was overridden
+      ansible.builtin.assert:
+        that:
+          - override_result is success
+          - override_result.changed | bool
+          - override_result.result.metadata.name == flightctl_enrollment_hook_override_test_device
+          - >-
+            (override_result.result.status.conditions
+            | selectattr('type', 'equalto', 'EnrollmentHooks')
+            | list | first).status == 'True'
+          - >-
+            (override_result.result.status.conditions
+            | selectattr('type', 'equalto', 'EnrollmentHooks')
+            | list | first).reason == 'ManualOverride'

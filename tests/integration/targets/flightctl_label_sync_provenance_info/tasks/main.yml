@@ -1,0 +1,65 @@
+---
+- name: Test device label-sync provenance query
+  vars:
+    connection_info: &connection_info
+      flightctl_token: "{{ flightctl_token | default(omit) }}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_organization: "{{ flightctl_label_sync_provenance_test_organization }}"
+      flightctl_validate_certs: false
+  when:
+    - flightctl_label_sync_provenance_test_device is defined
+    - flightctl_label_sync_provenance_test_device | default('') | length > 0
+    - flightctl_label_sync_provenance_test_organization is defined
+    - flightctl_label_sync_provenance_test_organization | default('') | length > 0
+  block:
+    - name: Query device label-sync provenance
+      flightctl.core.flightctl_label_sync_provenance_info:
+        <<: *connection_info
+        name: "{{ flightctl_label_sync_provenance_test_device }}"
+      register: device_provenance_result
+
+    - name: Assert device provenance response shape and ordering
+      ansible.builtin.assert:
+        that:
+          - device_provenance_result is success
+          - device_provenance_result.result.items is defined
+          - >-
+            (device_provenance_result.result.items | map(attribute='key') | list)
+            == ((device_provenance_result.result.items | map(attribute='key') | list) | sort)
+          - >-
+            (device_provenance_result.result.items
+            | selectattr('key', 'defined') | list | length)
+            == (device_provenance_result.result.items | length)
+          - >-
+            (device_provenance_result.result.items
+            | selectattr('owners', 'defined') | list | length)
+            == (device_provenance_result.result.items | length)
+
+- name: Test organization label-sync provenance query
+  vars:
+    connection_info: &organization_connection_info
+      flightctl_token: "{{ flightctl_token | default(omit) }}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_organization: "{{ flightctl_label_sync_provenance_test_organization }}"
+      flightctl_validate_certs: false
+    provenance_label_keys: "{{ flightctl_label_sync_provenance_test_label_keys }}"
+  when:
+    - flightctl_label_sync_provenance_test_label_keys is defined
+    - flightctl_label_sync_provenance_test_label_keys | length > 0
+    - flightctl_label_sync_provenance_test_organization is defined
+    - flightctl_label_sync_provenance_test_organization | default('') | length > 0
+  block:
+    - name: Query organization label-sync provenance
+      flightctl.core.flightctl_label_sync_provenance_info:
+        <<: *organization_connection_info
+        label_keys: "{{ provenance_label_keys }}"
+      register: organization_provenance_result
+
+    - name: Assert organization provenance preserves key order and duplicates
+      ansible.builtin.assert:
+        that:
+          - organization_provenance_result is success
+          - organization_provenance_result.result.items is defined
+          - >-
+            (organization_provenance_result.result.items | map(attribute='key') | list)
+            == provenance_label_keys

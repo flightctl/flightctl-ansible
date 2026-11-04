@@ -280,6 +280,20 @@ class TestAdditionalGroupFieldSelectors(unittest.TestCase):
         )
         self.assertEqual(keyed_groups, [])
 
+    def test_system_info_os_mode_field_selector_is_accepted(self):
+        static_groups, keyed_groups = _prepare_additional_groups_info([
+            {
+                'name': 'image_mode_devices',
+                'field_selectors': ['status.systemInfo.osMode=image'],
+            },
+        ])
+
+        self.assertEqual(
+            static_groups,
+            {'image_mode_devices': ('', 'status.systemInfo.osMode=image')},
+        )
+        self.assertEqual(keyed_groups, [])
+
 
 class TestRenderHostnameExpression(unittest.TestCase):
     """Test suite for _render_hostname_expression function"""
