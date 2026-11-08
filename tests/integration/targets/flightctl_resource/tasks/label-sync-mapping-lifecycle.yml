@@ -1,0 +1,315 @@
+---
+- name: Test LabelSyncMapping lifecycle
+  vars:
+    scalar_mapping_name: ansible-integration-test-label-sync-scalar
+    map_mapping_name: ansible-integration-test-label-sync-map
+    connection_info: &connection_info
+      flightctl_token: "{{ flightctl_token | default(omit)}}"
+      flightctl_host: "{{ flightctl_host }}"
+      flightctl_organization: "{{ flightctl_label_sync_mapping_test_organization }}"
+      flightctl_validate_certs: false
+  block:
+    - name: Require a dedicated organization for label sync mapping testing
+      ansible.builtin.assert:
+        that:
+          - flightctl_label_sync_mapping_test_organization is defined
+          - flightctl_label_sync_mapping_test_organization | default('') | length > 0
+        fail_msg: >-
+          Set flightctl_label_sync_mapping_test_organization to a dedicated,
+          disposable Flight Control v1.4 test organization.
+
+    - name: Check for an existing scalar label sync mapping
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        name: "{{ scalar_mapping_name }}"
+      register: existing_scalar_mapping
+
+    - name: Check for an existing map label sync mapping
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        name: "{{ map_mapping_name }}"
+      register: existing_map_mapping
+
+    - name: Refuse to overwrite existing label sync mappings
+      ansible.builtin.assert:
+        that:
+          - existing_scalar_mapping is success
+          - existing_map_mapping is success
+          - existing_scalar_mapping.result.data | length == 0
+          - existing_map_mapping.result.data | length == 0
+        fail_msg: >-
+          The dedicated organization already contains one of the integration
+          test mappings. Remove it only after confirming it is disposable.
+
+    - name: Create a scalar label sync mapping
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        name: "{{ scalar_mapping_name }}"
+        resource_definition:
+          spec:
+            resourceType: Device
+            key: ansible.test/site
+            expression: '"edge"'
+      register: scalar_create_result
+
+    - name: Assert the scalar mapping was created
+      ansible.builtin.assert:
+        that:
+          - scalar_create_result is success
+          - scalar_create_result.changed | bool
+          - scalar_create_result.result.kind == "LabelSyncMapping"
+          - scalar_create_result.result.metadata.name == scalar_mapping_name
+          - scalar_create_result.result.spec.key == "ansible.test/site"
+          - scalar_create_result.result.spec.expression == '"edge"'
+
+    - name: Create a map label sync mapping
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        name: "{{ map_mapping_name }}"
+        resource_definition:
+          spec:
+            resourceType: Device
+            expression: '{"ansible.test/site": "edge"}'
+      register: map_create_result
+
+    - name: Assert the map mapping was created
+      ansible.builtin.assert:
+        that:
+          - map_create_result is success
+          - map_create_result.changed | bool
+          - map_create_result.result.kind == "LabelSyncMapping"
+          - map_create_result.result.metadata.name == map_mapping_name
+          - map_create_result.result.spec.key is none
+          - >-
+            map_create_result.result.spec.expression ==
+            '{"ansible.test/site": "edge"}'
+
+    - name: Get the scalar label sync mapping
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        name: "{{ scalar_mapping_name }}"
+      register: scalar_get_result
+
+    - name: Assert the scalar mapping was fetched
+      ansible.builtin.assert:
+        that:
+          - scalar_get_result is success
+          - scalar_get_result.result.data | length == 1
+          - scalar_get_result.result.data[0].spec.key == "ansible.test/site"
+          - scalar_get_result.result.data[0].spec.expression == '"edge"'
+
+    - name: Get the map label sync mapping
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        name: "{{ map_mapping_name }}"
+      register: map_get_result
+
+    - name: Assert the map mapping was fetched
+      ansible.builtin.assert:
+        that:
+          - map_get_result is success
+          - map_get_result.result.data | length == 1
+          - map_get_result.result.data[0].spec.key is none
+          - >-
+            map_get_result.result.data[0].spec.expression ==
+            '{"ansible.test/site": "edge"}'
+
+    - name: List label sync mappings
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: LabelSyncMapping
+      register: list_result
+
+    - name: Assert both mappings are present in the list
+      ansible.builtin.assert:
+        that:
+          - list_result is success
+          - scalar_mapping_name in (list_result.result.data | map(attribute='metadata.name') | list)
+          - map_mapping_name in (list_result.result.data | map(attribute='metadata.name') | list)
+
+    - name: List one label sync mapping
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        limit: 1
+      register: paginated_list_result
+
+    - name: Assert the list limit is honored
+      ansible.builtin.assert:
+        that:
+          - paginated_list_result is success
+          - paginated_list_result.result.data | length == 1
+          - paginated_list_result.result.metadata is defined
+          - paginated_list_result.result.metadata.continue is defined
+          - paginated_list_result.result.metadata.continue is not none
+
+    - name: List the next label sync mapping page
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        limit: 1
+        continue_token: "{{ paginated_list_result.result.metadata.continue }}"
+      register: continued_list_result
+
+    - name: Assert the continuation token is accepted
+      ansible.builtin.assert:
+        that:
+          - continued_list_result is success
+          - continued_list_result.result.data | length == 1
+
+    - name: Patch the scalar label sync mapping
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        name: "{{ scalar_mapping_name }}"
+        resource_definition:
+          spec:
+            resourceType: Device
+            key: ansible.test/site
+            expression: '"branch"'
+      register: scalar_patch_result
+
+    - name: Assert the scalar mapping remains scalar after patch
+      ansible.builtin.assert:
+        that:
+          - scalar_patch_result is success
+          - scalar_patch_result.changed | bool
+          - scalar_patch_result.result.spec.key == "ansible.test/site"
+          - scalar_patch_result.result.spec.expression == '"branch"'
+
+    - name: Patch the map label sync mapping
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        name: "{{ map_mapping_name }}"
+        resource_definition:
+          spec:
+            resourceType: Device
+            expression: '{"ansible.test/site": "branch"}'
+      register: map_patch_result
+
+    - name: Assert the map mapping remains map-shaped after patch
+      ansible.builtin.assert:
+        that:
+          - map_patch_result is success
+          - map_patch_result.changed | bool
+          - map_patch_result.result.spec.key is none
+          - >-
+            map_patch_result.result.spec.expression ==
+            '{"ansible.test/site": "branch"}'
+
+    - name: Replace the scalar label sync mapping
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        name: "{{ scalar_mapping_name }}"
+        force_update: true
+        resource_definition:
+          spec:
+            resourceType: Device
+            key: ansible.test/site
+            expression: '"datacenter"'
+      register: scalar_replace_result
+
+    - name: Assert the scalar mapping remains scalar after replace
+      ansible.builtin.assert:
+        that:
+          - scalar_replace_result is success
+          - scalar_replace_result.changed | bool
+          - scalar_replace_result.result.spec.key == "ansible.test/site"
+          - scalar_replace_result.result.spec.expression == '"datacenter"'
+
+    - name: Replace the map label sync mapping
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        name: "{{ map_mapping_name }}"
+        force_update: true
+        resource_definition:
+          spec:
+            resourceType: Device
+            expression: '{"ansible.test/site": "datacenter", "ansible.test/tier": "edge"}'
+      register: map_replace_result
+
+    - name: Assert the map mapping remains map-shaped after replace
+      ansible.builtin.assert:
+        that:
+          - map_replace_result is success
+          - map_replace_result.changed | bool
+          - map_replace_result.result.spec.key is none
+          - >-
+            map_replace_result.result.spec.expression ==
+            '{"ansible.test/site": "datacenter", "ansible.test/tier": "edge"}'
+
+    - name: Delete the scalar label sync mapping
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        name: "{{ scalar_mapping_name }}"
+        state: absent
+      register: scalar_delete_result
+
+    - name: Delete the map label sync mapping
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        name: "{{ map_mapping_name }}"
+        state: absent
+      register: map_delete_result
+
+    - name: Assert both mappings were deleted
+      ansible.builtin.assert:
+        that:
+          - scalar_delete_result is success
+          - scalar_delete_result.changed | bool
+          - map_delete_result is success
+          - map_delete_result.changed | bool
+
+    - name: Get the deleted scalar label sync mapping
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        name: "{{ scalar_mapping_name }}"
+      register: scalar_get_after_delete
+
+    - name: Get the deleted map label sync mapping
+      flightctl.core.flightctl_resource_info:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        name: "{{ map_mapping_name }}"
+      register: map_get_after_delete
+
+    - name: Assert both mappings are absent
+      ansible.builtin.assert:
+        that:
+          - scalar_get_after_delete is success
+          - scalar_get_after_delete.result.data | length == 0
+          - map_get_after_delete is success
+          - map_get_after_delete.result.data | length == 0
+
+  always:
+    - name: Delete the scalar label sync mapping during cleanup
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        name: "{{ scalar_mapping_name }}"
+        state: absent
+      when:
+        - scalar_create_result is defined
+        - scalar_create_result.changed | default(false) | bool
+
+    - name: Delete the map label sync mapping during cleanup
+      flightctl.core.flightctl_resource:
+        <<: *connection_info
+        kind: LabelSyncMapping
+        name: "{{ map_mapping_name }}"
+        state: absent
+      when:
+        - map_create_result is defined
+        - map_create_result.changed | default(false) | bool

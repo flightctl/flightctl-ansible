@@ -92,6 +92,11 @@ class GetOptions:
                 raise ValidationException("Status filter field is only valid for Device kind")
             if self.name:
                 raise ValidationException("Status filter field is not valid when fetching one Device")
+        if self.resource is ResourceType.LABEL_SYNC_MAPPING:
+            if self.label_selector:
+                raise ValidationException("Label selector is not supported for LabelSyncMapping")
+            if self.field_selector:
+                raise ValidationException("Field selector is not supported for LabelSyncMapping")
         if self.label_selector and self.name:
             raise ValidationException("Label selector field is not valid when fetching one resource")
         if self.field_selector and self.name:
