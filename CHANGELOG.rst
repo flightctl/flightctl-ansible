@@ -4,6 +4,32 @@ flightctl collection Release Notes
 
 .. contents:: Topics
 
+v1.8.0
+======
+
+Release Summary
+---------------
+
+Added support for Flight Control API v1.4 and new device and resource management capabilities.
+
+Major Changes
+-------------
+
+- Updated the Ansible collection to support Flight Control API version 1.4.
+
+Minor Changes
+-------------
+
+- Added modules for overriding failed enrollment hooks and querying label-sync provenance information.
+- Added support for EnrollmentHookPolicy, LabelSyncMapping, Catalog, CatalogItem, Repository, and Event capabilities introduced by API v1.4.
+- Updated the collection dependency to use flightctl-client version 1.4.1.
+
+New Modules
+-----------
+
+- flightctl_enrollment_hook_override - Override a failed device enrollment hook.
+- flightctl_label_sync_provenance_info - Query LabelSyncMapping ownership for label keys.
+
 v1.7.0
 ======
 

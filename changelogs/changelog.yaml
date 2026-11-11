@@ -197,3 +197,25 @@ releases:
     - edm-5486-catalog-item-deployments.yml
     - flightctl_1.7.0_api_1.3.yml
     release_date: '2026-09-07'
+  1.8.0:
+    changes:
+      major_changes:
+      - Updated the Ansible collection to support Flight Control API version 1.4.
+      minor_changes:
+      - Added modules for overriding failed enrollment hooks and querying label-sync
+        provenance information.
+      - Added support for EnrollmentHookPolicy, LabelSyncMapping, Catalog, CatalogItem,
+        Repository, and Event capabilities introduced by API v1.4.
+      - Updated the collection dependency to use flightctl-client version 1.4.1.
+      release_summary: Added support for Flight Control API v1.4 and new device and
+        resource management capabilities.
+    fragments:
+    - flightctl_1.8.0_api_1.4.yml
+    modules:
+    - description: Override a failed device enrollment hook.
+      name: flightctl_enrollment_hook_override
+      namespace: ''
+    - description: Query LabelSyncMapping ownership for label keys.
+      name: flightctl_label_sync_provenance_info
+      namespace: ''
+    release_date: '2026-11-11'
