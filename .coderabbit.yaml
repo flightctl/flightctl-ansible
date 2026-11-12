@@ -14,7 +14,7 @@ tone_instructions: >-
   and the concrete consequence (e.g., broken idempotency, silent data loss).
 
 reviews:
-  profile: "assertive"
+  profile: "chill"
   request_changes_workflow: false
   high_level_summary: true
   high_level_summary_instructions: >-
